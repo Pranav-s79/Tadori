@@ -5,3 +5,8 @@ coverage/
 *.log
 .tadori/
 .tmp/
+# Claude Code machine-local state (project skills and documentation are tracked).
+.claude/settings.local.json
+.claude/credentials.json
+.claude/cache/
+.claude/sessions/

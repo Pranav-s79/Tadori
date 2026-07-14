@@ -8,6 +8,8 @@
   },
   "packageManager": "pnpm@9.15.9",
   "scripts": {
+    "skills:sync": "node scripts/sync-skills.mjs",
+    "skills:check": "node scripts/check-skills.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
