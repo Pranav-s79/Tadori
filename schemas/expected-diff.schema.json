@@ -1,0 +1,609 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tadori.dev/schemas/expected-diff.schema.json",
+  "title": "Tadori Golden Expected Diff",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "fixtureId",
+    "baseSnapshot",
+    "headSnapshot"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "fixtureId": {
+      "type": "string"
+    },
+    "baseSnapshot": {
+      "type": "string"
+    },
+    "headSnapshot": {
+      "type": "string"
+    },
+    "addedNodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/node"
+      }
+    },
+    "removedNodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/node"
+      }
+    },
+    "changedNodeMemberships": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/nodeMembershipChange"
+      }
+    },
+    "addedEdges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/edge"
+      }
+    },
+    "removedEdges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/edge"
+      }
+    },
+    "changedEdgeMemberships": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/edgeMembershipChange"
+      }
+    },
+    "nodePairs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/nodePair"
+      }
+    },
+    "edgePairs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/edgePair"
+      }
+    },
+    "ambiguousNodeGroups": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "residualAddedNodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/node"
+      }
+    },
+    "residualRemovedNodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/node"
+      }
+    },
+    "residualAddedEdges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/edge"
+      }
+    },
+    "residualRemovedEdges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/edge"
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "semanticAssertions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fileMove",
+        "symbolRename",
+        "genuineEdgeAddition",
+        "genuineEdgeRemoval",
+        "resolutionUpgrade"
+      ],
+      "properties": {
+        "fileMove": {
+          "$ref": "#/$defs/pairAssertion"
+        },
+        "symbolRename": {
+          "$ref": "#/$defs/pairAssertion"
+        },
+        "genuineEdgeAddition": {
+          "$ref": "#/$defs/edgeAssertion"
+        },
+        "genuineEdgeRemoval": {
+          "$ref": "#/$defs/edgeAssertion"
+        },
+        "resolutionUpgrade": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "src",
+            "relation",
+            "dst",
+            "before",
+            "after"
+          ],
+          "properties": {
+            "src": {
+              "type": "string"
+            },
+            "relation": {
+              "type": "string"
+            },
+            "dst": {
+              "type": "string"
+            },
+            "before": {
+              "$ref": "#/$defs/edgeState"
+            },
+            "after": {
+              "$ref": "#/$defs/edgeState"
+            }
+          }
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "required": [
+        "addedNodes",
+        "removedNodes",
+        "changedNodeMemberships",
+        "addedEdges",
+        "removedEdges",
+        "changedEdgeMemberships"
+      ]
+    },
+    {
+      "required": [
+        "nodePairs",
+        "edgePairs",
+        "ambiguousNodeGroups",
+        "residualAddedNodes",
+        "residualRemovedNodes",
+        "changedNodeMemberships",
+        "residualAddedEdges",
+        "residualRemovedEdges",
+        "changedEdgeMemberships",
+        "notes",
+        "semanticAssertions"
+      ]
+    }
+  ],
+  "$defs": {
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "qualifiedName",
+        "displayName",
+        "canonicalIdentity",
+        "entityKey",
+        "file",
+        "exported"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "package",
+            "file",
+            "function",
+            "method",
+            "class",
+            "interface",
+            "type",
+            "route",
+            "test",
+            "adr",
+            "doc_section",
+            "external_dep",
+            "unresolved"
+          ]
+        },
+        "qualifiedName": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "canonicalIdentity": {
+          "type": "string"
+        },
+        "entityKey": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "exported": {
+          "type": "boolean"
+        },
+        "bodyHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "src",
+        "relation",
+        "dst",
+        "canonicalIdentity",
+        "entityKey",
+        "origin",
+        "confidence",
+        "resolution",
+        "evidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "src": {
+          "type": "string"
+        },
+        "relation": {
+          "enum": [
+            "contains",
+            "imports",
+            "exports",
+            "references",
+            "calls",
+            "implements",
+            "extends",
+            "tests",
+            "routes_to",
+            "documents",
+            "changed_with"
+          ]
+        },
+        "dst": {
+          "type": "string"
+        },
+        "canonicalIdentity": {
+          "type": "string"
+        },
+        "entityKey": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "origin": {
+          "enum": [
+            "compiler",
+            "heuristic",
+            "git",
+            "doc",
+            "human",
+            "llm"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "certain",
+            "likely",
+            "inferred"
+          ]
+        },
+        "resolution": {
+          "enum": [
+            "resolved",
+            "partial",
+            "unresolved"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "file",
+              "line",
+              "contains"
+            ],
+            "properties": {
+              "file": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "contains": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "nodeMembershipChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entityKey",
+        "nodeIdBefore",
+        "nodeIdAfter",
+        "changes"
+      ],
+      "properties": {
+        "entityKey": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "nodeIdBefore": {
+          "type": "string"
+        },
+        "nodeIdAfter": {
+          "type": "string"
+        },
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "field",
+              "before",
+              "after"
+            ],
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "before": {},
+              "after": {}
+            }
+          }
+        }
+      }
+    },
+    "edgeMembershipChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entityKey",
+        "edgeIdBefore",
+        "edgeIdAfter",
+        "changes"
+      ],
+      "properties": {
+        "entityKey": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "edgeIdBefore": {
+          "type": "string"
+        },
+        "edgeIdAfter": {
+          "type": "string"
+        },
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "field",
+              "before",
+              "after"
+            ],
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "before": {},
+              "after": {}
+            }
+          }
+        }
+      }
+    },
+    "nodePair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "beforeNodeId",
+        "afterNodeId",
+        "class",
+        "stage",
+        "basis",
+        "label"
+      ],
+      "properties": {
+        "beforeNodeId": {
+          "type": "string"
+        },
+        "afterNodeId": {
+          "type": "string"
+        },
+        "class": {
+          "const": "moved_or_renamed_likely"
+        },
+        "stage": {
+          "enum": [
+            "A",
+            "B"
+          ]
+        },
+        "basis": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "label": {
+          "const": "Moved or renamed \u2014 likely"
+        }
+      }
+    },
+    "edgePair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "beforeEdgeId",
+        "afterEdgeId",
+        "relation",
+        "class",
+        "label",
+        "beforeSrc",
+        "afterSrc",
+        "beforeDst",
+        "afterDst"
+      ],
+      "properties": {
+        "beforeEdgeId": {
+          "type": "string"
+        },
+        "afterEdgeId": {
+          "type": "string"
+        },
+        "relation": {
+          "type": "string"
+        },
+        "class": {
+          "const": "moved_or_renamed_likely"
+        },
+        "label": {
+          "const": "Moved or renamed \u2014 likely"
+        },
+        "beforeSrc": {
+          "type": "string"
+        },
+        "afterSrc": {
+          "type": "string"
+        },
+        "beforeDst": {
+          "type": "string"
+        },
+        "afterDst": {
+          "type": "string"
+        }
+      }
+    },
+    "pairAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "before",
+        "after",
+        "expectedClass"
+      ],
+      "properties": {
+        "before": {
+          "type": "string"
+        },
+        "after": {
+          "type": "string"
+        },
+        "expectedClass": {
+          "const": "moved_or_renamed_likely"
+        }
+      }
+    },
+    "edgeAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "src",
+        "relation",
+        "dst"
+      ],
+      "properties": {
+        "src": {
+          "type": "string"
+        },
+        "relation": {
+          "type": "string"
+        },
+        "dst": {
+          "type": "string"
+        }
+      }
+    },
+    "edgeState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "origin",
+        "confidence",
+        "resolution"
+      ],
+      "properties": {
+        "origin": {
+          "enum": [
+            "compiler",
+            "heuristic",
+            "git",
+            "doc",
+            "human",
+            "llm"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "certain",
+            "likely",
+            "inferred"
+          ]
+        },
+        "resolution": {
+          "enum": [
+            "resolved",
+            "partial",
+            "unresolved"
+          ]
+        }
+      }
+    }
+  }
+}

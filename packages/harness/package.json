@@ -1,0 +1,16 @@
+{
+  "name": "@tadori/harness",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@tadori/core": "workspace:*",
+    "@tadori/indexer": "workspace:*",
+    "@tadori/store": "workspace:*",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "typescript": "^5.5.3"
+  }
+}

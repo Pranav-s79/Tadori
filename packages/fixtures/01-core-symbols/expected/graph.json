@@ -1,0 +1,1790 @@
+{
+  "schemaVersion": "1.0.0",
+  "fixture": {
+    "id": "core-symbols",
+    "snapshot": "base",
+    "packageName": "@tadori-fixtures/core-symbols",
+    "purpose": "Complete symbol and relationship ground truth for TypeScript core extraction, alias resolution, barrels, overload collapsing, DI-style interface dispatch, recursion, unresolved dynamic calls, tests, ADR links, and one boundary violation.",
+    "relationStrata": [
+      "contains",
+      "imports",
+      "exports",
+      "references",
+      "calls",
+      "implements",
+      "tests",
+      "documents"
+    ],
+    "nastyCases": [
+      "Aliased import factorial as sequence",
+      "Barrel re-exports through src/index.ts",
+      "Three overload declarations collapse to one format node",
+      "Recursive factorial self-call",
+      "DI-style Runner dependency resolves to Strategy.run only",
+      "Computed handlers[key]() call produces an unresolved synthetic target",
+      "Static tests and a misleading test file with no linkage",
+      "ADR exact path, unique symbol links, ambiguous symbol, and missing path",
+      "Seeded public-to-internal boundary violation"
+    ],
+    "indexedFiles": [
+      "src/math.ts",
+      "src/strategy.ts",
+      "src/runner.ts",
+      "src/handlers.ts",
+      "src/dynamic.ts",
+      "src/alias-consumer.ts",
+      "src/internal/secret.ts",
+      "src/public/report.ts",
+      "src/index.ts",
+      "tests/math.test.ts",
+      "tests/mathy.test.ts",
+      "docs/ADR-001-math.md"
+    ],
+    "supportFiles": [
+      "package.json",
+      "tsconfig.json",
+      "tadori.rules.json"
+    ]
+  },
+  "analyzerContract": {
+    "variableDeclarationsAreNodes": false,
+    "constructorsAreNodes": false,
+    "overloads": "collapse-to-one-logical-node",
+    "callCalleeAlsoEmitsReference": false,
+    "builtinsAreExcluded": true,
+    "directExports": "file-to-symbol exports edge",
+    "barrelExports": "barrel-file-to-target-symbol exports edge",
+    "recursiveRenameStageB": "A recursive function renamed in a later snapshot is expected to fall back to raw added/removed diff because the self-reference changes its body hash."
+  },
+  "nodes": [
+    {
+      "id": "pkg:root",
+      "kind": "package",
+      "qualifiedName": "@tadori-fixtures/core-symbols",
+      "displayName": "@tadori-fixtures/core-symbols",
+      "canonicalIdentity": "node|package|@tadori-fixtures/core-symbols",
+      "entityKey": "64466d169092b1f47b92fdda7ec332c472677c66566d7f9590b25196967f6ecd",
+      "file": null,
+      "exported": false
+    },
+    {
+      "id": "file:src/math.ts",
+      "kind": "file",
+      "qualifiedName": "src/math.ts",
+      "displayName": "math.ts",
+      "canonicalIdentity": "node|file|src/math.ts",
+      "entityKey": "2afa6b72bd63b7754d1cce4ad8a8712b075f2f11de3969ffbe3fadb112ed23e0",
+      "file": "src/math.ts",
+      "exported": false,
+      "bodyHash": "f86fb3eaafae6b0c1f1b711d3afe709b9297d1b92b751b15f79f1395e01b3601"
+    },
+    {
+      "id": "file:src/strategy.ts",
+      "kind": "file",
+      "qualifiedName": "src/strategy.ts",
+      "displayName": "strategy.ts",
+      "canonicalIdentity": "node|file|src/strategy.ts",
+      "entityKey": "99f24e412b89fedfe5c613061064e4db3be5f077c005598667a0389948dded02",
+      "file": "src/strategy.ts",
+      "exported": false,
+      "bodyHash": "91dc7e79e8d054f2b78c4284d70ddaebec56746b481d744c40c22ec25bd6a2bd"
+    },
+    {
+      "id": "file:src/runner.ts",
+      "kind": "file",
+      "qualifiedName": "src/runner.ts",
+      "displayName": "runner.ts",
+      "canonicalIdentity": "node|file|src/runner.ts",
+      "entityKey": "5ab4fcac88fde2cfb4f064e9fa936bb66ae487062fc628a7685c852c9c496c1d",
+      "file": "src/runner.ts",
+      "exported": false,
+      "bodyHash": "383143a89ab51968f84f1a95951601a6efb8d4ea218809f5dcf6bbe75f232387"
+    },
+    {
+      "id": "file:src/handlers.ts",
+      "kind": "file",
+      "qualifiedName": "src/handlers.ts",
+      "displayName": "handlers.ts",
+      "canonicalIdentity": "node|file|src/handlers.ts",
+      "entityKey": "66877c258a74b5d29f9ad9625192bd3268249759f6d2eec959b3daba8c454c4f",
+      "file": "src/handlers.ts",
+      "exported": false,
+      "bodyHash": "e016395b4e796689e6db1dbee2b882a2901f4955571c2146f6930bac8fe5d63b"
+    },
+    {
+      "id": "file:src/dynamic.ts",
+      "kind": "file",
+      "qualifiedName": "src/dynamic.ts",
+      "displayName": "dynamic.ts",
+      "canonicalIdentity": "node|file|src/dynamic.ts",
+      "entityKey": "da96ae3890f5b0c9afee13a5d11680677b12c8ccccb505f9c97ebf16828b288f",
+      "file": "src/dynamic.ts",
+      "exported": false,
+      "bodyHash": "9c052a741a76f2d742c977945814c24c2bf71e69fb91d1c5c01eed0481de4de0"
+    },
+    {
+      "id": "file:src/alias-consumer.ts",
+      "kind": "file",
+      "qualifiedName": "src/alias-consumer.ts",
+      "displayName": "alias-consumer.ts",
+      "canonicalIdentity": "node|file|src/alias-consumer.ts",
+      "entityKey": "b401e5f229ae8d5161936e2cf6c388a8e4b74dfc788293b01f2754e6a9ca58e0",
+      "file": "src/alias-consumer.ts",
+      "exported": false,
+      "bodyHash": "2cbee351bbefe8f85a755294228662dedd5344698a9cef5daa60eb432987a870"
+    },
+    {
+      "id": "file:src/internal/secret.ts",
+      "kind": "file",
+      "qualifiedName": "src/internal/secret.ts",
+      "displayName": "secret.ts",
+      "canonicalIdentity": "node|file|src/internal/secret.ts",
+      "entityKey": "597e2834dd54bbca18419af2e920950c28547a4adaae44dfc412c092b6ee109e",
+      "file": "src/internal/secret.ts",
+      "exported": false,
+      "bodyHash": "8cdfaff5aa94ac98eaee4b4d659ff2558066ea2a96f3a3df144aebeafc14dcad"
+    },
+    {
+      "id": "file:src/public/report.ts",
+      "kind": "file",
+      "qualifiedName": "src/public/report.ts",
+      "displayName": "report.ts",
+      "canonicalIdentity": "node|file|src/public/report.ts",
+      "entityKey": "c42c6c788db1e24ff4340d390bd2c3706333d23231541a8bd28955b53c7cec96",
+      "file": "src/public/report.ts",
+      "exported": false,
+      "bodyHash": "5bb55b5e8d722024c8ef11176f76a949ee1fbbed76f41a153b41b327863702fd"
+    },
+    {
+      "id": "file:src/index.ts",
+      "kind": "file",
+      "qualifiedName": "src/index.ts",
+      "displayName": "index.ts",
+      "canonicalIdentity": "node|file|src/index.ts",
+      "entityKey": "a33429ff11f47d3e56916293f75c7c9bcabe7e5bcb7490480f05e99093845052",
+      "file": "src/index.ts",
+      "exported": false,
+      "bodyHash": "175d1e9dadd3bad78201efcddbbf272bba63eab089041fd907a232661eb179c9"
+    },
+    {
+      "id": "file:tests/math.test.ts",
+      "kind": "file",
+      "qualifiedName": "tests/math.test.ts",
+      "displayName": "math.test.ts",
+      "canonicalIdentity": "node|file|tests/math.test.ts",
+      "entityKey": "89238637c6c03a2046f577942dc7b981e562567e6c8fefdb5fe8dc4b300f64ed",
+      "file": "tests/math.test.ts",
+      "exported": false,
+      "bodyHash": "0aba0b405038fc502d9031ccfb6d8ae18dac587aa76ea5667dfeb3f5d3ebdbd2"
+    },
+    {
+      "id": "file:tests/mathy.test.ts",
+      "kind": "file",
+      "qualifiedName": "tests/mathy.test.ts",
+      "displayName": "mathy.test.ts",
+      "canonicalIdentity": "node|file|tests/mathy.test.ts",
+      "entityKey": "0738471ca479b5fd435a990acc77f6c6f86d0ff62d4fa58d98e2105b6856c000",
+      "file": "tests/mathy.test.ts",
+      "exported": false,
+      "bodyHash": "3a23153ce9379953870afed8628dda0a7e343876de005da240cd78ce01524dc5"
+    },
+    {
+      "id": "file:docs/ADR-001-math.md",
+      "kind": "file",
+      "qualifiedName": "docs/ADR-001-math.md",
+      "displayName": "ADR-001-math.md",
+      "canonicalIdentity": "node|file|docs/ADR-001-math.md",
+      "entityKey": "c3b7215edf6f52644eecea42da5d69f0921c5fce7d37f784a84685556a56d4f4",
+      "file": "docs/ADR-001-math.md",
+      "exported": false,
+      "bodyHash": "b4d52e10c38b2da3c177545be7dac048c006299715ad25799a7488b0b6964e4b"
+    },
+    {
+      "id": "fn:math.factorial",
+      "kind": "function",
+      "qualifiedName": "src/math.ts.factorial",
+      "displayName": "factorial",
+      "canonicalIdentity": "node|function|src/math.ts.factorial",
+      "entityKey": "0bd3f4e85bab78e96fb891f977abd443d52a2423eb609557ff21e832a87d1992",
+      "file": "src/math.ts",
+      "exported": true,
+      "bodyHash": "bab834387572f5cc0422d204b8a785d87dd0dc27b156a581705c5d61a79ceeab",
+      "notes": [
+        "Recursive function; one logical node.",
+        "A later rename changes its self-reference text and is not Stage-B coalesced."
+      ]
+    },
+    {
+      "id": "fn:math.format",
+      "kind": "function",
+      "qualifiedName": "src/math.ts.format",
+      "displayName": "format",
+      "canonicalIdentity": "node|function|src/math.ts.format",
+      "entityKey": "fa9c21bfa168bcf60146eee8ebc448c6385f98193c3a8e5565adc46650a79182",
+      "file": "src/math.ts",
+      "exported": true,
+      "bodyHash": "7988a89df70fe5d2375aaba815cb715cede51d0db353d946b760d2087271886e",
+      "notes": [
+        "Three overload declarations collapse to one logical function node."
+      ]
+    },
+    {
+      "id": "iface:strategy.Strategy",
+      "kind": "interface",
+      "qualifiedName": "src/strategy.ts.Strategy",
+      "displayName": "Strategy",
+      "canonicalIdentity": "node|interface|src/strategy.ts.Strategy",
+      "entityKey": "e0258a4c93fc1b06bc24c7cfca01cb74b01827951ef1ee3d60603dc893454b85",
+      "file": "src/strategy.ts",
+      "exported": true,
+      "bodyHash": "10a30fe6cf2bf783bc387ea37a7bc36b7dbb3cddd23b0286f48c229b3b576bef"
+    },
+    {
+      "id": "method:strategy.Strategy.run",
+      "kind": "method",
+      "qualifiedName": "src/strategy.ts.Strategy.run",
+      "displayName": "run",
+      "canonicalIdentity": "node|method|src/strategy.ts.Strategy.run",
+      "entityKey": "fb72984abe5a82f5b4f20198dedfcfe628103cacf7495816b6fa59f108fca926",
+      "file": "src/strategy.ts",
+      "exported": false,
+      "bodyHash": "3c9f64d0c5e898272280e716fe1a2f3fe123e06b22995873007227a54c8ad8bf"
+    },
+    {
+      "id": "class:strategy.DoubleStrategy",
+      "kind": "class",
+      "qualifiedName": "src/strategy.ts.DoubleStrategy",
+      "displayName": "DoubleStrategy",
+      "canonicalIdentity": "node|class|src/strategy.ts.DoubleStrategy",
+      "entityKey": "055a725e12d6fa3c7983ef902fbe0d1920edb05c6b3836eb8a59c43e3d8b0c3d",
+      "file": "src/strategy.ts",
+      "exported": true,
+      "bodyHash": "3b71c0ec98a88a48d6359b2cb1eb4f6cae931d3fb2a4fbd94f750f05bc42a851"
+    },
+    {
+      "id": "method:strategy.DoubleStrategy.run",
+      "kind": "method",
+      "qualifiedName": "src/strategy.ts.DoubleStrategy.run",
+      "displayName": "run",
+      "canonicalIdentity": "node|method|src/strategy.ts.DoubleStrategy.run",
+      "entityKey": "fd8e107022a35d80e777582dd99c4d78243c1f75121e235d2e0316ed56a00728",
+      "file": "src/strategy.ts",
+      "exported": false,
+      "bodyHash": "1da0e0d9d3d17c8b8d6014d6bbc8895e2568148e4d41410b1975ed67a75f7d6a"
+    },
+    {
+      "id": "class:strategy.TripleStrategy",
+      "kind": "class",
+      "qualifiedName": "src/strategy.ts.TripleStrategy",
+      "displayName": "TripleStrategy",
+      "canonicalIdentity": "node|class|src/strategy.ts.TripleStrategy",
+      "entityKey": "5ff47d23094e81ae0cb0a34b604b413bd5b01bffda21cd17906f8ad798d683fa",
+      "file": "src/strategy.ts",
+      "exported": true,
+      "bodyHash": "eba5fb9e6ddf2e27533ad9b617428ac9ecdd3ce1ccbd7c870f67e466cadd1293"
+    },
+    {
+      "id": "method:strategy.TripleStrategy.run",
+      "kind": "method",
+      "qualifiedName": "src/strategy.ts.TripleStrategy.run",
+      "displayName": "run",
+      "canonicalIdentity": "node|method|src/strategy.ts.TripleStrategy.run",
+      "entityKey": "2d78e145e4e6962749881d1fbb6159a71b78987fd3b8d03653978578cf5021b1",
+      "file": "src/strategy.ts",
+      "exported": false,
+      "bodyHash": "25193d3496c5990de4aa18d057c62ed99d234cae976995072acbbeb8a7a1ffcd"
+    },
+    {
+      "id": "class:runner.Runner",
+      "kind": "class",
+      "qualifiedName": "src/runner.ts.Runner",
+      "displayName": "Runner",
+      "canonicalIdentity": "node|class|src/runner.ts.Runner",
+      "entityKey": "29d43f7baea78eb1022cee95e673f50060cf11714780539fa140f79fe17bb197",
+      "file": "src/runner.ts",
+      "exported": true,
+      "bodyHash": "d384d212f1a26fb9b90c357fdd38fec344cb6043922b3da49357395a35bb614a"
+    },
+    {
+      "id": "method:runner.Runner.execute",
+      "kind": "method",
+      "qualifiedName": "src/runner.ts.Runner.execute",
+      "displayName": "execute",
+      "canonicalIdentity": "node|method|src/runner.ts.Runner.execute",
+      "entityKey": "79d0c42aff0ef6fa58ce879873ad3e427baf31e5504ac9e380c46343697f7086",
+      "file": "src/runner.ts",
+      "exported": false,
+      "bodyHash": "8172cc0c60dbe1d4f57b8a81c97cbb699f6fb1747a532d15c3618a933baa0bbb"
+    },
+    {
+      "id": "fn:dynamic.dispatch",
+      "kind": "function",
+      "qualifiedName": "src/dynamic.ts.dispatch",
+      "displayName": "dispatch",
+      "canonicalIdentity": "node|function|src/dynamic.ts.dispatch",
+      "entityKey": "07469ef5366c14becd0c0e2a00fe0a727ed5b8c3bf939626e564abb460394c59",
+      "file": "src/dynamic.ts",
+      "exported": true,
+      "bodyHash": "eeac7526b19a270398342e8c1164c7aabc47211ab663364edde71c4c640dab27"
+    },
+    {
+      "id": "unresolved:dynamic.handlers-index",
+      "kind": "unresolved",
+      "qualifiedName": "src/dynamic.ts::<unresolved handlers[key]>",
+      "displayName": "handlers[key]",
+      "canonicalIdentity": "node|unresolved|src/dynamic.ts::<unresolved handlers[key]>",
+      "entityKey": "1fc1cd00ca1eefb9906c282ea5632ea3cc9936ae98b5f13df1b96a3a15b100bd",
+      "file": "src/dynamic.ts",
+      "exported": false,
+      "notes": [
+        "Synthetic unresolved call target for computed property dispatch."
+      ]
+    },
+    {
+      "id": "fn:alias.useAlias",
+      "kind": "function",
+      "qualifiedName": "src/alias-consumer.ts.useAlias",
+      "displayName": "useAlias",
+      "canonicalIdentity": "node|function|src/alias-consumer.ts.useAlias",
+      "entityKey": "b724e2c11485be5f8358c738a79d2dbef5a5247a13a22eaebf72e54d8b3f7717",
+      "file": "src/alias-consumer.ts",
+      "exported": true,
+      "bodyHash": "2cc867d8090bc8ca4c88113d415a2120884e6042d5a4a844edb8cf49d71ba0dc"
+    },
+    {
+      "id": "fn:secret.readSecret",
+      "kind": "function",
+      "qualifiedName": "src/internal/secret.ts.readSecret",
+      "displayName": "readSecret",
+      "canonicalIdentity": "node|function|src/internal/secret.ts.readSecret",
+      "entityKey": "8a596ece621e82e9a31377caad48212dc47939f70d06d379724d23dfdfdf0706",
+      "file": "src/internal/secret.ts",
+      "exported": true,
+      "bodyHash": "fef8a9d4d9c0fe7cb0afdb2b41bb19964d50549710713f24bf04e73bfcc50026"
+    },
+    {
+      "id": "fn:report.buildReport",
+      "kind": "function",
+      "qualifiedName": "src/public/report.ts.buildReport",
+      "displayName": "buildReport",
+      "canonicalIdentity": "node|function|src/public/report.ts.buildReport",
+      "entityKey": "5a517781300fe9c2d829356e6bbac17c3b4ac6fbb08fd20cb23506833936fb8b",
+      "file": "src/public/report.ts",
+      "exported": true,
+      "bodyHash": "b66bf666a6b93bd0a712fdab62a3a206cdf08e15d0b4897ea7659b286bba62cd"
+    },
+    {
+      "id": "test:math.factorial",
+      "kind": "test",
+      "qualifiedName": "tests/math.test.ts::factorial computes recursively",
+      "displayName": "factorial computes recursively",
+      "canonicalIdentity": "node|test|tests/math.test.ts::factorial computes recursively",
+      "entityKey": "707b5b75a85a2c75312e86330714ad95cfe385d176c0da416280e7662eb22b83",
+      "file": "tests/math.test.ts",
+      "exported": false
+    },
+    {
+      "id": "test:math.format",
+      "kind": "test",
+      "qualifiedName": "tests/math.test.ts::format accepts numbers",
+      "displayName": "format accepts numbers",
+      "canonicalIdentity": "node|test|tests/math.test.ts::format accepts numbers",
+      "entityKey": "b9e4287f568a0d7ce2960b19dc8b56997e0415bba4e4090bdb63b3651ff91834",
+      "file": "tests/math.test.ts",
+      "exported": false
+    },
+    {
+      "id": "test:mathy.generic",
+      "kind": "test",
+      "qualifiedName": "tests/mathy.test.ts::math still works",
+      "displayName": "math still works",
+      "canonicalIdentity": "node|test|tests/mathy.test.ts::math still works",
+      "entityKey": "2e39e469ae5146b78469c96ec81eab84da4c8671dae967f26102a4ffea45b280",
+      "file": "tests/mathy.test.ts",
+      "exported": false
+    },
+    {
+      "id": "adr:math",
+      "kind": "adr",
+      "qualifiedName": "docs/ADR-001-math.md::ADR-001",
+      "displayName": "ADR-001: Keep recursive math helpers pure",
+      "canonicalIdentity": "node|adr|docs/ADR-001-math.md::ADR-001",
+      "entityKey": "a1a0e1315b279ef5cbb650dc1f933a20affd180abf7a5ef9d9d395916165fa79",
+      "file": "docs/ADR-001-math.md",
+      "exported": false
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:002",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/math.ts",
+      "canonicalIdentity": "edge|64466d169092b1f47b92fdda7ec332c472677c66566d7f9590b25196967f6ecd|contains|2afa6b72bd63b7754d1cce4ad8a8712b075f2f11de3969ffbe3fadb112ed23e0",
+      "entityKey": "4ea8ad9a45579f4e9759f02e93ff3627c4ab1e95c739945d4e454dc3987bd45b",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/math.ts",
+          "line": 1,
+          "contains": "export function factorial(n: number): number {"
+        }
+      ]
+    },
+    {
+      "id": "edge:004",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/strategy.ts",
+      "canonicalIdentity": "edge|64466d169092b1f47b92fdda7ec332c472677c66566d7f9590b25196967f6ecd|contains|99f24e412b89fedfe5c613061064e4db3be5f077c005598667a0389948dded02",
+      "entityKey": "ebb5e120b07d6d09eb5ecf2b3187390a9e75ead36ddb41da488e352afb2863f3",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 1,
+          "contains": "export interface Strategy {"
+        }
+      ]
+    },
+    {
+      "id": "edge:006",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/runner.ts",
+      "canonicalIdentity": "edge|64466d169092b1f47b92fdda7ec332c472677c66566d7f9590b25196967f6ecd|contains|5ab4fcac88fde2cfb4f064e9fa936bb66ae487062fc628a7685c852c9c496c1d",
+      "entityKey": "ef1a6a8fb5df6847297701f4a11a2b0b55c00b5ea7bde9e2b26331e2c7227505",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/runner.ts",
+          "line": 1,
+          "contains": "import type { Strategy } from \"./strategy.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:008",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/handlers.ts",
+      "canonicalIdentity": "edge|64466d169092b1f47b92fdda7ec332c472677c66566d7f9590b25196967f6ecd|contains|66877c258a74b5d29f9ad9625192bd3268249759f6d2eec959b3daba8c454c4f",
+      "entityKey": "8e8f8fbaf1b7f9fbe3bb921804779e860d060de2e808beed0b50c2af1cd600cd",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/handlers.ts",
+          "line": 1,
+          "contains": "export const handlers = {"
+        }
+      ]
+    },
+    {
+      "id": "edge:010",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/dynamic.ts",
+      "canonicalIdentity": "edge|64466d169092b1f47b92fdda7ec332c472677c66566d7f9590b25196967f6ecd|contains|da96ae3890f5b0c9afee13a5d11680677b12c8ccccb505f9c97ebf16828b288f",
+      "entityKey": "2d869d733e5faf0baae0ec99d2408aaba2505c410c3e2042ee53f72672ce4631",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/dynamic.ts",
+          "line": 1,
+          "contains": "import { handlers } from \"./handlers.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:012",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/alias-consumer.ts",
+      "canonicalIdentity": "edge|64466d169092b1f47b92fdda7ec332c472677c66566d7f9590b25196967f6ecd|contains|b401e5f229ae8d5161936e2cf6c388a8e4b74dfc788293b01f2754e6a9ca58e0",
+      "entityKey": "1f425adcf0fbc3cfa937a811bfa0cff71cea9fd4a3ef90c98cb5b76fc2298478",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/alias-consumer.ts",
+          "line": 1,
+          "contains": "import { factorial as sequence } from \"./math.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:014",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/internal/secret.ts",
+      "canonicalIdentity": "edge|64466d169092b1f47b92fdda7ec332c472677c66566d7f9590b25196967f6ecd|contains|597e2834dd54bbca18419af2e920950c28547a4adaae44dfc412c092b6ee109e",
+      "entityKey": "d79f1f01ea13ab816a4c6d26b46d67ee86659cbd25fea42e921435dd36ad4745",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/internal/secret.ts",
+          "line": 1,
+          "contains": "export function readSecret(): string {"
+        }
+      ]
+    },
+    {
+      "id": "edge:016",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/public/report.ts",
+      "canonicalIdentity": "edge|64466d169092b1f47b92fdda7ec332c472677c66566d7f9590b25196967f6ecd|contains|c42c6c788db1e24ff4340d390bd2c3706333d23231541a8bd28955b53c7cec96",
+      "entityKey": "2417f970920f9bb46357fd89a185f581078b985b0dba8d7da0ef6ed0eab9ea41",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/public/report.ts",
+          "line": 1,
+          "contains": "import { readSecret } from \"../internal/secret.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:018",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/index.ts",
+      "canonicalIdentity": "edge|64466d169092b1f47b92fdda7ec332c472677c66566d7f9590b25196967f6ecd|contains|a33429ff11f47d3e56916293f75c7c9bcabe7e5bcb7490480f05e99093845052",
+      "entityKey": "9ea42cff0908f6b0eb9d826c4832cd52b9677a1cc4a4c4fde11a2e6d811c7d72",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/index.ts",
+          "line": 1,
+          "contains": "export { factorial, format } from \"./math.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:020",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:tests/math.test.ts",
+      "canonicalIdentity": "edge|64466d169092b1f47b92fdda7ec332c472677c66566d7f9590b25196967f6ecd|contains|89238637c6c03a2046f577942dc7b981e562567e6c8fefdb5fe8dc4b300f64ed",
+      "entityKey": "98432ac3403a1c9f5bd8b6e7c9445a8942b67c7e4f7cf7f2ca42cfae44b1e90c",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/math.test.ts",
+          "line": 1,
+          "contains": "import { factorial, format } from \"../src/math.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:022",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:tests/mathy.test.ts",
+      "canonicalIdentity": "edge|64466d169092b1f47b92fdda7ec332c472677c66566d7f9590b25196967f6ecd|contains|0738471ca479b5fd435a990acc77f6c6f86d0ff62d4fa58d98e2105b6856c000",
+      "entityKey": "290e4a18f73b48113f33c1bd90730bf2d9df2656c7817d165e5674e741b2da2c",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/mathy.test.ts",
+          "line": 1,
+          "contains": "declare function test(name: string, fn: () => void): void;"
+        }
+      ]
+    },
+    {
+      "id": "edge:024",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:docs/ADR-001-math.md",
+      "canonicalIdentity": "edge|64466d169092b1f47b92fdda7ec332c472677c66566d7f9590b25196967f6ecd|contains|c3b7215edf6f52644eecea42da5d69f0921c5fce7d37f784a84685556a56d4f4",
+      "entityKey": "5ccc99f100760ebb762180efd4cd82b73dc2083a930dbf447b5263fe87a08db3",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-001-math.md",
+          "line": 1,
+          "contains": "# ADR-001: Keep recursive math helpers pure"
+        }
+      ]
+    },
+    {
+      "id": "edge:025",
+      "src": "file:src/math.ts",
+      "relation": "contains",
+      "dst": "fn:math.factorial",
+      "canonicalIdentity": "edge|2afa6b72bd63b7754d1cce4ad8a8712b075f2f11de3969ffbe3fadb112ed23e0|contains|0bd3f4e85bab78e96fb891f977abd443d52a2423eb609557ff21e832a87d1992",
+      "entityKey": "c3a035f817f4b913d216d1f5a83bc764c60dd8d78dae9b82e343eab5251f6f4e",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/math.ts",
+          "line": 1,
+          "contains": "factorial"
+        }
+      ]
+    },
+    {
+      "id": "edge:026",
+      "src": "file:src/math.ts",
+      "relation": "exports",
+      "dst": "fn:math.factorial",
+      "canonicalIdentity": "edge|2afa6b72bd63b7754d1cce4ad8a8712b075f2f11de3969ffbe3fadb112ed23e0|exports|0bd3f4e85bab78e96fb891f977abd443d52a2423eb609557ff21e832a87d1992",
+      "entityKey": "40d8d6af5b2985c80d74f24a40cc2d6018b506bb1743c9a24eb82da361995dbd",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/math.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:027",
+      "src": "file:src/math.ts",
+      "relation": "contains",
+      "dst": "fn:math.format",
+      "canonicalIdentity": "edge|2afa6b72bd63b7754d1cce4ad8a8712b075f2f11de3969ffbe3fadb112ed23e0|contains|fa9c21bfa168bcf60146eee8ebc448c6385f98193c3a8e5565adc46650a79182",
+      "entityKey": "1147458b0056f1953786334b2822e9b28161d8d85fc8f277c11f700dfbe71d6f",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/math.ts",
+          "line": 6,
+          "contains": "format"
+        }
+      ]
+    },
+    {
+      "id": "edge:028",
+      "src": "file:src/math.ts",
+      "relation": "exports",
+      "dst": "fn:math.format",
+      "canonicalIdentity": "edge|2afa6b72bd63b7754d1cce4ad8a8712b075f2f11de3969ffbe3fadb112ed23e0|exports|fa9c21bfa168bcf60146eee8ebc448c6385f98193c3a8e5565adc46650a79182",
+      "entityKey": "b23a9224b19f332272607e7d1764544193a43466bf0be0c572c5cc9aa7b19eb9",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/math.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:029",
+      "src": "file:src/strategy.ts",
+      "relation": "contains",
+      "dst": "iface:strategy.Strategy",
+      "canonicalIdentity": "edge|99f24e412b89fedfe5c613061064e4db3be5f077c005598667a0389948dded02|contains|e0258a4c93fc1b06bc24c7cfca01cb74b01827951ef1ee3d60603dc893454b85",
+      "entityKey": "c2882e75507a7dddc5ff571051d8b553728be34afb5119d5e1a93fc7c43109c4",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 1,
+          "contains": "Strategy"
+        }
+      ]
+    },
+    {
+      "id": "edge:030",
+      "src": "file:src/strategy.ts",
+      "relation": "exports",
+      "dst": "iface:strategy.Strategy",
+      "canonicalIdentity": "edge|99f24e412b89fedfe5c613061064e4db3be5f077c005598667a0389948dded02|exports|e0258a4c93fc1b06bc24c7cfca01cb74b01827951ef1ee3d60603dc893454b85",
+      "entityKey": "553cd8ae93f35d830a9794b9d01806019ce8cb77f35a6b2d145675fe3d25e6ad",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:031",
+      "src": "file:src/strategy.ts",
+      "relation": "contains",
+      "dst": "method:strategy.Strategy.run",
+      "canonicalIdentity": "edge|99f24e412b89fedfe5c613061064e4db3be5f077c005598667a0389948dded02|contains|fb72984abe5a82f5b4f20198dedfcfe628103cacf7495816b6fa59f108fca926",
+      "entityKey": "822ff61feabf5c56efccc10f9ce284d14551fff8cf53b57f1dedfb3b6b2a43dc",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 2,
+          "contains": "run"
+        }
+      ]
+    },
+    {
+      "id": "edge:032",
+      "src": "file:src/strategy.ts",
+      "relation": "contains",
+      "dst": "class:strategy.DoubleStrategy",
+      "canonicalIdentity": "edge|99f24e412b89fedfe5c613061064e4db3be5f077c005598667a0389948dded02|contains|055a725e12d6fa3c7983ef902fbe0d1920edb05c6b3836eb8a59c43e3d8b0c3d",
+      "entityKey": "98ca01bf44be3a8dab19a050d9f3c10995575761e81b75dc460ac161729354cc",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 5,
+          "contains": "DoubleStrategy"
+        }
+      ]
+    },
+    {
+      "id": "edge:033",
+      "src": "file:src/strategy.ts",
+      "relation": "exports",
+      "dst": "class:strategy.DoubleStrategy",
+      "canonicalIdentity": "edge|99f24e412b89fedfe5c613061064e4db3be5f077c005598667a0389948dded02|exports|055a725e12d6fa3c7983ef902fbe0d1920edb05c6b3836eb8a59c43e3d8b0c3d",
+      "entityKey": "7aeace0ebfa002be3066e723ab56327b5d7d412d4888433d9518eae4eeec605e",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:034",
+      "src": "file:src/strategy.ts",
+      "relation": "contains",
+      "dst": "method:strategy.DoubleStrategy.run",
+      "canonicalIdentity": "edge|99f24e412b89fedfe5c613061064e4db3be5f077c005598667a0389948dded02|contains|fd8e107022a35d80e777582dd99c4d78243c1f75121e235d2e0316ed56a00728",
+      "entityKey": "aaa7f9e8ea9bcd03165646efcfccdf2958c95b08b70e0e90b1a6de04fca21c3d",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 2,
+          "contains": "run"
+        }
+      ]
+    },
+    {
+      "id": "edge:035",
+      "src": "file:src/strategy.ts",
+      "relation": "contains",
+      "dst": "class:strategy.TripleStrategy",
+      "canonicalIdentity": "edge|99f24e412b89fedfe5c613061064e4db3be5f077c005598667a0389948dded02|contains|5ff47d23094e81ae0cb0a34b604b413bd5b01bffda21cd17906f8ad798d683fa",
+      "entityKey": "9ad8909189250df9ac16a838138af057d600557de22df324ebe47d8ae003b61b",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 11,
+          "contains": "TripleStrategy"
+        }
+      ]
+    },
+    {
+      "id": "edge:036",
+      "src": "file:src/strategy.ts",
+      "relation": "exports",
+      "dst": "class:strategy.TripleStrategy",
+      "canonicalIdentity": "edge|99f24e412b89fedfe5c613061064e4db3be5f077c005598667a0389948dded02|exports|5ff47d23094e81ae0cb0a34b604b413bd5b01bffda21cd17906f8ad798d683fa",
+      "entityKey": "317908023b35f2082ef7f3f710bd93e5f392f6d72b45658df6ad8067e89ae6de",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:037",
+      "src": "file:src/strategy.ts",
+      "relation": "contains",
+      "dst": "method:strategy.TripleStrategy.run",
+      "canonicalIdentity": "edge|99f24e412b89fedfe5c613061064e4db3be5f077c005598667a0389948dded02|contains|2d78e145e4e6962749881d1fbb6159a71b78987fd3b8d03653978578cf5021b1",
+      "entityKey": "f447c2801703e3f93807ab54982059a72841f4a8fce376902f86dd8e6c6c7562",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 2,
+          "contains": "run"
+        }
+      ]
+    },
+    {
+      "id": "edge:038",
+      "src": "file:src/runner.ts",
+      "relation": "contains",
+      "dst": "class:runner.Runner",
+      "canonicalIdentity": "edge|5ab4fcac88fde2cfb4f064e9fa936bb66ae487062fc628a7685c852c9c496c1d|contains|29d43f7baea78eb1022cee95e673f50060cf11714780539fa140f79fe17bb197",
+      "entityKey": "35792c551f7244d1e9ee5b1a2b5b41c90a59254b503552f32cc8b4f4a0a205db",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/runner.ts",
+          "line": 3,
+          "contains": "Runner"
+        }
+      ]
+    },
+    {
+      "id": "edge:039",
+      "src": "file:src/runner.ts",
+      "relation": "exports",
+      "dst": "class:runner.Runner",
+      "canonicalIdentity": "edge|5ab4fcac88fde2cfb4f064e9fa936bb66ae487062fc628a7685c852c9c496c1d|exports|29d43f7baea78eb1022cee95e673f50060cf11714780539fa140f79fe17bb197",
+      "entityKey": "f8a8bd5d8230d9fea55655f9f3064503eeed2f0bbcfd457e9945d570760825ff",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/runner.ts",
+          "line": 3,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:040",
+      "src": "file:src/runner.ts",
+      "relation": "contains",
+      "dst": "method:runner.Runner.execute",
+      "canonicalIdentity": "edge|5ab4fcac88fde2cfb4f064e9fa936bb66ae487062fc628a7685c852c9c496c1d|contains|79d0c42aff0ef6fa58ce879873ad3e427baf31e5504ac9e380c46343697f7086",
+      "entityKey": "13d1e19e4ba3d52266b19e2809293b6fbfa80f80d5d9567b574dd10f010cb0f5",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/runner.ts",
+          "line": 6,
+          "contains": "execute"
+        }
+      ]
+    },
+    {
+      "id": "edge:041",
+      "src": "file:src/dynamic.ts",
+      "relation": "contains",
+      "dst": "fn:dynamic.dispatch",
+      "canonicalIdentity": "edge|da96ae3890f5b0c9afee13a5d11680677b12c8ccccb505f9c97ebf16828b288f|contains|07469ef5366c14becd0c0e2a00fe0a727ed5b8c3bf939626e564abb460394c59",
+      "entityKey": "600c47e08c82ec226bf49f93ecd980a9b043526ead6324e9f942eb03c86cdb64",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/dynamic.ts",
+          "line": 3,
+          "contains": "dispatch"
+        }
+      ]
+    },
+    {
+      "id": "edge:042",
+      "src": "file:src/dynamic.ts",
+      "relation": "exports",
+      "dst": "fn:dynamic.dispatch",
+      "canonicalIdentity": "edge|da96ae3890f5b0c9afee13a5d11680677b12c8ccccb505f9c97ebf16828b288f|exports|07469ef5366c14becd0c0e2a00fe0a727ed5b8c3bf939626e564abb460394c59",
+      "entityKey": "e6e15bc0175c9d602d72be52d43e2466684373813bcbd65290666fe5c7e9d372",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/dynamic.ts",
+          "line": 3,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:043",
+      "src": "file:src/dynamic.ts",
+      "relation": "contains",
+      "dst": "unresolved:dynamic.handlers-index",
+      "canonicalIdentity": "edge|da96ae3890f5b0c9afee13a5d11680677b12c8ccccb505f9c97ebf16828b288f|contains|1fc1cd00ca1eefb9906c282ea5632ea3cc9936ae98b5f13df1b96a3a15b100bd",
+      "entityKey": "bbb1397996079c4fe6f54350746a781d79eaa1841659b75928c18711ff299215",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/dynamic.ts",
+          "line": 4,
+          "contains": "handlers[key"
+        }
+      ]
+    },
+    {
+      "id": "edge:044",
+      "src": "file:src/alias-consumer.ts",
+      "relation": "contains",
+      "dst": "fn:alias.useAlias",
+      "canonicalIdentity": "edge|b401e5f229ae8d5161936e2cf6c388a8e4b74dfc788293b01f2754e6a9ca58e0|contains|b724e2c11485be5f8358c738a79d2dbef5a5247a13a22eaebf72e54d8b3f7717",
+      "entityKey": "ca66f231a811427953f7aba4ac88b94657af5d4e8890ed02e85307f0737549b5",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/alias-consumer.ts",
+          "line": 3,
+          "contains": "useAlias"
+        }
+      ]
+    },
+    {
+      "id": "edge:045",
+      "src": "file:src/alias-consumer.ts",
+      "relation": "exports",
+      "dst": "fn:alias.useAlias",
+      "canonicalIdentity": "edge|b401e5f229ae8d5161936e2cf6c388a8e4b74dfc788293b01f2754e6a9ca58e0|exports|b724e2c11485be5f8358c738a79d2dbef5a5247a13a22eaebf72e54d8b3f7717",
+      "entityKey": "58b00166c0fdf074711b1dd3b5e44fe566b62d06084fa41309471ca41b8c0309",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/alias-consumer.ts",
+          "line": 3,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:046",
+      "src": "file:src/internal/secret.ts",
+      "relation": "contains",
+      "dst": "fn:secret.readSecret",
+      "canonicalIdentity": "edge|597e2834dd54bbca18419af2e920950c28547a4adaae44dfc412c092b6ee109e|contains|8a596ece621e82e9a31377caad48212dc47939f70d06d379724d23dfdfdf0706",
+      "entityKey": "997faf39eee450de9e807e16416f4920433ffda934d088203603f95d76f76da0",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/internal/secret.ts",
+          "line": 1,
+          "contains": "readSecret"
+        }
+      ]
+    },
+    {
+      "id": "edge:047",
+      "src": "file:src/internal/secret.ts",
+      "relation": "exports",
+      "dst": "fn:secret.readSecret",
+      "canonicalIdentity": "edge|597e2834dd54bbca18419af2e920950c28547a4adaae44dfc412c092b6ee109e|exports|8a596ece621e82e9a31377caad48212dc47939f70d06d379724d23dfdfdf0706",
+      "entityKey": "590ed0050a8a1d18b0e60df50ee2ad5004ef6d6b407d9a3eefad7fc6e5a1ec8a",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/internal/secret.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:048",
+      "src": "file:src/public/report.ts",
+      "relation": "contains",
+      "dst": "fn:report.buildReport",
+      "canonicalIdentity": "edge|c42c6c788db1e24ff4340d390bd2c3706333d23231541a8bd28955b53c7cec96|contains|5a517781300fe9c2d829356e6bbac17c3b4ac6fbb08fd20cb23506833936fb8b",
+      "entityKey": "3445d7879ef2a4ae312a5afb35c69cc7733d2e7600dab515e21ba18d91694b1e",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/public/report.ts",
+          "line": 3,
+          "contains": "buildReport"
+        }
+      ]
+    },
+    {
+      "id": "edge:049",
+      "src": "file:src/public/report.ts",
+      "relation": "exports",
+      "dst": "fn:report.buildReport",
+      "canonicalIdentity": "edge|c42c6c788db1e24ff4340d390bd2c3706333d23231541a8bd28955b53c7cec96|exports|5a517781300fe9c2d829356e6bbac17c3b4ac6fbb08fd20cb23506833936fb8b",
+      "entityKey": "fa86e1646c4e91c70626a0e5b98f0c20a263bc620462f1652325472adfe78503",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/public/report.ts",
+          "line": 3,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:050",
+      "src": "file:tests/math.test.ts",
+      "relation": "contains",
+      "dst": "test:math.factorial",
+      "canonicalIdentity": "edge|89238637c6c03a2046f577942dc7b981e562567e6c8fefdb5fe8dc4b300f64ed|contains|707b5b75a85a2c75312e86330714ad95cfe385d176c0da416280e7662eb22b83",
+      "entityKey": "7815842a6cf8c15d0865f65fea29d6a7cffba30b0c3bd490a29a539de4a6f45e",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/math.test.ts",
+          "line": 5,
+          "contains": "factorial computes recursively"
+        }
+      ]
+    },
+    {
+      "id": "edge:051",
+      "src": "file:tests/math.test.ts",
+      "relation": "contains",
+      "dst": "test:math.format",
+      "canonicalIdentity": "edge|89238637c6c03a2046f577942dc7b981e562567e6c8fefdb5fe8dc4b300f64ed|contains|b9e4287f568a0d7ce2960b19dc8b56997e0415bba4e4090bdb63b3651ff91834",
+      "entityKey": "23d49d681f73d2c657fe51c3568bea96b3c7c2e5501a1ad2ed3a40cdf969d9ff",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/math.test.ts",
+          "line": 9,
+          "contains": "format accepts numbers"
+        }
+      ]
+    },
+    {
+      "id": "edge:052",
+      "src": "file:tests/mathy.test.ts",
+      "relation": "contains",
+      "dst": "test:mathy.generic",
+      "canonicalIdentity": "edge|0738471ca479b5fd435a990acc77f6c6f86d0ff62d4fa58d98e2105b6856c000|contains|2e39e469ae5146b78469c96ec81eab84da4c8671dae967f26102a4ffea45b280",
+      "entityKey": "2ed80f95885a29ff0d1fc0c556bf7d780452da21ba0d31b91bca888ebe5aeb13",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/mathy.test.ts",
+          "line": 3,
+          "contains": "math still works"
+        }
+      ]
+    },
+    {
+      "id": "edge:053",
+      "src": "file:docs/ADR-001-math.md",
+      "relation": "contains",
+      "dst": "adr:math",
+      "canonicalIdentity": "edge|c3b7215edf6f52644eecea42da5d69f0921c5fce7d37f784a84685556a56d4f4|contains|a1a0e1315b279ef5cbb650dc1f933a20affd180abf7a5ef9d9d395916165fa79",
+      "entityKey": "0679acf951ed87faa5ac976f964eb123e89e860e380c7aff7c67fb52eb055487",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-001-math.md",
+          "line": 1,
+          "contains": "ADR-001: Keep recursive math helpers pure"
+        }
+      ]
+    },
+    {
+      "id": "edge:054",
+      "src": "iface:strategy.Strategy",
+      "relation": "contains",
+      "dst": "method:strategy.Strategy.run",
+      "canonicalIdentity": "edge|e0258a4c93fc1b06bc24c7cfca01cb74b01827951ef1ee3d60603dc893454b85|contains|fb72984abe5a82f5b4f20198dedfcfe628103cacf7495816b6fa59f108fca926",
+      "entityKey": "1793872fd8cea11af8e7f77bc0a7bdad04fda0b29a87fe601f0390d9df943561",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 2,
+          "contains": "run(input"
+        }
+      ]
+    },
+    {
+      "id": "edge:055",
+      "src": "class:strategy.DoubleStrategy",
+      "relation": "contains",
+      "dst": "method:strategy.DoubleStrategy.run",
+      "canonicalIdentity": "edge|055a725e12d6fa3c7983ef902fbe0d1920edb05c6b3836eb8a59c43e3d8b0c3d|contains|fd8e107022a35d80e777582dd99c4d78243c1f75121e235d2e0316ed56a00728",
+      "entityKey": "7e89c655d70da4e70ec071f8da7dedec5f7536b1de35bab7a53a6323d6e6d6b9",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 6,
+          "contains": "run(input"
+        }
+      ]
+    },
+    {
+      "id": "edge:056",
+      "src": "class:strategy.TripleStrategy",
+      "relation": "contains",
+      "dst": "method:strategy.TripleStrategy.run",
+      "canonicalIdentity": "edge|5ff47d23094e81ae0cb0a34b604b413bd5b01bffda21cd17906f8ad798d683fa|contains|2d78e145e4e6962749881d1fbb6159a71b78987fd3b8d03653978578cf5021b1",
+      "entityKey": "00061e44113f5dab10aef6d38314b7127ddd0137f2789eea973139bd8d429840",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 12,
+          "contains": "run(input"
+        }
+      ]
+    },
+    {
+      "id": "edge:057",
+      "src": "class:runner.Runner",
+      "relation": "contains",
+      "dst": "method:runner.Runner.execute",
+      "canonicalIdentity": "edge|29d43f7baea78eb1022cee95e673f50060cf11714780539fa140f79fe17bb197|contains|79d0c42aff0ef6fa58ce879873ad3e427baf31e5504ac9e380c46343697f7086",
+      "entityKey": "0e9b7303a8bc327eebdda879ae0802ff7d7acc0866debde465c1a60f65eec4b0",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/runner.ts",
+          "line": 6,
+          "contains": "execute"
+        }
+      ]
+    },
+    {
+      "id": "edge:058",
+      "src": "file:src/runner.ts",
+      "relation": "imports",
+      "dst": "file:src/strategy.ts",
+      "canonicalIdentity": "edge|5ab4fcac88fde2cfb4f064e9fa936bb66ae487062fc628a7685c852c9c496c1d|imports|99f24e412b89fedfe5c613061064e4db3be5f077c005598667a0389948dded02",
+      "entityKey": "e6652a180ddaca240c8e84a8a2eb3240667032acc14cc56b2e47d2ab60bf4741",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/runner.ts",
+          "line": 1,
+          "contains": "import type { Strategy }"
+        }
+      ]
+    },
+    {
+      "id": "edge:059",
+      "src": "file:src/dynamic.ts",
+      "relation": "imports",
+      "dst": "file:src/handlers.ts",
+      "canonicalIdentity": "edge|da96ae3890f5b0c9afee13a5d11680677b12c8ccccb505f9c97ebf16828b288f|imports|66877c258a74b5d29f9ad9625192bd3268249759f6d2eec959b3daba8c454c4f",
+      "entityKey": "ece0205790a9b5fce93dc9b3dd8c932a99850c0581c98e6ab4a9d8bd31417dad",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/dynamic.ts",
+          "line": 1,
+          "contains": "import { handlers }"
+        }
+      ]
+    },
+    {
+      "id": "edge:060",
+      "src": "file:src/alias-consumer.ts",
+      "relation": "imports",
+      "dst": "file:src/math.ts",
+      "canonicalIdentity": "edge|b401e5f229ae8d5161936e2cf6c388a8e4b74dfc788293b01f2754e6a9ca58e0|imports|2afa6b72bd63b7754d1cce4ad8a8712b075f2f11de3969ffbe3fadb112ed23e0",
+      "entityKey": "0f2cc11ab4633c2873fb7c6f8124e5510da488b17ba0636be84ba940fa9f0d1c",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/alias-consumer.ts",
+          "line": 1,
+          "contains": "factorial as sequence"
+        }
+      ]
+    },
+    {
+      "id": "edge:061",
+      "src": "file:src/public/report.ts",
+      "relation": "imports",
+      "dst": "file:src/internal/secret.ts",
+      "canonicalIdentity": "edge|c42c6c788db1e24ff4340d390bd2c3706333d23231541a8bd28955b53c7cec96|imports|597e2834dd54bbca18419af2e920950c28547a4adaae44dfc412c092b6ee109e",
+      "entityKey": "d6af7a01309bba44ab5eb9b33bda0acb6588102a520d3689ecca6532ff163c89",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/public/report.ts",
+          "line": 1,
+          "contains": "readSecret"
+        }
+      ]
+    },
+    {
+      "id": "edge:062",
+      "src": "file:tests/math.test.ts",
+      "relation": "imports",
+      "dst": "file:src/math.ts",
+      "canonicalIdentity": "edge|89238637c6c03a2046f577942dc7b981e562567e6c8fefdb5fe8dc4b300f64ed|imports|2afa6b72bd63b7754d1cce4ad8a8712b075f2f11de3969ffbe3fadb112ed23e0",
+      "entityKey": "ae97f972f1cb72a5db5f1415ec5d685233adc5a2bc10e79634df32ea65d0a3cd",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/math.test.ts",
+          "line": 1,
+          "contains": "factorial, format"
+        }
+      ]
+    },
+    {
+      "id": "edge:063",
+      "src": "file:src/index.ts",
+      "relation": "imports",
+      "dst": "file:src/math.ts",
+      "canonicalIdentity": "edge|a33429ff11f47d3e56916293f75c7c9bcabe7e5bcb7490480f05e99093845052|imports|2afa6b72bd63b7754d1cce4ad8a8712b075f2f11de3969ffbe3fadb112ed23e0",
+      "entityKey": "8f283a8fb396355bd59049625a1e6df4c1775d25e1bf4c72f7eebbaf544f163f",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/index.ts",
+          "line": 1,
+          "contains": "./math.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:064",
+      "src": "file:src/index.ts",
+      "relation": "imports",
+      "dst": "file:src/runner.ts",
+      "canonicalIdentity": "edge|a33429ff11f47d3e56916293f75c7c9bcabe7e5bcb7490480f05e99093845052|imports|5ab4fcac88fde2cfb4f064e9fa936bb66ae487062fc628a7685c852c9c496c1d",
+      "entityKey": "9b7e55e7f6f50dd29c56391694625db4869e921b88e3db0d4c98cb8015342e62",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/index.ts",
+          "line": 2,
+          "contains": "./runner.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:065",
+      "src": "file:src/index.ts",
+      "relation": "imports",
+      "dst": "file:src/strategy.ts",
+      "canonicalIdentity": "edge|a33429ff11f47d3e56916293f75c7c9bcabe7e5bcb7490480f05e99093845052|imports|99f24e412b89fedfe5c613061064e4db3be5f077c005598667a0389948dded02",
+      "entityKey": "3b9418d1e51111f0a20497f1fb1fdcb4edd312fc850ca41dd19bbdfe0ed15c83",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/index.ts",
+          "line": 7,
+          "contains": "./strategy.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:066",
+      "src": "file:src/index.ts",
+      "relation": "exports",
+      "dst": "fn:math.factorial",
+      "canonicalIdentity": "edge|a33429ff11f47d3e56916293f75c7c9bcabe7e5bcb7490480f05e99093845052|exports|0bd3f4e85bab78e96fb891f977abd443d52a2423eb609557ff21e832a87d1992",
+      "entityKey": "40dd3fc1c4e3998dc8eaefcb4527ff658c095bf15f516608f82998798c3e429a",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/index.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ],
+      "notes": [
+        "Barrel re-export."
+      ]
+    },
+    {
+      "id": "edge:067",
+      "src": "file:src/index.ts",
+      "relation": "exports",
+      "dst": "fn:math.format",
+      "canonicalIdentity": "edge|a33429ff11f47d3e56916293f75c7c9bcabe7e5bcb7490480f05e99093845052|exports|fa9c21bfa168bcf60146eee8ebc448c6385f98193c3a8e5565adc46650a79182",
+      "entityKey": "4fd03da75c80b229f785c867ffea3909faff5793e6666697e7c3e614746320a6",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/index.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ],
+      "notes": [
+        "Barrel re-export."
+      ]
+    },
+    {
+      "id": "edge:068",
+      "src": "file:src/index.ts",
+      "relation": "exports",
+      "dst": "class:runner.Runner",
+      "canonicalIdentity": "edge|a33429ff11f47d3e56916293f75c7c9bcabe7e5bcb7490480f05e99093845052|exports|29d43f7baea78eb1022cee95e673f50060cf11714780539fa140f79fe17bb197",
+      "entityKey": "accc005110262e8391831f0843af5b7f5824094692e6da828b07ac6365064d1c",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/index.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ],
+      "notes": [
+        "Barrel re-export."
+      ]
+    },
+    {
+      "id": "edge:069",
+      "src": "file:src/index.ts",
+      "relation": "exports",
+      "dst": "class:strategy.DoubleStrategy",
+      "canonicalIdentity": "edge|a33429ff11f47d3e56916293f75c7c9bcabe7e5bcb7490480f05e99093845052|exports|055a725e12d6fa3c7983ef902fbe0d1920edb05c6b3836eb8a59c43e3d8b0c3d",
+      "entityKey": "ff454ef01143a126618c1da2ff9d39f9ecb83955dfae353e6ba088dbdaf5a44f",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/index.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ],
+      "notes": [
+        "Barrel re-export."
+      ]
+    },
+    {
+      "id": "edge:070",
+      "src": "file:src/index.ts",
+      "relation": "exports",
+      "dst": "class:strategy.TripleStrategy",
+      "canonicalIdentity": "edge|a33429ff11f47d3e56916293f75c7c9bcabe7e5bcb7490480f05e99093845052|exports|5ff47d23094e81ae0cb0a34b604b413bd5b01bffda21cd17906f8ad798d683fa",
+      "entityKey": "166ec2058930b5a26efb99cda499c0c97e3954150b9551432aa229711efca918",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/index.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ],
+      "notes": [
+        "Barrel re-export."
+      ]
+    },
+    {
+      "id": "edge:071",
+      "src": "file:src/index.ts",
+      "relation": "exports",
+      "dst": "iface:strategy.Strategy",
+      "canonicalIdentity": "edge|a33429ff11f47d3e56916293f75c7c9bcabe7e5bcb7490480f05e99093845052|exports|e0258a4c93fc1b06bc24c7cfca01cb74b01827951ef1ee3d60603dc893454b85",
+      "entityKey": "a9ba9f225e8b53f8cc3e3678259efa08497296dc59956540a3293387ba129962",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/index.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ],
+      "notes": [
+        "Barrel re-export."
+      ]
+    },
+    {
+      "id": "edge:072",
+      "src": "class:strategy.DoubleStrategy",
+      "relation": "implements",
+      "dst": "iface:strategy.Strategy",
+      "canonicalIdentity": "edge|055a725e12d6fa3c7983ef902fbe0d1920edb05c6b3836eb8a59c43e3d8b0c3d|implements|e0258a4c93fc1b06bc24c7cfca01cb74b01827951ef1ee3d60603dc893454b85",
+      "entityKey": "d9b90e8b40d7d02488bbb9550f9b839769694b104ded917be76ffda4c1d11750",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 5,
+          "contains": "implements Strategy"
+        }
+      ]
+    },
+    {
+      "id": "edge:073",
+      "src": "class:strategy.TripleStrategy",
+      "relation": "implements",
+      "dst": "iface:strategy.Strategy",
+      "canonicalIdentity": "edge|5ff47d23094e81ae0cb0a34b604b413bd5b01bffda21cd17906f8ad798d683fa|implements|e0258a4c93fc1b06bc24c7cfca01cb74b01827951ef1ee3d60603dc893454b85",
+      "entityKey": "ab3d911a9c527e6b8b8f6209b61b34e2af6d564ab9617ec8fa0707ced9f3ee9e",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/strategy.ts",
+          "line": 11,
+          "contains": "implements Strategy"
+        }
+      ]
+    },
+    {
+      "id": "edge:074",
+      "src": "class:runner.Runner",
+      "relation": "references",
+      "dst": "iface:strategy.Strategy",
+      "canonicalIdentity": "edge|29d43f7baea78eb1022cee95e673f50060cf11714780539fa140f79fe17bb197|references|e0258a4c93fc1b06bc24c7cfca01cb74b01827951ef1ee3d60603dc893454b85",
+      "entityKey": "104561ca82d6ce6d76e2a87988e0a542f2d967783c059697876717b87c8b5fd1",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/runner.ts",
+          "line": 4,
+          "contains": "strategy: Strategy"
+        }
+      ]
+    },
+    {
+      "id": "edge:075",
+      "src": "fn:math.factorial",
+      "relation": "calls",
+      "dst": "fn:math.factorial",
+      "canonicalIdentity": "edge|0bd3f4e85bab78e96fb891f977abd443d52a2423eb609557ff21e832a87d1992|calls|0bd3f4e85bab78e96fb891f977abd443d52a2423eb609557ff21e832a87d1992",
+      "entityKey": "35f787cfc14ec004b7daa018804c83f70ac8e95bee784795074f87709d0935fa",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/math.ts",
+          "line": 3,
+          "contains": "factorial(n - 1)"
+        }
+      ],
+      "notes": [
+        "Recursive self-call."
+      ]
+    },
+    {
+      "id": "edge:076",
+      "src": "method:runner.Runner.execute",
+      "relation": "calls",
+      "dst": "method:strategy.Strategy.run",
+      "canonicalIdentity": "edge|79d0c42aff0ef6fa58ce879873ad3e427baf31e5504ac9e380c46343697f7086|calls|fb72984abe5a82f5b4f20198dedfcfe628103cacf7495816b6fa59f108fca926",
+      "entityKey": "c1b175aa71f4da949cb79a20cdedf651a84ad7d9b52a9f2764fb69f9f7e6e50e",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/runner.ts",
+          "line": 7,
+          "contains": "this.strategy.run"
+        }
+      ],
+      "notes": [
+        "DI-style call resolves to interface method only, not concrete implementations."
+      ]
+    },
+    {
+      "id": "edge:077",
+      "src": "fn:dynamic.dispatch",
+      "relation": "calls",
+      "dst": "unresolved:dynamic.handlers-index",
+      "canonicalIdentity": "edge|07469ef5366c14becd0c0e2a00fe0a727ed5b8c3bf939626e564abb460394c59|calls|1fc1cd00ca1eefb9906c282ea5632ea3cc9936ae98b5f13df1b96a3a15b100bd",
+      "entityKey": "3e12c5d1fcfb8c6d7f804573dcf42e1cd2911bf67d7d3321493484493e0c77ce",
+      "origin": "heuristic",
+      "confidence": "inferred",
+      "resolution": "unresolved",
+      "evidence": [
+        {
+          "file": "src/dynamic.ts",
+          "line": 4,
+          "contains": "handlers[key"
+        }
+      ],
+      "notes": [
+        "Computed property dispatch is deliberately unresolved."
+      ]
+    },
+    {
+      "id": "edge:078",
+      "src": "fn:alias.useAlias",
+      "relation": "calls",
+      "dst": "fn:math.factorial",
+      "canonicalIdentity": "edge|b724e2c11485be5f8358c738a79d2dbef5a5247a13a22eaebf72e54d8b3f7717|calls|0bd3f4e85bab78e96fb891f977abd443d52a2423eb609557ff21e832a87d1992",
+      "entityKey": "5ddbaebd60fb27e80d6498a2f2f30e1e47a8f24eec8f4b63edff38ebe390eaca",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/alias-consumer.ts",
+          "line": 4,
+          "contains": "sequence(value)"
+        }
+      ]
+    },
+    {
+      "id": "edge:079",
+      "src": "fn:report.buildReport",
+      "relation": "calls",
+      "dst": "fn:secret.readSecret",
+      "canonicalIdentity": "edge|5a517781300fe9c2d829356e6bbac17c3b4ac6fbb08fd20cb23506833936fb8b|calls|8a596ece621e82e9a31377caad48212dc47939f70d06d379724d23dfdfdf0706",
+      "entityKey": "5436d812f7e21de0194d8480bd50ac470eda95d25b559c599bffe868b7c22784",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/public/report.ts",
+          "line": 4,
+          "contains": "readSecret()"
+        }
+      ]
+    },
+    {
+      "id": "edge:080",
+      "src": "test:math.factorial",
+      "relation": "tests",
+      "dst": "fn:math.factorial",
+      "canonicalIdentity": "edge|707b5b75a85a2c75312e86330714ad95cfe385d176c0da416280e7662eb22b83|tests|0bd3f4e85bab78e96fb891f977abd443d52a2423eb609557ff21e832a87d1992",
+      "entityKey": "6380399713044d52118de881c398b1767dfa8023eef4f7c4f82df56b91858043",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/math.test.ts",
+          "line": 6,
+          "contains": "factorial(4)"
+        }
+      ]
+    },
+    {
+      "id": "edge:081",
+      "src": "test:math.format",
+      "relation": "tests",
+      "dst": "fn:math.format",
+      "canonicalIdentity": "edge|b9e4287f568a0d7ce2960b19dc8b56997e0415bba4e4090bdb63b3651ff91834|tests|fa9c21bfa168bcf60146eee8ebc448c6385f98193c3a8e5565adc46650a79182",
+      "entityKey": "27551b7c148b9df5564e5171dda57b124c5ef8250d7d8b654c4e9dcfc3c37f92",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/math.test.ts",
+          "line": 10,
+          "contains": "format(4)"
+        }
+      ]
+    },
+    {
+      "id": "edge:082",
+      "src": "adr:math",
+      "relation": "documents",
+      "dst": "file:src/math.ts",
+      "canonicalIdentity": "edge|a1a0e1315b279ef5cbb650dc1f933a20affd180abf7a5ef9d9d395916165fa79|documents|2afa6b72bd63b7754d1cce4ad8a8712b075f2f11de3969ffbe3fadb112ed23e0",
+      "entityKey": "55375800e266b7441e5840c015705b4c3786e8cfeefdd40e8ef30e8eece7b74f",
+      "origin": "doc",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-001-math.md",
+          "line": 5,
+          "contains": "`src/math.ts`"
+        }
+      ]
+    },
+    {
+      "id": "edge:083",
+      "src": "adr:math",
+      "relation": "documents",
+      "dst": "fn:math.factorial",
+      "canonicalIdentity": "edge|a1a0e1315b279ef5cbb650dc1f933a20affd180abf7a5ef9d9d395916165fa79|documents|0bd3f4e85bab78e96fb891f977abd443d52a2423eb609557ff21e832a87d1992",
+      "entityKey": "bf440592a62e8b796f269bef6167e6bbb72a426fbf33ce4e68fc8bd8581051e1",
+      "origin": "doc",
+      "confidence": "likely",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-001-math.md",
+          "line": 6,
+          "contains": "`factorial`"
+        }
+      ]
+    },
+    {
+      "id": "edge:084",
+      "src": "adr:math",
+      "relation": "documents",
+      "dst": "class:runner.Runner",
+      "canonicalIdentity": "edge|a1a0e1315b279ef5cbb650dc1f933a20affd180abf7a5ef9d9d395916165fa79|documents|29d43f7baea78eb1022cee95e673f50060cf11714780539fa140f79fe17bb197",
+      "entityKey": "c9f1fbacb53c3e7efaa30810525f2459579d522db3f4344b556c3765ef9ba2f5",
+      "origin": "doc",
+      "confidence": "likely",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-001-math.md",
+          "line": 7,
+          "contains": "`Runner`"
+        }
+      ]
+    }
+  ],
+  "expectedBoundaryViolations": [
+    {
+      "ruleId": "public-must-not-import-internal",
+      "src": "file:src/public/report.ts",
+      "edgeRelation": "imports",
+      "dst": "file:src/internal/secret.ts",
+      "severity": "error",
+      "evidence": [
+        {
+          "file": "src/public/report.ts",
+          "line": 1,
+          "contains": "../internal/secret.js"
+        }
+      ]
+    }
+  ],
+  "excludedCandidates": [
+    {
+      "kind": "variable",
+      "file": "src/handlers.ts",
+      "name": "handlers",
+      "reason": "Variable declarations are outside the v1 node contract."
+    },
+    {
+      "kind": "document-link",
+      "file": "docs/ADR-001-math.md",
+      "text": "run",
+      "reason": "Ambiguous symbol name; three method candidates exist, so no documents edge is emitted."
+    },
+    {
+      "kind": "document-link",
+      "file": "docs/ADR-001-math.md",
+      "text": "src/missing.ts",
+      "reason": "Path does not resolve; no documents edge is emitted."
+    },
+    {
+      "kind": "test-link",
+      "file": "tests/mathy.test.ts",
+      "test": "math still works",
+      "reason": "Name-only resemblance is ambiguous and there is no static import/reference; no tests edge is emitted."
+    },
+    {
+      "kind": "call",
+      "file": "src/runner.ts",
+      "text": "this.strategy.run(value)",
+      "reason": "No concrete calls to DoubleStrategy.run or TripleStrategy.run are emitted; the compiler resolves the receiver to Strategy.run."
+    }
+  ]
+}

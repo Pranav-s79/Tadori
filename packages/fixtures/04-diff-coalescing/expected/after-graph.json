@@ -1,0 +1,898 @@
+{
+  "schemaVersion": "1.0.0",
+  "fixture": {
+    "id": "diff-coalescing",
+    "snapshot": "after",
+    "packageName": "@tadori-fixtures/diff-coalescing",
+    "purpose": "After snapshot for rename/move and graph-diff coalescing tests.",
+    "relationStrata": [
+      "contains",
+      "imports",
+      "exports",
+      "references",
+      "calls"
+    ],
+    "nastyCases": [
+      "Moved helper path",
+      "Renamed formatter method",
+      "Resolved Resolver.resolve call",
+      "Notifier call added"
+    ],
+    "indexedFiles": [
+      "src/task.ts",
+      "src/audit.ts",
+      "src/notifier.ts",
+      "src/formatter.ts",
+      "src/resolver.ts",
+      "src/helpers/helper.ts"
+    ],
+    "supportFiles": [
+      "package.json",
+      "tsconfig.json"
+    ]
+  },
+  "analyzerContract": {
+    "constructorsAreNodes": false
+  },
+  "nodes": [
+    {
+      "id": "pkg:root",
+      "kind": "package",
+      "qualifiedName": "@tadori-fixtures/diff-coalescing",
+      "displayName": "@tadori-fixtures/diff-coalescing",
+      "canonicalIdentity": "node|package|@tadori-fixtures/diff-coalescing",
+      "entityKey": "b6d828141f3d2c67045e16e8311a82251a9abb5d7626a7f129c0590e61391a11",
+      "file": null,
+      "exported": false
+    },
+    {
+      "id": "file:src/task.ts",
+      "kind": "file",
+      "qualifiedName": "src/task.ts",
+      "displayName": "task.ts",
+      "canonicalIdentity": "node|file|src/task.ts",
+      "entityKey": "7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed",
+      "file": "src/task.ts",
+      "exported": false,
+      "bodyHash": "1b5af58f5dd7002787fd38753fdbb63a0ee1fe149ae070b61e03a658ee450e1c"
+    },
+    {
+      "id": "file:src/audit.ts",
+      "kind": "file",
+      "qualifiedName": "src/audit.ts",
+      "displayName": "audit.ts",
+      "canonicalIdentity": "node|file|src/audit.ts",
+      "entityKey": "0afb134943a90ce07f837cebac18849b2a8e9ecf9a892324dcbaf230c9f225ad",
+      "file": "src/audit.ts",
+      "exported": false,
+      "bodyHash": "5e6a28a4b8618b2908e8355ba76ccc90ba1df2b07f44205a1e613f5fdd94bfe8"
+    },
+    {
+      "id": "file:src/notifier.ts",
+      "kind": "file",
+      "qualifiedName": "src/notifier.ts",
+      "displayName": "notifier.ts",
+      "canonicalIdentity": "node|file|src/notifier.ts",
+      "entityKey": "9839cee9dbdf6f2405b80aee5694096b70cb89bc17b16b7e7747eb93432d89bd",
+      "file": "src/notifier.ts",
+      "exported": false,
+      "bodyHash": "be58871c1044dbd4d630e66e1a269ee580fc48f519c744a58b1645c141c45c23"
+    },
+    {
+      "id": "file:src/formatter.ts",
+      "kind": "file",
+      "qualifiedName": "src/formatter.ts",
+      "displayName": "formatter.ts",
+      "canonicalIdentity": "node|file|src/formatter.ts",
+      "entityKey": "2e88d3794109a8e3ff09c524bc458969cce8a7234d80e682c909b1b5e646362f",
+      "file": "src/formatter.ts",
+      "exported": false,
+      "bodyHash": "7569b73ea3b1a563778f7a4eece33b5265efd09228a8b086ad703cbd6d1ae5a5"
+    },
+    {
+      "id": "file:src/resolver.ts",
+      "kind": "file",
+      "qualifiedName": "src/resolver.ts",
+      "displayName": "resolver.ts",
+      "canonicalIdentity": "node|file|src/resolver.ts",
+      "entityKey": "1cd2f225e5f1a017859ff85be9510615112adac4cddc8cdada8a812967fea660",
+      "file": "src/resolver.ts",
+      "exported": false,
+      "bodyHash": "224d3daf701c18caeed2910f4d424414f84125afd298cce15c02a71238d66a95"
+    },
+    {
+      "id": "file:src/helpers/helper.ts",
+      "kind": "file",
+      "qualifiedName": "src/helpers/helper.ts",
+      "displayName": "helper.ts",
+      "canonicalIdentity": "node|file|src/helpers/helper.ts",
+      "entityKey": "03a43d86cb4a6d6c4d441644800163d1d541e4acef6d8b28f991efd102a29d58",
+      "file": "src/helpers/helper.ts",
+      "exported": false,
+      "bodyHash": "f8c938469130d4b334a313898ec600256a5b9506df3c7f145195d485fd452481"
+    },
+    {
+      "id": "class:audit.Audit",
+      "kind": "class",
+      "qualifiedName": "src/audit.ts.Audit",
+      "displayName": "Audit",
+      "canonicalIdentity": "node|class|src/audit.ts.Audit",
+      "entityKey": "f50eec278304fe1d1758fe59d0b1fe6eb224674dedebc194e9976609ab206215",
+      "file": "src/audit.ts",
+      "exported": true,
+      "bodyHash": "5324bc758d9e11b89c9cd5e3721ae650ea868a137576de966653f0618a9d33ec"
+    },
+    {
+      "id": "method:audit.Audit.record",
+      "kind": "method",
+      "qualifiedName": "src/audit.ts.Audit.record",
+      "displayName": "record",
+      "canonicalIdentity": "node|method|src/audit.ts.Audit.record",
+      "entityKey": "57338bba507091f59a91f9ee47b3cb500fb45a7da476ee46afe23a67f74211c6",
+      "file": "src/audit.ts",
+      "exported": false,
+      "bodyHash": "80a406b7c83a8d6cbd6d6875f1166ae26b6e029e3a3aac22931a884e5a87d2dd"
+    },
+    {
+      "id": "class:notifier.Notifier",
+      "kind": "class",
+      "qualifiedName": "src/notifier.ts.Notifier",
+      "displayName": "Notifier",
+      "canonicalIdentity": "node|class|src/notifier.ts.Notifier",
+      "entityKey": "9b15237b3ef926de4e325a2df727002bcd6262fb0a24e5c61577323182599a12",
+      "file": "src/notifier.ts",
+      "exported": true,
+      "bodyHash": "9b4b97e5bf773f090fe7167c2d03aa29cb74c5f7ff5bcb9b899ad7a5a44b63a8"
+    },
+    {
+      "id": "method:notifier.Notifier.send",
+      "kind": "method",
+      "qualifiedName": "src/notifier.ts.Notifier.send",
+      "displayName": "send",
+      "canonicalIdentity": "node|method|src/notifier.ts.Notifier.send",
+      "entityKey": "613d8834dd7359a0b0cae9171dd20d19cdb8f83f245e846763ca29595aaa5d72",
+      "file": "src/notifier.ts",
+      "exported": false,
+      "bodyHash": "334ee150016f83156514e3aaa217ce91b231a1c71b04f1d72a40fdd0fca69966"
+    },
+    {
+      "id": "class:formatter.Formatter",
+      "kind": "class",
+      "qualifiedName": "src/formatter.ts.Formatter",
+      "displayName": "Formatter",
+      "canonicalIdentity": "node|class|src/formatter.ts.Formatter",
+      "entityKey": "81ee30875bbb77eb25ef1e69de2b58108c45f3906be6f68f8b5feff41065ea25",
+      "file": "src/formatter.ts",
+      "exported": true,
+      "bodyHash": "b4c54e2c4ff4f0edf14354046c979d836057c02076eb7f608c6d33de42e2e996"
+    },
+    {
+      "id": "method:formatter.renderValue",
+      "kind": "method",
+      "qualifiedName": "src/formatter.ts.Formatter.renderValue",
+      "displayName": "renderValue",
+      "canonicalIdentity": "node|method|src/formatter.ts.Formatter.renderValue",
+      "entityKey": "31ca83a522692f8fcdee8c05cd8e6e6f6a9fa5c616ef2309a49fc920f8518d11",
+      "file": "src/formatter.ts",
+      "exported": false,
+      "bodyHash": "9354bf5c0bd818237932b1a5585ebbfe1b0be901cb570e9b78a71f3860160ab4"
+    },
+    {
+      "id": "class:resolver.Resolver",
+      "kind": "class",
+      "qualifiedName": "src/resolver.ts.Resolver",
+      "displayName": "Resolver",
+      "canonicalIdentity": "node|class|src/resolver.ts.Resolver",
+      "entityKey": "87c3a9377db4a6780672a12a59a0b615b8e3ee70aee2a0327517082298e6d984",
+      "file": "src/resolver.ts",
+      "exported": true,
+      "bodyHash": "24b52e8c4c3dcd6e0f44fa94385761c8fee880589107bcd58322967873a82688"
+    },
+    {
+      "id": "method:resolver.Resolver.resolve",
+      "kind": "method",
+      "qualifiedName": "src/resolver.ts.Resolver.resolve",
+      "displayName": "resolve",
+      "canonicalIdentity": "node|method|src/resolver.ts.Resolver.resolve",
+      "entityKey": "06ebd1de7b45f0335eac9523256ffdfe6f04f3ff59ad22fe666a5cd975234091",
+      "file": "src/resolver.ts",
+      "exported": false,
+      "bodyHash": "f301e67a7bfc69dc8fe7ce51b5decda3206772ff74160f6ecafb36296ff59fc2"
+    },
+    {
+      "id": "fn:helper.normalize.new",
+      "kind": "function",
+      "qualifiedName": "src/helpers/helper.ts.normalize",
+      "displayName": "normalize",
+      "canonicalIdentity": "node|function|src/helpers/helper.ts.normalize",
+      "entityKey": "63b0a4bca23d9aca91cf0b13e909683bb412dd8608d4b709e5bffdcc7fdde313",
+      "file": "src/helpers/helper.ts",
+      "exported": true,
+      "bodyHash": "0e22fe4531b527c419a37773660372d2566b2586e730a994ce6440e769c9d3e5"
+    },
+    {
+      "id": "fn:task.processTask",
+      "kind": "function",
+      "qualifiedName": "src/task.ts.processTask",
+      "displayName": "processTask",
+      "canonicalIdentity": "node|function|src/task.ts.processTask",
+      "entityKey": "570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b",
+      "file": "src/task.ts",
+      "exported": true,
+      "bodyHash": "1b5af58f5dd7002787fd38753fdbb63a0ee1fe149ae070b61e03a658ee450e1c"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:002",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/task.ts",
+      "canonicalIdentity": "edge|b6d828141f3d2c67045e16e8311a82251a9abb5d7626a7f129c0590e61391a11|contains|7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed",
+      "entityKey": "9ceee7ea33bc11e902debd7492e63007a5823e5d6d52a309a69ee8bc27e68536",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 1,
+          "contains": "import { Formatter } from \"./formatter.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:004",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/audit.ts",
+      "canonicalIdentity": "edge|b6d828141f3d2c67045e16e8311a82251a9abb5d7626a7f129c0590e61391a11|contains|0afb134943a90ce07f837cebac18849b2a8e9ecf9a892324dcbaf230c9f225ad",
+      "entityKey": "86ed30589b4dd3284234c0108b79222ecc007abccff2dd90168f93f4d14aa653",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/audit.ts",
+          "line": 1,
+          "contains": "export class Audit {"
+        }
+      ]
+    },
+    {
+      "id": "edge:006",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/notifier.ts",
+      "canonicalIdentity": "edge|b6d828141f3d2c67045e16e8311a82251a9abb5d7626a7f129c0590e61391a11|contains|9839cee9dbdf6f2405b80aee5694096b70cb89bc17b16b7e7747eb93432d89bd",
+      "entityKey": "815c68a590ef688bef50866c32190feaaa92606d88430e4d2d1469feb6e27d1e",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/notifier.ts",
+          "line": 1,
+          "contains": "export class Notifier {"
+        }
+      ]
+    },
+    {
+      "id": "edge:008",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/formatter.ts",
+      "canonicalIdentity": "edge|b6d828141f3d2c67045e16e8311a82251a9abb5d7626a7f129c0590e61391a11|contains|2e88d3794109a8e3ff09c524bc458969cce8a7234d80e682c909b1b5e646362f",
+      "entityKey": "86c57897a2129a3923ef4ae2f3fa7281de493ce29140d52c08fcde981924f2ee",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/formatter.ts",
+          "line": 1,
+          "contains": "export class Formatter {"
+        }
+      ]
+    },
+    {
+      "id": "edge:010",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/resolver.ts",
+      "canonicalIdentity": "edge|b6d828141f3d2c67045e16e8311a82251a9abb5d7626a7f129c0590e61391a11|contains|1cd2f225e5f1a017859ff85be9510615112adac4cddc8cdada8a812967fea660",
+      "entityKey": "a73350ff70b1a6c911e34dbb462ffc8a573327d370c4a97a2bf94ff086cfc08f",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/resolver.ts",
+          "line": 1,
+          "contains": "export class Resolver {"
+        }
+      ]
+    },
+    {
+      "id": "edge:012",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/helpers/helper.ts",
+      "canonicalIdentity": "edge|b6d828141f3d2c67045e16e8311a82251a9abb5d7626a7f129c0590e61391a11|contains|03a43d86cb4a6d6c4d441644800163d1d541e4acef6d8b28f991efd102a29d58",
+      "entityKey": "5e8b11a01a5624799d6d8ac3eef6e8a6b6cd96cdadda784c500dccedce9c0607",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/helpers/helper.ts",
+          "line": 1,
+          "contains": "export function normalize(value: string): string {"
+        }
+      ]
+    },
+    {
+      "id": "edge:013",
+      "src": "file:src/audit.ts",
+      "relation": "contains",
+      "dst": "class:audit.Audit",
+      "canonicalIdentity": "edge|0afb134943a90ce07f837cebac18849b2a8e9ecf9a892324dcbaf230c9f225ad|contains|f50eec278304fe1d1758fe59d0b1fe6eb224674dedebc194e9976609ab206215",
+      "entityKey": "e647cdeb8e9118c8049677ea5428a820bb9e0071b2d3daca0860cf20670a9c7b",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/audit.ts",
+          "line": 1,
+          "contains": "Audit"
+        }
+      ]
+    },
+    {
+      "id": "edge:014",
+      "src": "file:src/audit.ts",
+      "relation": "exports",
+      "dst": "class:audit.Audit",
+      "canonicalIdentity": "edge|0afb134943a90ce07f837cebac18849b2a8e9ecf9a892324dcbaf230c9f225ad|exports|f50eec278304fe1d1758fe59d0b1fe6eb224674dedebc194e9976609ab206215",
+      "entityKey": "029141a178b68d270bc682ddee2f9575272716a07bb8c9b04aae39327f41bd5a",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/audit.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:015",
+      "src": "file:src/audit.ts",
+      "relation": "contains",
+      "dst": "method:audit.Audit.record",
+      "canonicalIdentity": "edge|0afb134943a90ce07f837cebac18849b2a8e9ecf9a892324dcbaf230c9f225ad|contains|57338bba507091f59a91f9ee47b3cb500fb45a7da476ee46afe23a67f74211c6",
+      "entityKey": "cbbf0cd5d81865653fcd82d49801782116d2bdf7ef4dc238c7d5548f5280de47",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/audit.ts",
+          "line": 2,
+          "contains": "record"
+        }
+      ]
+    },
+    {
+      "id": "edge:016",
+      "src": "file:src/notifier.ts",
+      "relation": "contains",
+      "dst": "class:notifier.Notifier",
+      "canonicalIdentity": "edge|9839cee9dbdf6f2405b80aee5694096b70cb89bc17b16b7e7747eb93432d89bd|contains|9b15237b3ef926de4e325a2df727002bcd6262fb0a24e5c61577323182599a12",
+      "entityKey": "bbd7e77224a8c0de0ae1910229c8ca3a54692a8a7af02f1f61b9f53fc55eeb51",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/notifier.ts",
+          "line": 1,
+          "contains": "Notifier"
+        }
+      ]
+    },
+    {
+      "id": "edge:017",
+      "src": "file:src/notifier.ts",
+      "relation": "exports",
+      "dst": "class:notifier.Notifier",
+      "canonicalIdentity": "edge|9839cee9dbdf6f2405b80aee5694096b70cb89bc17b16b7e7747eb93432d89bd|exports|9b15237b3ef926de4e325a2df727002bcd6262fb0a24e5c61577323182599a12",
+      "entityKey": "27013e993cc405130e210589477b48848be392595628c0612d9d6dbdda74937d",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/notifier.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:018",
+      "src": "file:src/notifier.ts",
+      "relation": "contains",
+      "dst": "method:notifier.Notifier.send",
+      "canonicalIdentity": "edge|9839cee9dbdf6f2405b80aee5694096b70cb89bc17b16b7e7747eb93432d89bd|contains|613d8834dd7359a0b0cae9171dd20d19cdb8f83f245e846763ca29595aaa5d72",
+      "entityKey": "8c7eda93965a956dcc3a7813eadc135104f87adc15a15a4246a7d0dc6a201685",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/notifier.ts",
+          "line": 2,
+          "contains": "send"
+        }
+      ]
+    },
+    {
+      "id": "edge:019",
+      "src": "file:src/formatter.ts",
+      "relation": "contains",
+      "dst": "class:formatter.Formatter",
+      "canonicalIdentity": "edge|2e88d3794109a8e3ff09c524bc458969cce8a7234d80e682c909b1b5e646362f|contains|81ee30875bbb77eb25ef1e69de2b58108c45f3906be6f68f8b5feff41065ea25",
+      "entityKey": "0960c96dc6f7a8e57a0292eea5a2cfa8150c2149c3af14f8853623c8d1603a41",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/formatter.ts",
+          "line": 1,
+          "contains": "Formatter"
+        }
+      ]
+    },
+    {
+      "id": "edge:020",
+      "src": "file:src/formatter.ts",
+      "relation": "exports",
+      "dst": "class:formatter.Formatter",
+      "canonicalIdentity": "edge|2e88d3794109a8e3ff09c524bc458969cce8a7234d80e682c909b1b5e646362f|exports|81ee30875bbb77eb25ef1e69de2b58108c45f3906be6f68f8b5feff41065ea25",
+      "entityKey": "0abb299bb92f7f305862b7713c143c9173afb65a249be68f0fb3df947fbf41ac",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/formatter.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:021",
+      "src": "file:src/formatter.ts",
+      "relation": "contains",
+      "dst": "method:formatter.renderValue",
+      "canonicalIdentity": "edge|2e88d3794109a8e3ff09c524bc458969cce8a7234d80e682c909b1b5e646362f|contains|31ca83a522692f8fcdee8c05cd8e6e6f6a9fa5c616ef2309a49fc920f8518d11",
+      "entityKey": "5ee6ef340a4b3df626a638043cdfb5edfce93280abe231049fc813ff89d6ad54",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/formatter.ts",
+          "line": 2,
+          "contains": "renderValue"
+        }
+      ]
+    },
+    {
+      "id": "edge:022",
+      "src": "file:src/resolver.ts",
+      "relation": "contains",
+      "dst": "class:resolver.Resolver",
+      "canonicalIdentity": "edge|1cd2f225e5f1a017859ff85be9510615112adac4cddc8cdada8a812967fea660|contains|87c3a9377db4a6780672a12a59a0b615b8e3ee70aee2a0327517082298e6d984",
+      "entityKey": "ffe49f8b60323c62b1e3506e252e6724620ce362f23e4a6be92c21cf9d9f8dfb",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/resolver.ts",
+          "line": 1,
+          "contains": "Resolver"
+        }
+      ]
+    },
+    {
+      "id": "edge:023",
+      "src": "file:src/resolver.ts",
+      "relation": "exports",
+      "dst": "class:resolver.Resolver",
+      "canonicalIdentity": "edge|1cd2f225e5f1a017859ff85be9510615112adac4cddc8cdada8a812967fea660|exports|87c3a9377db4a6780672a12a59a0b615b8e3ee70aee2a0327517082298e6d984",
+      "entityKey": "c73da0921bb01eee37e1468463bc694301ad1c8f860625b338d50b67cfe066cc",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/resolver.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:024",
+      "src": "file:src/resolver.ts",
+      "relation": "contains",
+      "dst": "method:resolver.Resolver.resolve",
+      "canonicalIdentity": "edge|1cd2f225e5f1a017859ff85be9510615112adac4cddc8cdada8a812967fea660|contains|06ebd1de7b45f0335eac9523256ffdfe6f04f3ff59ad22fe666a5cd975234091",
+      "entityKey": "1d20906a2c4551946898687636e61b714ec15ba7ef647cb3a2f4aa2dad82ece5",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/resolver.ts",
+          "line": 2,
+          "contains": "resolve"
+        }
+      ]
+    },
+    {
+      "id": "edge:025",
+      "src": "file:src/helpers/helper.ts",
+      "relation": "contains",
+      "dst": "fn:helper.normalize.new",
+      "canonicalIdentity": "edge|03a43d86cb4a6d6c4d441644800163d1d541e4acef6d8b28f991efd102a29d58|contains|63b0a4bca23d9aca91cf0b13e909683bb412dd8608d4b709e5bffdcc7fdde313",
+      "entityKey": "acb36e047e4b2e32b6240b4a15324c391d4ae0dcd3ae642081771660d9e5a2a8",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/helpers/helper.ts",
+          "line": 1,
+          "contains": "normalize"
+        }
+      ]
+    },
+    {
+      "id": "edge:026",
+      "src": "file:src/helpers/helper.ts",
+      "relation": "exports",
+      "dst": "fn:helper.normalize.new",
+      "canonicalIdentity": "edge|03a43d86cb4a6d6c4d441644800163d1d541e4acef6d8b28f991efd102a29d58|exports|63b0a4bca23d9aca91cf0b13e909683bb412dd8608d4b709e5bffdcc7fdde313",
+      "entityKey": "de9173ca5e541bae22bb7b7729bbff84cf6a82f80dd4395a50d7834ffacb4ebd",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/helpers/helper.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:027",
+      "src": "file:src/task.ts",
+      "relation": "contains",
+      "dst": "fn:task.processTask",
+      "canonicalIdentity": "edge|7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed|contains|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b",
+      "entityKey": "6d193c5a424aa3d756107484409f5f8f8a0c20aee3d5922f631800865894a776",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 6,
+          "contains": "processTask"
+        }
+      ]
+    },
+    {
+      "id": "edge:028",
+      "src": "file:src/task.ts",
+      "relation": "exports",
+      "dst": "fn:task.processTask",
+      "canonicalIdentity": "edge|7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed|exports|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b",
+      "entityKey": "2849fdb460570c00d45e9742a881f050afde2249d197b0aa8ce101c7891d5c98",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 6,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:029",
+      "src": "class:audit.Audit",
+      "relation": "contains",
+      "dst": "method:audit.Audit.record",
+      "canonicalIdentity": "edge|f50eec278304fe1d1758fe59d0b1fe6eb224674dedebc194e9976609ab206215|contains|57338bba507091f59a91f9ee47b3cb500fb45a7da476ee46afe23a67f74211c6",
+      "entityKey": "f60bae24be78f79cef093bb6231a2eff45d92d114872dc02565f9bb854b31f46",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/audit.ts",
+          "line": 2,
+          "contains": "record"
+        }
+      ]
+    },
+    {
+      "id": "edge:030",
+      "src": "class:notifier.Notifier",
+      "relation": "contains",
+      "dst": "method:notifier.Notifier.send",
+      "canonicalIdentity": "edge|9b15237b3ef926de4e325a2df727002bcd6262fb0a24e5c61577323182599a12|contains|613d8834dd7359a0b0cae9171dd20d19cdb8f83f245e846763ca29595aaa5d72",
+      "entityKey": "1114805e14a2e8ee1d0cf70cb43f72e2aa62cb9df2e6a004318a33ef1fe8520b",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/notifier.ts",
+          "line": 2,
+          "contains": "send"
+        }
+      ]
+    },
+    {
+      "id": "edge:031",
+      "src": "class:formatter.Formatter",
+      "relation": "contains",
+      "dst": "method:formatter.renderValue",
+      "canonicalIdentity": "edge|81ee30875bbb77eb25ef1e69de2b58108c45f3906be6f68f8b5feff41065ea25|contains|31ca83a522692f8fcdee8c05cd8e6e6f6a9fa5c616ef2309a49fc920f8518d11",
+      "entityKey": "cb2eee60bda9666bef431d6021ea5fd77868a8dd6cf3b7f00155b4b4a77f9de8",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/formatter.ts",
+          "line": 2,
+          "contains": "renderValue"
+        }
+      ]
+    },
+    {
+      "id": "edge:032",
+      "src": "class:resolver.Resolver",
+      "relation": "contains",
+      "dst": "method:resolver.Resolver.resolve",
+      "canonicalIdentity": "edge|87c3a9377db4a6780672a12a59a0b615b8e3ee70aee2a0327517082298e6d984|contains|06ebd1de7b45f0335eac9523256ffdfe6f04f3ff59ad22fe666a5cd975234091",
+      "entityKey": "157d39c125c9734d8f19289bba3047b7df85d22f2c2301fee262a048bda3dd7f",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/resolver.ts",
+          "line": 2,
+          "contains": "resolve"
+        }
+      ]
+    },
+    {
+      "id": "edge:033",
+      "src": "file:src/task.ts",
+      "relation": "imports",
+      "dst": "file:src/formatter.ts",
+      "canonicalIdentity": "edge|7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed|imports|2e88d3794109a8e3ff09c524bc458969cce8a7234d80e682c909b1b5e646362f",
+      "entityKey": "49acd2aba8d508e9af8577ac8d41843cf3b49ffce7a6e73e125789634b8200ca",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 1,
+          "contains": "./formatter.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:034",
+      "src": "file:src/task.ts",
+      "relation": "imports",
+      "dst": "file:src/helpers/helper.ts",
+      "canonicalIdentity": "edge|7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed|imports|03a43d86cb4a6d6c4d441644800163d1d541e4acef6d8b28f991efd102a29d58",
+      "entityKey": "4b933d95e12de2def17897854ed89d0ee8c6c4ee24d50136f79e10660b7bf230",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 2,
+          "contains": "./helpers/helper.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:035",
+      "src": "file:src/task.ts",
+      "relation": "imports",
+      "dst": "file:src/notifier.ts",
+      "canonicalIdentity": "edge|7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed|imports|9839cee9dbdf6f2405b80aee5694096b70cb89bc17b16b7e7747eb93432d89bd",
+      "entityKey": "09fcb966041c5c89a5b39334c1053d01f55eb6e83e56ba2a4596e467068bd2ee",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 3,
+          "contains": "./notifier.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:036",
+      "src": "file:src/task.ts",
+      "relation": "imports",
+      "dst": "file:src/resolver.ts",
+      "canonicalIdentity": "edge|7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed|imports|1cd2f225e5f1a017859ff85be9510615112adac4cddc8cdada8a812967fea660",
+      "entityKey": "b695d4586dce000e9d8c97456a23aea054286ae39fcc97831815f3eb28b8a6a4",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 4,
+          "contains": "./resolver.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:037",
+      "src": "fn:task.processTask",
+      "relation": "references",
+      "dst": "class:formatter.Formatter",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|references|81ee30875bbb77eb25ef1e69de2b58108c45f3906be6f68f8b5feff41065ea25",
+      "entityKey": "dd55b290418ce6327d41ddc693cc8886edbf944aa59979b76c86948ca5324e83",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 10,
+          "contains": "formatter: Formatter"
+        }
+      ]
+    },
+    {
+      "id": "edge:038",
+      "src": "fn:task.processTask",
+      "relation": "references",
+      "dst": "class:notifier.Notifier",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|references|9b15237b3ef926de4e325a2df727002bcd6262fb0a24e5c61577323182599a12",
+      "entityKey": "cfebb15d9a38d91d6a0900e27915836ea4981050488a9519a2b63d4213792c49",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 8,
+          "contains": "notifier: Notifier"
+        }
+      ]
+    },
+    {
+      "id": "edge:039",
+      "src": "fn:task.processTask",
+      "relation": "references",
+      "dst": "class:resolver.Resolver",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|references|87c3a9377db4a6780672a12a59a0b615b8e3ee70aee2a0327517082298e6d984",
+      "entityKey": "7d79bde2c2b775b7d11c1115681807a8a0c1bb3a00940c19d99365bc92eadeac",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 9,
+          "contains": "resolver: Resolver"
+        }
+      ]
+    },
+    {
+      "id": "edge:040",
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "method:notifier.Notifier.send",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|calls|613d8834dd7359a0b0cae9171dd20d19cdb8f83f245e846763ca29595aaa5d72",
+      "entityKey": "04a821617dc73186466faffe2f8b8ca752b7f55f1db12360f80450abed37f101",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 12,
+          "contains": "notifier.send"
+        }
+      ]
+    },
+    {
+      "id": "edge:041",
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "method:formatter.renderValue",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|calls|31ca83a522692f8fcdee8c05cd8e6e6f6a9fa5c616ef2309a49fc920f8518d11",
+      "entityKey": "055ac83d500ca50c5f440974c76b79fd6def47b5e4814d2629b70c54da00dfe6",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 14,
+          "contains": "formatter.renderValue"
+        }
+      ]
+    },
+    {
+      "id": "edge:042",
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "method:resolver.Resolver.resolve",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|calls|06ebd1de7b45f0335eac9523256ffdfe6f04f3ff59ad22fe666a5cd975234091",
+      "entityKey": "62d557ea261df9336622a88b289c213a5a10afe1d2a54f6c6e6edb871d46ce62",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 15,
+          "contains": "resolver.resolve"
+        }
+      ],
+      "notes": [
+        "Receiver is explicitly typed Resolver."
+      ]
+    },
+    {
+      "id": "edge:043",
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "fn:helper.normalize.new",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|calls|63b0a4bca23d9aca91cf0b13e909683bb412dd8608d4b709e5bffdcc7fdde313",
+      "entityKey": "af66c3057693491f7316549cc19e975c73449feeeb6e2f0e882a7fa5ff79e600",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 13,
+          "contains": "normalize(input)"
+        }
+      ]
+    }
+  ],
+  "expectedBoundaryViolations": [],
+  "excludedCandidates": []
+}

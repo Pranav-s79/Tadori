@@ -1,0 +1,13 @@
+{
+  "name": "@tadori/indexer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@tadori/core": "workspace:*",
+    "@tadori/store": "workspace:*",
+    "typescript": "^5.5.3"
+  }
+}

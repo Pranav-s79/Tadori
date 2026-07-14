@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "jsx": "preserve",
+    "noEmit": true
+  },
+  "include": ["app/**/*.ts", "app/**/*.tsx", "pages/**/*.ts", "pages/**/*.tsx", "lib/**/*.ts", "components/**/*.tsx", "tests/**/*.ts"]
+}

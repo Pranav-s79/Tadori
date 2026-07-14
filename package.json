@@ -1,0 +1,27 @@
+{
+  "name": "tadori",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "fixtures:validate": "tsx packages/harness/src/cli-validate.ts",
+    "fixtures:index": "tsx packages/harness/src/cli-index.ts",
+    "fixtures:typecheck": "tsx packages/harness/src/cli-typecheck-fixtures.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.7.0",
+    "@types/node": "^20.14.0",
+    "eslint": "^9.7.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.3",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^2.0.0"
+  }
+}

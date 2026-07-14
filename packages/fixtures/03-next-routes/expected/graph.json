@@ -1,0 +1,1633 @@
+{
+  "schemaVersion": "1.0.0",
+  "fixture": {
+    "id": "next-routes",
+    "snapshot": "base",
+    "packageName": "@tadori-fixtures/next-routes",
+    "purpose": "Ground truth for Next.js App Router and Pages Router conventions, route-to-handler edges, barrel imports and re-exports, page/API routes, static test linkage, and ADR references.",
+    "relationStrata": [
+      "contains",
+      "imports",
+      "exports",
+      "calls",
+      "tests",
+      "routes_to",
+      "documents"
+    ],
+    "nastyCases": [
+      "Next App Router route.ts with GET and POST",
+      "Next App Router page.tsx",
+      "Next Pages Router API default handler",
+      "Next Pages Router page default export",
+      "Barrel re-export through lib/index.ts",
+      "Static service test and misleading page test without linkage",
+      "ADR exact route path, unique symbols, generic GET, and missing path"
+    ],
+    "indexedFiles": [
+      "lib/db.ts",
+      "lib/session-service.ts",
+      "lib/index.ts",
+      "components/user-card.tsx",
+      "app/api/session/route.ts",
+      "app/dashboard/page.tsx",
+      "pages/api/legacy.ts",
+      "pages/profile.tsx",
+      "tests/session-service.test.ts",
+      "tests/session-page.test.ts",
+      "docs/ADR-003-session.md"
+    ],
+    "supportFiles": [
+      "package.json",
+      "tsconfig.json"
+    ]
+  },
+  "analyzerContract": {
+    "nextAppRouteHandlers": "one route node per exported HTTP handler",
+    "nextAppPages": "PAGE route node from filesystem path",
+    "nextPagesApi": "ANY route node for default API handler",
+    "nextPagesPage": "PAGE route node from filesystem path",
+    "defaultExportFunction": "function node marked exported",
+    "jsxComponentInvocation": "This fixture calls components as ordinary functions; no JSX-specific call inference is required."
+  },
+  "nodes": [
+    {
+      "id": "pkg:root",
+      "kind": "package",
+      "qualifiedName": "@tadori-fixtures/next-routes",
+      "displayName": "@tadori-fixtures/next-routes",
+      "canonicalIdentity": "node|package|@tadori-fixtures/next-routes",
+      "entityKey": "4230038305f0144b72bdb405e52e6dce568299d87954792aa3ce05895310512c",
+      "file": null,
+      "exported": false
+    },
+    {
+      "id": "file:lib/db.ts",
+      "kind": "file",
+      "qualifiedName": "lib/db.ts",
+      "displayName": "db.ts",
+      "canonicalIdentity": "node|file|lib/db.ts",
+      "entityKey": "a533de273105ef51a39d832cde82e12bd418fe27f44c8deb9c31c392938a5148",
+      "file": "lib/db.ts",
+      "exported": false,
+      "bodyHash": "8f1240bb69c09c659f2d782b359c4afc24adcfb9353845189c5c2fdc6effaa0e"
+    },
+    {
+      "id": "file:lib/session-service.ts",
+      "kind": "file",
+      "qualifiedName": "lib/session-service.ts",
+      "displayName": "session-service.ts",
+      "canonicalIdentity": "node|file|lib/session-service.ts",
+      "entityKey": "b361ff6b6c15f528a91dc0ea4db3ccaeee9ca1b01d8f430e231bf89b46cd4486",
+      "file": "lib/session-service.ts",
+      "exported": false,
+      "bodyHash": "2c0870ec2c935d2a0d75d5d05b3d918d64f4bc1d6731348981fac9d2d610916f"
+    },
+    {
+      "id": "file:lib/index.ts",
+      "kind": "file",
+      "qualifiedName": "lib/index.ts",
+      "displayName": "index.ts",
+      "canonicalIdentity": "node|file|lib/index.ts",
+      "entityKey": "34ff7f42b6a6ec37764b56540e377699e12b8c994789dc014fac37c3c622299f",
+      "file": "lib/index.ts",
+      "exported": false,
+      "bodyHash": "43cd7664250a4183e3b2e7cf5223cfdbd4fa723428cb64aa6337abd81d11914e"
+    },
+    {
+      "id": "file:components/user-card.tsx",
+      "kind": "file",
+      "qualifiedName": "components/user-card.tsx",
+      "displayName": "user-card.tsx",
+      "canonicalIdentity": "node|file|components/user-card.tsx",
+      "entityKey": "f042b6447b5ac7e775cc780dc68ee4076f90002b7d5cfe7cb642372ede5cf52d",
+      "file": "components/user-card.tsx",
+      "exported": false,
+      "bodyHash": "f39f86fcb22c4ba5233a817b00a0748dd0da67f6e0829fa5aa3091a176fd141c"
+    },
+    {
+      "id": "file:app/api/session/route.ts",
+      "kind": "file",
+      "qualifiedName": "app/api/session/route.ts",
+      "displayName": "route.ts",
+      "canonicalIdentity": "node|file|app/api/session/route.ts",
+      "entityKey": "f6cbfc10fcfd9070512894ba6115997613b5dad6efe1a4390228c36a3d3b870c",
+      "file": "app/api/session/route.ts",
+      "exported": false,
+      "bodyHash": "64aeb6a638ff377ab7430aa4e673634e8b977f62777b3a936f17ea7bcdedefef"
+    },
+    {
+      "id": "file:app/dashboard/page.tsx",
+      "kind": "file",
+      "qualifiedName": "app/dashboard/page.tsx",
+      "displayName": "page.tsx",
+      "canonicalIdentity": "node|file|app/dashboard/page.tsx",
+      "entityKey": "8c8fdc7b50a6a6a26e8d66d5412113c507f2c8d1a3915a79969c4fa83f25c63e",
+      "file": "app/dashboard/page.tsx",
+      "exported": false,
+      "bodyHash": "fe664130c431575d86b103171e6a24747da60c26adf786f8c84109a154432c65"
+    },
+    {
+      "id": "file:pages/api/legacy.ts",
+      "kind": "file",
+      "qualifiedName": "pages/api/legacy.ts",
+      "displayName": "legacy.ts",
+      "canonicalIdentity": "node|file|pages/api/legacy.ts",
+      "entityKey": "8f464ff08d24a27f9477030349f80d1fbe8f9b7885fe129deb5355ebe7b295f8",
+      "file": "pages/api/legacy.ts",
+      "exported": false,
+      "bodyHash": "8c1fec81854c347372aa613c8586da575710f3ad43b5143806225a734d967fa5"
+    },
+    {
+      "id": "file:pages/profile.tsx",
+      "kind": "file",
+      "qualifiedName": "pages/profile.tsx",
+      "displayName": "profile.tsx",
+      "canonicalIdentity": "node|file|pages/profile.tsx",
+      "entityKey": "d267a553267edfac5635c68ea4269d613a4140cad0d5fd7108d4549d18ef65f7",
+      "file": "pages/profile.tsx",
+      "exported": false,
+      "bodyHash": "e265b138f18cd16472b7caba3cbadc5a832c230ae39bc479829f866b06d3bb26"
+    },
+    {
+      "id": "file:tests/session-service.test.ts",
+      "kind": "file",
+      "qualifiedName": "tests/session-service.test.ts",
+      "displayName": "session-service.test.ts",
+      "canonicalIdentity": "node|file|tests/session-service.test.ts",
+      "entityKey": "d6210eb34f909a1b56f896be078579665a1cdc556e5512ab4b18305a08c1ea77",
+      "file": "tests/session-service.test.ts",
+      "exported": false,
+      "bodyHash": "2240b0cf872b27fdc7294d91148bdb4388fb1e2a1458013c218f75c5aef0f79a"
+    },
+    {
+      "id": "file:tests/session-page.test.ts",
+      "kind": "file",
+      "qualifiedName": "tests/session-page.test.ts",
+      "displayName": "session-page.test.ts",
+      "canonicalIdentity": "node|file|tests/session-page.test.ts",
+      "entityKey": "f306f2bf278e097aefa0d3ac5d378174ca87aa0b2668656d562a94f53897bac9",
+      "file": "tests/session-page.test.ts",
+      "exported": false,
+      "bodyHash": "840f241e2d0de7589f1ad6aca17098e68a2f02ada87e425be5b352fc66cd4302"
+    },
+    {
+      "id": "file:docs/ADR-003-session.md",
+      "kind": "file",
+      "qualifiedName": "docs/ADR-003-session.md",
+      "displayName": "ADR-003-session.md",
+      "canonicalIdentity": "node|file|docs/ADR-003-session.md",
+      "entityKey": "753e77f6e2e54ca07b87cc116d0e2cde03353ddf58cd2360ea4b3ae66b9304ed",
+      "file": "docs/ADR-003-session.md",
+      "exported": false,
+      "bodyHash": "84dead8595515af8f76f8e5c63996c0f773e1916fa54e3d6527e8bd6100c8e9f"
+    },
+    {
+      "id": "fn:db.findSession",
+      "kind": "function",
+      "qualifiedName": "lib/db.ts.findSession",
+      "displayName": "findSession",
+      "canonicalIdentity": "node|function|lib/db.ts.findSession",
+      "entityKey": "5a68480a16039dc0197aa3d23b57f77328cdec450e4c16d1ab7f89e4e0fbd757",
+      "file": "lib/db.ts",
+      "exported": true,
+      "bodyHash": "6dcdb520a75f858ea732faa87ac9508e1d5b408985a34eaace1870a1935c5c39"
+    },
+    {
+      "id": "fn:db.insertSession",
+      "kind": "function",
+      "qualifiedName": "lib/db.ts.insertSession",
+      "displayName": "insertSession",
+      "canonicalIdentity": "node|function|lib/db.ts.insertSession",
+      "entityKey": "31754b40315784eae2f2199b2eec8a0c0446580d193d8d9ea2633ca82cf75e13",
+      "file": "lib/db.ts",
+      "exported": true,
+      "bodyHash": "b5d3b1c57b7ba9615a51bec99d49f2d33f615cd8fbbb76e4def57f52494a0998"
+    },
+    {
+      "id": "fn:service.getSession",
+      "kind": "function",
+      "qualifiedName": "lib/session-service.ts.getSession",
+      "displayName": "getSession",
+      "canonicalIdentity": "node|function|lib/session-service.ts.getSession",
+      "entityKey": "1a9ac21491ffca29a1582df16a7cd28e19410f10415f5e29474aaa73f6cf4e2a",
+      "file": "lib/session-service.ts",
+      "exported": true,
+      "bodyHash": "e4b6d8244711fb01f5be6f1297edd4440698d6241259eada1453be61ece44673"
+    },
+    {
+      "id": "fn:service.createSession",
+      "kind": "function",
+      "qualifiedName": "lib/session-service.ts.createSession",
+      "displayName": "createSession",
+      "canonicalIdentity": "node|function|lib/session-service.ts.createSession",
+      "entityKey": "a8a0b797c9eb3546a60b9dfa54a9451e1eeae8f2dc902c664bf6cec4fec5f5c9",
+      "file": "lib/session-service.ts",
+      "exported": true,
+      "bodyHash": "8495c2d4462eb91bac93f4e960920acf1bdd40d67f4c578f0346470f8cc60eb7"
+    },
+    {
+      "id": "fn:component.UserCard",
+      "kind": "function",
+      "qualifiedName": "components/user-card.tsx.UserCard",
+      "displayName": "UserCard",
+      "canonicalIdentity": "node|function|components/user-card.tsx.UserCard",
+      "entityKey": "edac555260ed264de5aa160088b7f1941beab73b9ecd850eef9bd280e4334f1b",
+      "file": "components/user-card.tsx",
+      "exported": true,
+      "bodyHash": "89d58d929ca5fae0ec7bfb037515f13c3bc6a55bda0f7227a93878b99b0a0815"
+    },
+    {
+      "id": "fn:app.GET",
+      "kind": "function",
+      "qualifiedName": "app/api/session/route.ts.GET",
+      "displayName": "GET",
+      "canonicalIdentity": "node|function|app/api/session/route.ts.GET",
+      "entityKey": "177dbfd9d4d9e6fa67dfceb85963044cd016b66c622cf368f3e9cc0eba601b38",
+      "file": "app/api/session/route.ts",
+      "exported": true,
+      "bodyHash": "6930b98df708b10ffbf1b45f19500a37638c1d5e7cfcc414920ddb274c610415"
+    },
+    {
+      "id": "fn:app.POST",
+      "kind": "function",
+      "qualifiedName": "app/api/session/route.ts.POST",
+      "displayName": "POST",
+      "canonicalIdentity": "node|function|app/api/session/route.ts.POST",
+      "entityKey": "054b772f7a7de02a15a2fb048e57b4f4027c9f4478875304883a97d1da06414e",
+      "file": "app/api/session/route.ts",
+      "exported": true,
+      "bodyHash": "a191561ae2228ee30ff7372b58918ec3280ad3810d448d9728af5952fd9e8cbd"
+    },
+    {
+      "id": "fn:page.DashboardPage",
+      "kind": "function",
+      "qualifiedName": "app/dashboard/page.tsx.DashboardPage",
+      "displayName": "DashboardPage",
+      "canonicalIdentity": "node|function|app/dashboard/page.tsx.DashboardPage",
+      "entityKey": "7bef02ce1e97733ff57128c6de78116b1fcffe03c9f57e9d80c126eefffe5587",
+      "file": "app/dashboard/page.tsx",
+      "exported": true,
+      "bodyHash": "0d38b9f42e0a314cc3e55f5f2052829fa8524b70bc985172a6b55d7b9d09c7f1"
+    },
+    {
+      "id": "fn:legacy.legacyHandler",
+      "kind": "function",
+      "qualifiedName": "pages/api/legacy.ts.legacyHandler",
+      "displayName": "legacyHandler",
+      "canonicalIdentity": "node|function|pages/api/legacy.ts.legacyHandler",
+      "entityKey": "013bdcc78c73e14d2c2b3baf64575344224ba5287fa09eaea2d70da8db9d7dd4",
+      "file": "pages/api/legacy.ts",
+      "exported": true,
+      "bodyHash": "5a5d8de21dabef4b833f74a26ab60f951fd550d6042769bb42633f6a840ad826"
+    },
+    {
+      "id": "fn:page.ProfilePage",
+      "kind": "function",
+      "qualifiedName": "pages/profile.tsx.ProfilePage",
+      "displayName": "ProfilePage",
+      "canonicalIdentity": "node|function|pages/profile.tsx.ProfilePage",
+      "entityKey": "5c40fba7e39283523815e4b11f4001cfd4451cba868b8da1c7283d2720755924",
+      "file": "pages/profile.tsx",
+      "exported": true,
+      "bodyHash": "39b1b0f4fa0cb3237b297833438a870b9d7ada08cfd3245fcd433b04632d6882"
+    },
+    {
+      "id": "route:app.get-session",
+      "kind": "route",
+      "qualifiedName": "route:GET /api/session@app/api/session/route.ts",
+      "displayName": "GET /api/session",
+      "canonicalIdentity": "node|route|route:GET /api/session@app/api/session/route.ts",
+      "entityKey": "abb25b0cda049ff95765f1b14794ee14c9c81d8621d753378c69b697e11924e1",
+      "file": "app/api/session/route.ts",
+      "exported": false,
+      "bodyHash": "3730bb891c9ec8b5ce1530857a6e2ecfd2c1ffcca97f688505109224bbebf213"
+    },
+    {
+      "id": "route:app.post-session",
+      "kind": "route",
+      "qualifiedName": "route:POST /api/session@app/api/session/route.ts",
+      "displayName": "POST /api/session",
+      "canonicalIdentity": "node|route|route:POST /api/session@app/api/session/route.ts",
+      "entityKey": "eece0698e9cb9169821fef1ce773499550364ef1c8cc29188b1b7dd3a1dd1672",
+      "file": "app/api/session/route.ts",
+      "exported": false,
+      "bodyHash": "2fa896b99421e28c3761d0e188d81c320b02035a44897f9b96096cb90900d76b"
+    },
+    {
+      "id": "route:app.dashboard",
+      "kind": "route",
+      "qualifiedName": "route:PAGE /dashboard@app/dashboard/page.tsx",
+      "displayName": "PAGE /dashboard",
+      "canonicalIdentity": "node|route|route:PAGE /dashboard@app/dashboard/page.tsx",
+      "entityKey": "7d3bcab547bb7215ffb451c5ab586fd7c5c1c77fec7b563450fe29d68efbd7b2",
+      "file": "app/dashboard/page.tsx",
+      "exported": false,
+      "bodyHash": "101eb73f53cb59d85b933278488d718db0dcf9b83b4f0baba376ca19e3255e54"
+    },
+    {
+      "id": "route:pages.legacy",
+      "kind": "route",
+      "qualifiedName": "route:ANY /api/legacy@pages/api/legacy.ts",
+      "displayName": "ANY /api/legacy",
+      "canonicalIdentity": "node|route|route:ANY /api/legacy@pages/api/legacy.ts",
+      "entityKey": "40ff371ef03996e3dad290f72c4ef3161895e58246c3312dd745bb6cdaa76aed",
+      "file": "pages/api/legacy.ts",
+      "exported": false,
+      "bodyHash": "acadd469164caf4d695284a2bc6dcf33dd7ccc41e100d878bacab49ffedcd442"
+    },
+    {
+      "id": "route:pages.profile",
+      "kind": "route",
+      "qualifiedName": "route:PAGE /profile@pages/profile.tsx",
+      "displayName": "PAGE /profile",
+      "canonicalIdentity": "node|route|route:PAGE /profile@pages/profile.tsx",
+      "entityKey": "44172299db5663c0f5f0fdc2eecca449147fdf1001e2fe9e16dcc3e2b2ef71bb",
+      "file": "pages/profile.tsx",
+      "exported": false,
+      "bodyHash": "7edc37f97159aab713cdfd7104a0e30964cddabb610b6bc9862ccdfae092b109"
+    },
+    {
+      "id": "test:session-service",
+      "kind": "test",
+      "qualifiedName": "tests/session-service.test.ts::getSession reads the repository",
+      "displayName": "getSession reads the repository",
+      "canonicalIdentity": "node|test|tests/session-service.test.ts::getSession reads the repository",
+      "entityKey": "7e40e1d8ef7d895277ab4aacae5df507c9cbd0a24c47e349001dfd99f8640054",
+      "file": "tests/session-service.test.ts",
+      "exported": false
+    },
+    {
+      "id": "test:session-page",
+      "kind": "test",
+      "qualifiedName": "tests/session-page.test.ts::session page renders",
+      "displayName": "session page renders",
+      "canonicalIdentity": "node|test|tests/session-page.test.ts::session page renders",
+      "entityKey": "c62e77631bc8c21c55d2dbdd5af4589ee9b42762593b6ee0b9a8ff90617560fd",
+      "file": "tests/session-page.test.ts",
+      "exported": false
+    },
+    {
+      "id": "adr:session",
+      "kind": "adr",
+      "qualifiedName": "docs/ADR-003-session.md::ADR-003",
+      "displayName": "ADR-003: Keep session access behind the service",
+      "canonicalIdentity": "node|adr|docs/ADR-003-session.md::ADR-003",
+      "entityKey": "84b35ffde7cff9c0ec6e68198b6734f951d1c904bdb99f442cf31557e5db0846",
+      "file": "docs/ADR-003-session.md",
+      "exported": false
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:002",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:lib/db.ts",
+      "canonicalIdentity": "edge|4230038305f0144b72bdb405e52e6dce568299d87954792aa3ce05895310512c|contains|a533de273105ef51a39d832cde82e12bd418fe27f44c8deb9c31c392938a5148",
+      "entityKey": "771db0d33e724ddd4dce609f84082e761adb40643caf22a6d2af5a6ef159aae2",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/db.ts",
+          "line": 1,
+          "contains": "export function findSession(id: string): { id: string; user: string } {"
+        }
+      ]
+    },
+    {
+      "id": "edge:004",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:lib/session-service.ts",
+      "canonicalIdentity": "edge|4230038305f0144b72bdb405e52e6dce568299d87954792aa3ce05895310512c|contains|b361ff6b6c15f528a91dc0ea4db3ccaeee9ca1b01d8f430e231bf89b46cd4486",
+      "entityKey": "320fa7dba99ffca6686d46e75436fadd761d1ab09379e277c5e17e48bc674a1d",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/session-service.ts",
+          "line": 1,
+          "contains": "import { findSession, insertSession } from \"./db.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:006",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:lib/index.ts",
+      "canonicalIdentity": "edge|4230038305f0144b72bdb405e52e6dce568299d87954792aa3ce05895310512c|contains|34ff7f42b6a6ec37764b56540e377699e12b8c994789dc014fac37c3c622299f",
+      "entityKey": "ca97c60c15617f5d844f5fda876784280f6521ed8550b05c37699ecb3e76aa03",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/index.ts",
+          "line": 1,
+          "contains": "export { createSession, getSession } from \"./session-service.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:008",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:components/user-card.tsx",
+      "canonicalIdentity": "edge|4230038305f0144b72bdb405e52e6dce568299d87954792aa3ce05895310512c|contains|f042b6447b5ac7e775cc780dc68ee4076f90002b7d5cfe7cb642372ede5cf52d",
+      "entityKey": "03cfbec3e9b7af369242a186dcf615eceea3e50569cfb770351ed1779a3fd3b3",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "components/user-card.tsx",
+          "line": 1,
+          "contains": "export function UserCard(props: { name: string }): string {"
+        }
+      ]
+    },
+    {
+      "id": "edge:010",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:app/api/session/route.ts",
+      "canonicalIdentity": "edge|4230038305f0144b72bdb405e52e6dce568299d87954792aa3ce05895310512c|contains|f6cbfc10fcfd9070512894ba6115997613b5dad6efe1a4390228c36a3d3b870c",
+      "entityKey": "2de01e6767db18d4c2786061f9ddf063ddb410f6f5d9ce2ade5aa70c40982981",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/api/session/route.ts",
+          "line": 1,
+          "contains": "import { createSession, getSession } from \"../../../lib/index.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:012",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:app/dashboard/page.tsx",
+      "canonicalIdentity": "edge|4230038305f0144b72bdb405e52e6dce568299d87954792aa3ce05895310512c|contains|8c8fdc7b50a6a6a26e8d66d5412113c507f2c8d1a3915a79969c4fa83f25c63e",
+      "entityKey": "4f2d59360030413d2216bb11e8244eb81fce8ebcbd1c69be23dd261758fe20db",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/dashboard/page.tsx",
+          "line": 1,
+          "contains": "import { UserCard } from \"../../components/user-card.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:014",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:pages/api/legacy.ts",
+      "canonicalIdentity": "edge|4230038305f0144b72bdb405e52e6dce568299d87954792aa3ce05895310512c|contains|8f464ff08d24a27f9477030349f80d1fbe8f9b7885fe129deb5355ebe7b295f8",
+      "entityKey": "c6a6e74173895433f1a0dbc49928ffc90f566b1618a3fbcc81a129aec3057c8f",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/api/legacy.ts",
+          "line": 1,
+          "contains": "import { getSession } from \"../../lib/index.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:016",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:pages/profile.tsx",
+      "canonicalIdentity": "edge|4230038305f0144b72bdb405e52e6dce568299d87954792aa3ce05895310512c|contains|d267a553267edfac5635c68ea4269d613a4140cad0d5fd7108d4549d18ef65f7",
+      "entityKey": "7efb025f12e320cc5d9e18e328c7b40a7dff84188f2c7bf6a0a7836f6ae54fdd",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/profile.tsx",
+          "line": 1,
+          "contains": "import { UserCard } from \"../components/user-card.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:018",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:tests/session-service.test.ts",
+      "canonicalIdentity": "edge|4230038305f0144b72bdb405e52e6dce568299d87954792aa3ce05895310512c|contains|d6210eb34f909a1b56f896be078579665a1cdc556e5512ab4b18305a08c1ea77",
+      "entityKey": "206d6bc116d0f02a275a72bd7a3e55401c87eb6c6753be363945170faee771ec",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/session-service.test.ts",
+          "line": 1,
+          "contains": "import { getSession } from \"../lib/session-service.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:020",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:tests/session-page.test.ts",
+      "canonicalIdentity": "edge|4230038305f0144b72bdb405e52e6dce568299d87954792aa3ce05895310512c|contains|f306f2bf278e097aefa0d3ac5d378174ca87aa0b2668656d562a94f53897bac9",
+      "entityKey": "c10f9bf48c49da99cb14b324c50a973547e1d6bf1d01d401d9f1820a0f0412c5",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/session-page.test.ts",
+          "line": 1,
+          "contains": "declare function test(name: string, fn: () => void): void;"
+        }
+      ]
+    },
+    {
+      "id": "edge:022",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:docs/ADR-003-session.md",
+      "canonicalIdentity": "edge|4230038305f0144b72bdb405e52e6dce568299d87954792aa3ce05895310512c|contains|753e77f6e2e54ca07b87cc116d0e2cde03353ddf58cd2360ea4b3ae66b9304ed",
+      "entityKey": "47eb9a5deb37b03376f4d70a927ab4d79c0efb5f640147605dd88a7c974b7322",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-003-session.md",
+          "line": 1,
+          "contains": "# ADR-003: Keep session access behind the service"
+        }
+      ]
+    },
+    {
+      "id": "edge:023",
+      "src": "file:lib/db.ts",
+      "relation": "contains",
+      "dst": "fn:db.findSession",
+      "canonicalIdentity": "edge|a533de273105ef51a39d832cde82e12bd418fe27f44c8deb9c31c392938a5148|contains|5a68480a16039dc0197aa3d23b57f77328cdec450e4c16d1ab7f89e4e0fbd757",
+      "entityKey": "611a3f0d4ef4e5a6cd1d985f31bbaf28818e99f0e36a3328513a50666d136663",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/db.ts",
+          "line": 1,
+          "contains": "findSession"
+        }
+      ]
+    },
+    {
+      "id": "edge:024",
+      "src": "file:lib/db.ts",
+      "relation": "exports",
+      "dst": "fn:db.findSession",
+      "canonicalIdentity": "edge|a533de273105ef51a39d832cde82e12bd418fe27f44c8deb9c31c392938a5148|exports|5a68480a16039dc0197aa3d23b57f77328cdec450e4c16d1ab7f89e4e0fbd757",
+      "entityKey": "52869f3adbeb0b4a52bd981a0e3467da1fa2c30e47f9f328275f988036fabcc9",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/db.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:025",
+      "src": "file:lib/db.ts",
+      "relation": "contains",
+      "dst": "fn:db.insertSession",
+      "canonicalIdentity": "edge|a533de273105ef51a39d832cde82e12bd418fe27f44c8deb9c31c392938a5148|contains|31754b40315784eae2f2199b2eec8a0c0446580d193d8d9ea2633ca82cf75e13",
+      "entityKey": "2ece54d57b27bcf26033803715d3313daade9cb6e25904d37be5368ca0073f67",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/db.ts",
+          "line": 5,
+          "contains": "insertSession"
+        }
+      ]
+    },
+    {
+      "id": "edge:026",
+      "src": "file:lib/db.ts",
+      "relation": "exports",
+      "dst": "fn:db.insertSession",
+      "canonicalIdentity": "edge|a533de273105ef51a39d832cde82e12bd418fe27f44c8deb9c31c392938a5148|exports|31754b40315784eae2f2199b2eec8a0c0446580d193d8d9ea2633ca82cf75e13",
+      "entityKey": "e0615a5241f2adc35341efdd5418984185afd21a51f5c4c0f22730f858afd042",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/db.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:027",
+      "src": "file:lib/session-service.ts",
+      "relation": "contains",
+      "dst": "fn:service.getSession",
+      "canonicalIdentity": "edge|b361ff6b6c15f528a91dc0ea4db3ccaeee9ca1b01d8f430e231bf89b46cd4486|contains|1a9ac21491ffca29a1582df16a7cd28e19410f10415f5e29474aaa73f6cf4e2a",
+      "entityKey": "bf727f1dcedf4775e24686d612271f0f9ffa9f7dfb9051a4b2f6d8724b79ea46",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/session-service.ts",
+          "line": 3,
+          "contains": "getSession"
+        }
+      ]
+    },
+    {
+      "id": "edge:028",
+      "src": "file:lib/session-service.ts",
+      "relation": "exports",
+      "dst": "fn:service.getSession",
+      "canonicalIdentity": "edge|b361ff6b6c15f528a91dc0ea4db3ccaeee9ca1b01d8f430e231bf89b46cd4486|exports|1a9ac21491ffca29a1582df16a7cd28e19410f10415f5e29474aaa73f6cf4e2a",
+      "entityKey": "92496a3615062119d509eb01667f4b0bf5b2aa00f744a0a9513d687cd02d86d6",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/session-service.ts",
+          "line": 3,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:029",
+      "src": "file:lib/session-service.ts",
+      "relation": "contains",
+      "dst": "fn:service.createSession",
+      "canonicalIdentity": "edge|b361ff6b6c15f528a91dc0ea4db3ccaeee9ca1b01d8f430e231bf89b46cd4486|contains|a8a0b797c9eb3546a60b9dfa54a9451e1eeae8f2dc902c664bf6cec4fec5f5c9",
+      "entityKey": "d6269fba446c0f758193242016bd21c41f039c40b3ec8627f7cf0d83a253d152",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/session-service.ts",
+          "line": 7,
+          "contains": "createSession"
+        }
+      ]
+    },
+    {
+      "id": "edge:030",
+      "src": "file:lib/session-service.ts",
+      "relation": "exports",
+      "dst": "fn:service.createSession",
+      "canonicalIdentity": "edge|b361ff6b6c15f528a91dc0ea4db3ccaeee9ca1b01d8f430e231bf89b46cd4486|exports|a8a0b797c9eb3546a60b9dfa54a9451e1eeae8f2dc902c664bf6cec4fec5f5c9",
+      "entityKey": "9a6f71ed9359f02342a97bcb3125288c8c8307558c5818fe947d455cffac66fb",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/session-service.ts",
+          "line": 3,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:031",
+      "src": "file:components/user-card.tsx",
+      "relation": "contains",
+      "dst": "fn:component.UserCard",
+      "canonicalIdentity": "edge|f042b6447b5ac7e775cc780dc68ee4076f90002b7d5cfe7cb642372ede5cf52d|contains|edac555260ed264de5aa160088b7f1941beab73b9ecd850eef9bd280e4334f1b",
+      "entityKey": "d7ab7fff307b2a8f9c62139d513ec861277723f3866d182c4a1534941d7662ec",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "components/user-card.tsx",
+          "line": 1,
+          "contains": "UserCard"
+        }
+      ]
+    },
+    {
+      "id": "edge:032",
+      "src": "file:components/user-card.tsx",
+      "relation": "exports",
+      "dst": "fn:component.UserCard",
+      "canonicalIdentity": "edge|f042b6447b5ac7e775cc780dc68ee4076f90002b7d5cfe7cb642372ede5cf52d|exports|edac555260ed264de5aa160088b7f1941beab73b9ecd850eef9bd280e4334f1b",
+      "entityKey": "460083a2536b796748c1d9b0ee5c833c985db4059ca093d21514c77820842186",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "components/user-card.tsx",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:033",
+      "src": "file:app/api/session/route.ts",
+      "relation": "contains",
+      "dst": "fn:app.GET",
+      "canonicalIdentity": "edge|f6cbfc10fcfd9070512894ba6115997613b5dad6efe1a4390228c36a3d3b870c|contains|177dbfd9d4d9e6fa67dfceb85963044cd016b66c622cf368f3e9cc0eba601b38",
+      "entityKey": "06c90d11a0cf04d3faf990d563c8abbeeb4ded5b4fdc949d2081a1671b7e0aa3",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/api/session/route.ts",
+          "line": 3,
+          "contains": "GET"
+        }
+      ]
+    },
+    {
+      "id": "edge:034",
+      "src": "file:app/api/session/route.ts",
+      "relation": "exports",
+      "dst": "fn:app.GET",
+      "canonicalIdentity": "edge|f6cbfc10fcfd9070512894ba6115997613b5dad6efe1a4390228c36a3d3b870c|exports|177dbfd9d4d9e6fa67dfceb85963044cd016b66c622cf368f3e9cc0eba601b38",
+      "entityKey": "16564700870f288024da686b0c8e18c22dcee57469658e99537efde26c251472",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/api/session/route.ts",
+          "line": 3,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:035",
+      "src": "file:app/api/session/route.ts",
+      "relation": "contains",
+      "dst": "fn:app.POST",
+      "canonicalIdentity": "edge|f6cbfc10fcfd9070512894ba6115997613b5dad6efe1a4390228c36a3d3b870c|contains|054b772f7a7de02a15a2fb048e57b4f4027c9f4478875304883a97d1da06414e",
+      "entityKey": "0eb01309c0b27cf485673e0dddc90d357d5959a53a8a10c1aa6d8354ae4a3390",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/api/session/route.ts",
+          "line": 7,
+          "contains": "POST"
+        }
+      ]
+    },
+    {
+      "id": "edge:036",
+      "src": "file:app/api/session/route.ts",
+      "relation": "exports",
+      "dst": "fn:app.POST",
+      "canonicalIdentity": "edge|f6cbfc10fcfd9070512894ba6115997613b5dad6efe1a4390228c36a3d3b870c|exports|054b772f7a7de02a15a2fb048e57b4f4027c9f4478875304883a97d1da06414e",
+      "entityKey": "2a764062abb2b37196c8714d1defa87c8a67f122aaf115969e4f2cb8f546ceed",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/api/session/route.ts",
+          "line": 3,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:037",
+      "src": "file:app/dashboard/page.tsx",
+      "relation": "contains",
+      "dst": "fn:page.DashboardPage",
+      "canonicalIdentity": "edge|8c8fdc7b50a6a6a26e8d66d5412113c507f2c8d1a3915a79969c4fa83f25c63e|contains|7bef02ce1e97733ff57128c6de78116b1fcffe03c9f57e9d80c126eefffe5587",
+      "entityKey": "07ee6d50ba42d632afeda05f78ddaf79d6a3fb65e02d73491bb7a001e5fc1b06",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/dashboard/page.tsx",
+          "line": 4,
+          "contains": "DashboardPage"
+        }
+      ]
+    },
+    {
+      "id": "edge:038",
+      "src": "file:app/dashboard/page.tsx",
+      "relation": "exports",
+      "dst": "fn:page.DashboardPage",
+      "canonicalIdentity": "edge|8c8fdc7b50a6a6a26e8d66d5412113c507f2c8d1a3915a79969c4fa83f25c63e|exports|7bef02ce1e97733ff57128c6de78116b1fcffe03c9f57e9d80c126eefffe5587",
+      "entityKey": "3bdfe55da319657befc24ff385837f363a422da97cd86057d11b8f48bfcb2284",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/dashboard/page.tsx",
+          "line": 4,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:039",
+      "src": "file:pages/api/legacy.ts",
+      "relation": "contains",
+      "dst": "fn:legacy.legacyHandler",
+      "canonicalIdentity": "edge|8f464ff08d24a27f9477030349f80d1fbe8f9b7885fe129deb5355ebe7b295f8|contains|013bdcc78c73e14d2c2b3baf64575344224ba5287fa09eaea2d70da8db9d7dd4",
+      "entityKey": "b543a6cb26329cc95618689c1368d2b5b9484d8f79a64b7ff02ec1bab52facb2",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/api/legacy.ts",
+          "line": 3,
+          "contains": "legacyHandler"
+        }
+      ]
+    },
+    {
+      "id": "edge:040",
+      "src": "file:pages/api/legacy.ts",
+      "relation": "exports",
+      "dst": "fn:legacy.legacyHandler",
+      "canonicalIdentity": "edge|8f464ff08d24a27f9477030349f80d1fbe8f9b7885fe129deb5355ebe7b295f8|exports|013bdcc78c73e14d2c2b3baf64575344224ba5287fa09eaea2d70da8db9d7dd4",
+      "entityKey": "21c1a6a2cc7c94ac9a39e3f43bb676b4e14935706c08ce8846378228fa773681",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/api/legacy.ts",
+          "line": 3,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:041",
+      "src": "file:pages/profile.tsx",
+      "relation": "contains",
+      "dst": "fn:page.ProfilePage",
+      "canonicalIdentity": "edge|d267a553267edfac5635c68ea4269d613a4140cad0d5fd7108d4549d18ef65f7|contains|5c40fba7e39283523815e4b11f4001cfd4451cba868b8da1c7283d2720755924",
+      "entityKey": "9051af644caede846e431faf5011b56b312bfd962f0a33c2793b3f488cd112c1",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/profile.tsx",
+          "line": 4,
+          "contains": "ProfilePage"
+        }
+      ]
+    },
+    {
+      "id": "edge:042",
+      "src": "file:pages/profile.tsx",
+      "relation": "exports",
+      "dst": "fn:page.ProfilePage",
+      "canonicalIdentity": "edge|d267a553267edfac5635c68ea4269d613a4140cad0d5fd7108d4549d18ef65f7|exports|5c40fba7e39283523815e4b11f4001cfd4451cba868b8da1c7283d2720755924",
+      "entityKey": "43c012320a69df711c32365fcea07af4ee82198b037810050d342ea5b8bf2fed",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/profile.tsx",
+          "line": 4,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:043",
+      "src": "file:app/api/session/route.ts",
+      "relation": "contains",
+      "dst": "route:app.get-session",
+      "canonicalIdentity": "edge|f6cbfc10fcfd9070512894ba6115997613b5dad6efe1a4390228c36a3d3b870c|contains|abb25b0cda049ff95765f1b14794ee14c9c81d8621d753378c69b697e11924e1",
+      "entityKey": "4f2bcf4a2e95ed7d4be1456a38e01ed8b9b23e1a06a769704127d61ecb978367",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/api/session/route.ts",
+          "line": 3,
+          "contains": "export async function GET"
+        }
+      ]
+    },
+    {
+      "id": "edge:044",
+      "src": "file:app/api/session/route.ts",
+      "relation": "contains",
+      "dst": "route:app.post-session",
+      "canonicalIdentity": "edge|f6cbfc10fcfd9070512894ba6115997613b5dad6efe1a4390228c36a3d3b870c|contains|eece0698e9cb9169821fef1ce773499550364ef1c8cc29188b1b7dd3a1dd1672",
+      "entityKey": "ec38adf5ac258aa02a82ae460b4c38fb181232a3634e48ed48ec13d97d957868",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/api/session/route.ts",
+          "line": 7,
+          "contains": "export async function POST"
+        }
+      ]
+    },
+    {
+      "id": "edge:045",
+      "src": "file:app/dashboard/page.tsx",
+      "relation": "contains",
+      "dst": "route:app.dashboard",
+      "canonicalIdentity": "edge|8c8fdc7b50a6a6a26e8d66d5412113c507f2c8d1a3915a79969c4fa83f25c63e|contains|7d3bcab547bb7215ffb451c5ab586fd7c5c1c77fec7b563450fe29d68efbd7b2",
+      "entityKey": "88fabea43eb30c3015a2ec29b597da0c5fa0f2e5f37410fd0497d2180299ed74",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/dashboard/page.tsx",
+          "line": 4,
+          "contains": "export default function DashboardPage"
+        }
+      ]
+    },
+    {
+      "id": "edge:046",
+      "src": "file:pages/api/legacy.ts",
+      "relation": "contains",
+      "dst": "route:pages.legacy",
+      "canonicalIdentity": "edge|8f464ff08d24a27f9477030349f80d1fbe8f9b7885fe129deb5355ebe7b295f8|contains|40ff371ef03996e3dad290f72c4ef3161895e58246c3312dd745bb6cdaa76aed",
+      "entityKey": "86fd34a1cd169a729e752c1d1137657db4f4cdb3b10c513be3ab37ff61658829",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/api/legacy.ts",
+          "line": 3,
+          "contains": "export default function legacyHandler"
+        }
+      ]
+    },
+    {
+      "id": "edge:047",
+      "src": "file:pages/profile.tsx",
+      "relation": "contains",
+      "dst": "route:pages.profile",
+      "canonicalIdentity": "edge|d267a553267edfac5635c68ea4269d613a4140cad0d5fd7108d4549d18ef65f7|contains|44172299db5663c0f5f0fdc2eecca449147fdf1001e2fe9e16dcc3e2b2ef71bb",
+      "entityKey": "05fcc3ddffed12028d6ef1ef739ab9e00e45d815053d394bae4770da4376299a",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/profile.tsx",
+          "line": 4,
+          "contains": "export default function ProfilePage"
+        }
+      ]
+    },
+    {
+      "id": "edge:048",
+      "src": "file:tests/session-service.test.ts",
+      "relation": "contains",
+      "dst": "test:session-service",
+      "canonicalIdentity": "edge|d6210eb34f909a1b56f896be078579665a1cdc556e5512ab4b18305a08c1ea77|contains|7e40e1d8ef7d895277ab4aacae5df507c9cbd0a24c47e349001dfd99f8640054",
+      "entityKey": "10b4a0332fd9bbb55581502af398f5ec975e80179674c7fb375c4c96246614ca",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/session-service.test.ts",
+          "line": 5,
+          "contains": "getSession reads the repository"
+        }
+      ]
+    },
+    {
+      "id": "edge:049",
+      "src": "file:tests/session-page.test.ts",
+      "relation": "contains",
+      "dst": "test:session-page",
+      "canonicalIdentity": "edge|f306f2bf278e097aefa0d3ac5d378174ca87aa0b2668656d562a94f53897bac9|contains|c62e77631bc8c21c55d2dbdd5af4589ee9b42762593b6ee0b9a8ff90617560fd",
+      "entityKey": "ff0b2247fe36ac5d255b4db5cf637f277cd03179578aa354cf92753699484d76",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/session-page.test.ts",
+          "line": 3,
+          "contains": "session page renders"
+        }
+      ]
+    },
+    {
+      "id": "edge:050",
+      "src": "file:docs/ADR-003-session.md",
+      "relation": "contains",
+      "dst": "adr:session",
+      "canonicalIdentity": "edge|753e77f6e2e54ca07b87cc116d0e2cde03353ddf58cd2360ea4b3ae66b9304ed|contains|84b35ffde7cff9c0ec6e68198b6734f951d1c904bdb99f442cf31557e5db0846",
+      "entityKey": "9b22f1d51e1b37c186a009528dd59f7f693df274b18eee64430b494a81d15686",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-003-session.md",
+          "line": 1,
+          "contains": "ADR-003: Keep session access behind the service"
+        }
+      ]
+    },
+    {
+      "id": "edge:051",
+      "src": "file:lib/session-service.ts",
+      "relation": "imports",
+      "dst": "file:lib/db.ts",
+      "canonicalIdentity": "edge|b361ff6b6c15f528a91dc0ea4db3ccaeee9ca1b01d8f430e231bf89b46cd4486|imports|a533de273105ef51a39d832cde82e12bd418fe27f44c8deb9c31c392938a5148",
+      "entityKey": "923ea236b11cf9460d6a61aca60d8015bfe0671fce265f13fb6337663ad4b14b",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/session-service.ts",
+          "line": 1,
+          "contains": "./db.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:052",
+      "src": "file:lib/index.ts",
+      "relation": "imports",
+      "dst": "file:lib/session-service.ts",
+      "canonicalIdentity": "edge|34ff7f42b6a6ec37764b56540e377699e12b8c994789dc014fac37c3c622299f|imports|b361ff6b6c15f528a91dc0ea4db3ccaeee9ca1b01d8f430e231bf89b46cd4486",
+      "entityKey": "96f4ef066c78d61852a8673af6177cb0abb243e9f746e8f0a1cad5accf2d803f",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/index.ts",
+          "line": 1,
+          "contains": "./session-service.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:053",
+      "src": "file:app/api/session/route.ts",
+      "relation": "imports",
+      "dst": "file:lib/index.ts",
+      "canonicalIdentity": "edge|f6cbfc10fcfd9070512894ba6115997613b5dad6efe1a4390228c36a3d3b870c|imports|34ff7f42b6a6ec37764b56540e377699e12b8c994789dc014fac37c3c622299f",
+      "entityKey": "21fa9576db19b347ffcb606850a702ca6d07979fd309e268d6ac1730cf1c8128",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/api/session/route.ts",
+          "line": 1,
+          "contains": "../../../lib/index.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:054",
+      "src": "file:app/dashboard/page.tsx",
+      "relation": "imports",
+      "dst": "file:components/user-card.tsx",
+      "canonicalIdentity": "edge|8c8fdc7b50a6a6a26e8d66d5412113c507f2c8d1a3915a79969c4fa83f25c63e|imports|f042b6447b5ac7e775cc780dc68ee4076f90002b7d5cfe7cb642372ede5cf52d",
+      "entityKey": "6a39e28d35d06d55965ac63908bff9f22a63ea6eae5b34b47d84029e452702f5",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/dashboard/page.tsx",
+          "line": 1,
+          "contains": "../../components/user-card.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:055",
+      "src": "file:app/dashboard/page.tsx",
+      "relation": "imports",
+      "dst": "file:lib/index.ts",
+      "canonicalIdentity": "edge|8c8fdc7b50a6a6a26e8d66d5412113c507f2c8d1a3915a79969c4fa83f25c63e|imports|34ff7f42b6a6ec37764b56540e377699e12b8c994789dc014fac37c3c622299f",
+      "entityKey": "6b47fda7a44ad4d6a9bad04a0cbc223181143fb12bba889a20bb3888661d159e",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/dashboard/page.tsx",
+          "line": 2,
+          "contains": "../../lib/index.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:056",
+      "src": "file:pages/api/legacy.ts",
+      "relation": "imports",
+      "dst": "file:lib/index.ts",
+      "canonicalIdentity": "edge|8f464ff08d24a27f9477030349f80d1fbe8f9b7885fe129deb5355ebe7b295f8|imports|34ff7f42b6a6ec37764b56540e377699e12b8c994789dc014fac37c3c622299f",
+      "entityKey": "dbf5d330ad068d2838c8b022b8cb5a60d0c2bf310d5e838a197dc660fe298367",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/api/legacy.ts",
+          "line": 1,
+          "contains": "../../lib/index.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:057",
+      "src": "file:pages/profile.tsx",
+      "relation": "imports",
+      "dst": "file:components/user-card.tsx",
+      "canonicalIdentity": "edge|d267a553267edfac5635c68ea4269d613a4140cad0d5fd7108d4549d18ef65f7|imports|f042b6447b5ac7e775cc780dc68ee4076f90002b7d5cfe7cb642372ede5cf52d",
+      "entityKey": "4a02eecf2f9e4807c74d8fb299b6128919d5901089f7145936377c41f2a904f1",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/profile.tsx",
+          "line": 1,
+          "contains": "../components/user-card.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:058",
+      "src": "file:pages/profile.tsx",
+      "relation": "imports",
+      "dst": "file:lib/index.ts",
+      "canonicalIdentity": "edge|d267a553267edfac5635c68ea4269d613a4140cad0d5fd7108d4549d18ef65f7|imports|34ff7f42b6a6ec37764b56540e377699e12b8c994789dc014fac37c3c622299f",
+      "entityKey": "1e621e67abfd03ec6f4c65409f4e1c5c3696c664d0a02fd97b12a92403a6b3a2",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/profile.tsx",
+          "line": 2,
+          "contains": "../lib/index.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:059",
+      "src": "file:tests/session-service.test.ts",
+      "relation": "imports",
+      "dst": "file:lib/session-service.ts",
+      "canonicalIdentity": "edge|d6210eb34f909a1b56f896be078579665a1cdc556e5512ab4b18305a08c1ea77|imports|b361ff6b6c15f528a91dc0ea4db3ccaeee9ca1b01d8f430e231bf89b46cd4486",
+      "entityKey": "38ba972c6a8cb3a1db9a57a0c46322ac2de9300a3c0da36cddb5a0fd12c6a1ce",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/session-service.test.ts",
+          "line": 1,
+          "contains": "../lib/session-service.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:060",
+      "src": "file:lib/index.ts",
+      "relation": "exports",
+      "dst": "fn:service.createSession",
+      "canonicalIdentity": "edge|34ff7f42b6a6ec37764b56540e377699e12b8c994789dc014fac37c3c622299f|exports|a8a0b797c9eb3546a60b9dfa54a9451e1eeae8f2dc902c664bf6cec4fec5f5c9",
+      "entityKey": "6c73d7bfd9bdf3687ea50283afb2ae3b7df4d5cbf4eea320aa58c5e489d5f3a0",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/index.ts",
+          "line": 1,
+          "contains": "export {"
+        }
+      ],
+      "notes": [
+        "Barrel re-export."
+      ]
+    },
+    {
+      "id": "edge:061",
+      "src": "file:lib/index.ts",
+      "relation": "exports",
+      "dst": "fn:service.getSession",
+      "canonicalIdentity": "edge|34ff7f42b6a6ec37764b56540e377699e12b8c994789dc014fac37c3c622299f|exports|1a9ac21491ffca29a1582df16a7cd28e19410f10415f5e29474aaa73f6cf4e2a",
+      "entityKey": "b3448dacd76a2880709c3e0c881bd478a2a0f5ba75ef93b2e9810e036aa8b15b",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/index.ts",
+          "line": 1,
+          "contains": "export {"
+        }
+      ],
+      "notes": [
+        "Barrel re-export."
+      ]
+    },
+    {
+      "id": "edge:062",
+      "src": "fn:service.getSession",
+      "relation": "calls",
+      "dst": "fn:db.findSession",
+      "canonicalIdentity": "edge|1a9ac21491ffca29a1582df16a7cd28e19410f10415f5e29474aaa73f6cf4e2a|calls|5a68480a16039dc0197aa3d23b57f77328cdec450e4c16d1ab7f89e4e0fbd757",
+      "entityKey": "b3c708241586cf91c0799c544c729bd2ed43420d4e18465217a9a86de63e9721",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/session-service.ts",
+          "line": 4,
+          "contains": "findSession(id)"
+        }
+      ]
+    },
+    {
+      "id": "edge:063",
+      "src": "fn:service.createSession",
+      "relation": "calls",
+      "dst": "fn:db.insertSession",
+      "canonicalIdentity": "edge|a8a0b797c9eb3546a60b9dfa54a9451e1eeae8f2dc902c664bf6cec4fec5f5c9|calls|31754b40315784eae2f2199b2eec8a0c0446580d193d8d9ea2633ca82cf75e13",
+      "entityKey": "3a55268017c80d843f3e7fe619846b1493b6d02acc07cce24e8110e4fbaee072",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "lib/session-service.ts",
+          "line": 8,
+          "contains": "insertSession(id)"
+        }
+      ]
+    },
+    {
+      "id": "edge:064",
+      "src": "fn:app.GET",
+      "relation": "calls",
+      "dst": "fn:service.getSession",
+      "canonicalIdentity": "edge|177dbfd9d4d9e6fa67dfceb85963044cd016b66c622cf368f3e9cc0eba601b38|calls|1a9ac21491ffca29a1582df16a7cd28e19410f10415f5e29474aaa73f6cf4e2a",
+      "entityKey": "a11d1595db66cff8ec8872aec000436b9172aee0af55e4b2e121a8ded686b621",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/api/session/route.ts",
+          "line": 4,
+          "contains": "getSession(\"current\")"
+        }
+      ]
+    },
+    {
+      "id": "edge:065",
+      "src": "fn:app.POST",
+      "relation": "calls",
+      "dst": "fn:service.createSession",
+      "canonicalIdentity": "edge|054b772f7a7de02a15a2fb048e57b4f4027c9f4478875304883a97d1da06414e|calls|a8a0b797c9eb3546a60b9dfa54a9451e1eeae8f2dc902c664bf6cec4fec5f5c9",
+      "entityKey": "1fce5a47ff4777689906cb31be238562319d27a2e7337cb38da5b1be1af4d9cc",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/api/session/route.ts",
+          "line": 8,
+          "contains": "createSession(\"current\")"
+        }
+      ]
+    },
+    {
+      "id": "edge:066",
+      "src": "fn:page.DashboardPage",
+      "relation": "calls",
+      "dst": "fn:service.getSession",
+      "canonicalIdentity": "edge|7bef02ce1e97733ff57128c6de78116b1fcffe03c9f57e9d80c126eefffe5587|calls|1a9ac21491ffca29a1582df16a7cd28e19410f10415f5e29474aaa73f6cf4e2a",
+      "entityKey": "bbf226c5baf1d0e235f84e99a6557beb61cc2a84f097f865d569a85027941faa",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/dashboard/page.tsx",
+          "line": 5,
+          "contains": "getSession(\"current\")"
+        }
+      ]
+    },
+    {
+      "id": "edge:067",
+      "src": "fn:page.DashboardPage",
+      "relation": "calls",
+      "dst": "fn:component.UserCard",
+      "canonicalIdentity": "edge|7bef02ce1e97733ff57128c6de78116b1fcffe03c9f57e9d80c126eefffe5587|calls|edac555260ed264de5aa160088b7f1941beab73b9ecd850eef9bd280e4334f1b",
+      "entityKey": "f29b99279e335d0a2c1d5e04f05c74c3a3b590e9b7f7c5b46b350b616a229a80",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/dashboard/page.tsx",
+          "line": 6,
+          "contains": "UserCard({"
+        }
+      ]
+    },
+    {
+      "id": "edge:068",
+      "src": "fn:legacy.legacyHandler",
+      "relation": "calls",
+      "dst": "fn:service.getSession",
+      "canonicalIdentity": "edge|013bdcc78c73e14d2c2b3baf64575344224ba5287fa09eaea2d70da8db9d7dd4|calls|1a9ac21491ffca29a1582df16a7cd28e19410f10415f5e29474aaa73f6cf4e2a",
+      "entityKey": "3e7bfff270022b51a1aa836e3e774744a15f4b2ead95b5361e8f4ef32e747cd1",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/api/legacy.ts",
+          "line": 4,
+          "contains": "getSession(\"legacy\")"
+        }
+      ]
+    },
+    {
+      "id": "edge:069",
+      "src": "fn:page.ProfilePage",
+      "relation": "calls",
+      "dst": "fn:service.getSession",
+      "canonicalIdentity": "edge|5c40fba7e39283523815e4b11f4001cfd4451cba868b8da1c7283d2720755924|calls|1a9ac21491ffca29a1582df16a7cd28e19410f10415f5e29474aaa73f6cf4e2a",
+      "entityKey": "1600a8bbab4dfa38f21fd8a6c209d6a94538a98eb0ac1554d86146bf9a46dde9",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/profile.tsx",
+          "line": 5,
+          "contains": "getSession(\"profile\")"
+        }
+      ]
+    },
+    {
+      "id": "edge:070",
+      "src": "fn:page.ProfilePage",
+      "relation": "calls",
+      "dst": "fn:component.UserCard",
+      "canonicalIdentity": "edge|5c40fba7e39283523815e4b11f4001cfd4451cba868b8da1c7283d2720755924|calls|edac555260ed264de5aa160088b7f1941beab73b9ecd850eef9bd280e4334f1b",
+      "entityKey": "5450419b7af3b80f1a38dc11ea5804a3ace15bc066f1ea6e2337f4e5ae9e63d6",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/profile.tsx",
+          "line": 6,
+          "contains": "UserCard({"
+        }
+      ]
+    },
+    {
+      "id": "edge:071",
+      "src": "route:app.get-session",
+      "relation": "routes_to",
+      "dst": "fn:app.GET",
+      "canonicalIdentity": "edge|abb25b0cda049ff95765f1b14794ee14c9c81d8621d753378c69b697e11924e1|routes_to|177dbfd9d4d9e6fa67dfceb85963044cd016b66c622cf368f3e9cc0eba601b38",
+      "entityKey": "c059dbe43d6c768fb1e3a556a8520728f802365962696e790a5443468bf7f7cf",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/api/session/route.ts",
+          "line": 3,
+          "contains": "export async function GET"
+        }
+      ]
+    },
+    {
+      "id": "edge:072",
+      "src": "route:app.post-session",
+      "relation": "routes_to",
+      "dst": "fn:app.POST",
+      "canonicalIdentity": "edge|eece0698e9cb9169821fef1ce773499550364ef1c8cc29188b1b7dd3a1dd1672|routes_to|054b772f7a7de02a15a2fb048e57b4f4027c9f4478875304883a97d1da06414e",
+      "entityKey": "ad8d4bda954ea57379f989b5049e2ea63424b89ce0b96b3a58d52c26f47e7552",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/api/session/route.ts",
+          "line": 7,
+          "contains": "export async function POST"
+        }
+      ]
+    },
+    {
+      "id": "edge:073",
+      "src": "route:app.dashboard",
+      "relation": "routes_to",
+      "dst": "fn:page.DashboardPage",
+      "canonicalIdentity": "edge|7d3bcab547bb7215ffb451c5ab586fd7c5c1c77fec7b563450fe29d68efbd7b2|routes_to|7bef02ce1e97733ff57128c6de78116b1fcffe03c9f57e9d80c126eefffe5587",
+      "entityKey": "42551a87774d517041e68fec73779a8b4088d0585aa103d9f8b3cb55c0f850cd",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "app/dashboard/page.tsx",
+          "line": 4,
+          "contains": "export default function DashboardPage"
+        }
+      ]
+    },
+    {
+      "id": "edge:074",
+      "src": "route:pages.legacy",
+      "relation": "routes_to",
+      "dst": "fn:legacy.legacyHandler",
+      "canonicalIdentity": "edge|40ff371ef03996e3dad290f72c4ef3161895e58246c3312dd745bb6cdaa76aed|routes_to|013bdcc78c73e14d2c2b3baf64575344224ba5287fa09eaea2d70da8db9d7dd4",
+      "entityKey": "2291320caa0655f257304e232616255959ec82535c3c6a12669e4c90cf3c4056",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/api/legacy.ts",
+          "line": 3,
+          "contains": "export default function legacyHandler"
+        }
+      ]
+    },
+    {
+      "id": "edge:075",
+      "src": "route:pages.profile",
+      "relation": "routes_to",
+      "dst": "fn:page.ProfilePage",
+      "canonicalIdentity": "edge|44172299db5663c0f5f0fdc2eecca449147fdf1001e2fe9e16dcc3e2b2ef71bb|routes_to|5c40fba7e39283523815e4b11f4001cfd4451cba868b8da1c7283d2720755924",
+      "entityKey": "aa0256d41a99f3169f4fb2f914c049182a8e3deaee465516dc9940161c964589",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "pages/profile.tsx",
+          "line": 4,
+          "contains": "export default function ProfilePage"
+        }
+      ]
+    },
+    {
+      "id": "edge:076",
+      "src": "test:session-service",
+      "relation": "tests",
+      "dst": "fn:service.getSession",
+      "canonicalIdentity": "edge|7e40e1d8ef7d895277ab4aacae5df507c9cbd0a24c47e349001dfd99f8640054|tests|1a9ac21491ffca29a1582df16a7cd28e19410f10415f5e29474aaa73f6cf4e2a",
+      "entityKey": "4aff3dcee3782946f94465813b00668e20cab656b36d766ce0780d0d40f0db34",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/session-service.test.ts",
+          "line": 6,
+          "contains": "getSession(\"test\")"
+        }
+      ]
+    },
+    {
+      "id": "edge:077",
+      "src": "adr:session",
+      "relation": "documents",
+      "dst": "file:app/api/session/route.ts",
+      "canonicalIdentity": "edge|84b35ffde7cff9c0ec6e68198b6734f951d1c904bdb99f442cf31557e5db0846|documents|f6cbfc10fcfd9070512894ba6115997613b5dad6efe1a4390228c36a3d3b870c",
+      "entityKey": "4c57bfda8b39c438288c81b1ad24fae31fbdbb0c61e76d9a118a43939f98f3fc",
+      "origin": "doc",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-003-session.md",
+          "line": 5,
+          "contains": "`app/api/session/route.ts`"
+        }
+      ]
+    },
+    {
+      "id": "edge:078",
+      "src": "adr:session",
+      "relation": "documents",
+      "dst": "fn:service.getSession",
+      "canonicalIdentity": "edge|84b35ffde7cff9c0ec6e68198b6734f951d1c904bdb99f442cf31557e5db0846|documents|1a9ac21491ffca29a1582df16a7cd28e19410f10415f5e29474aaa73f6cf4e2a",
+      "entityKey": "557e39c21fcd0547bca76f9d1ef3679e946fd9de769a9d3ad9eb1af96d8cd32a",
+      "origin": "doc",
+      "confidence": "likely",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-003-session.md",
+          "line": 6,
+          "contains": "`getSession`"
+        }
+      ]
+    },
+    {
+      "id": "edge:079",
+      "src": "adr:session",
+      "relation": "documents",
+      "dst": "fn:page.DashboardPage",
+      "canonicalIdentity": "edge|84b35ffde7cff9c0ec6e68198b6734f951d1c904bdb99f442cf31557e5db0846|documents|7bef02ce1e97733ff57128c6de78116b1fcffe03c9f57e9d80c126eefffe5587",
+      "entityKey": "035a2b56ed5530d1397b6ad1f0f3cfb44149b07cd1fc253cd88c3cc88646a994",
+      "origin": "doc",
+      "confidence": "likely",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-003-session.md",
+          "line": 7,
+          "contains": "`DashboardPage`"
+        }
+      ]
+    }
+  ],
+  "expectedBoundaryViolations": [],
+  "excludedCandidates": [
+    {
+      "kind": "document-link",
+      "file": "docs/ADR-003-session.md",
+      "text": "GET",
+      "reason": "Generic route-handler name; deliberately excluded from unique-symbol linking."
+    },
+    {
+      "kind": "document-link",
+      "file": "docs/ADR-003-session.md",
+      "text": "lib/cache.ts",
+      "reason": "Path does not resolve."
+    },
+    {
+      "kind": "test-link",
+      "file": "tests/session-page.test.ts",
+      "test": "session page renders",
+      "reason": "No static import or reference to a page or route; no tests edge."
+    }
+  ]
+}

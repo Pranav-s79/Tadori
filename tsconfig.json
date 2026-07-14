@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "packages/core/src/**/*.ts",
+    "packages/core/test/**/*.ts",
+    "packages/store/src/**/*.ts",
+    "packages/store/test/**/*.ts",
+    "packages/indexer/src/**/*.ts",
+    "packages/indexer/test/**/*.ts",
+    "packages/harness/src/**/*.ts",
+    "packages/harness/test/**/*.ts",
+    "vitest.config.ts",
+    "eslint.config.js"
+  ],
+  "exclude": ["node_modules", "packages/fixtures"]
+}

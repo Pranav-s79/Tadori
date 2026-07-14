@@ -1,0 +1,9 @@
+# Union-applied with .gitignore and built-in exclusions (frozen corrections §8).
+node_modules/
+dist/
+build/
+coverage/
+.git/
+.tadori/
+*.min.js
+*.map

@@ -1,0 +1,556 @@
+{
+  "schemaVersion": "1.0.0",
+  "fixtureId": "diff-coalescing",
+  "baseSnapshot": "before",
+  "headSnapshot": "after",
+  "addedNodes": [
+    {
+      "id": "file:src/helpers/helper.ts",
+      "kind": "file",
+      "qualifiedName": "src/helpers/helper.ts",
+      "displayName": "helper.ts",
+      "canonicalIdentity": "node|file|src/helpers/helper.ts",
+      "entityKey": "03a43d86cb4a6d6c4d441644800163d1d541e4acef6d8b28f991efd102a29d58",
+      "file": "src/helpers/helper.ts",
+      "exported": false,
+      "bodyHash": "f8c938469130d4b334a313898ec600256a5b9506df3c7f145195d485fd452481"
+    },
+    {
+      "id": "method:formatter.renderValue",
+      "kind": "method",
+      "qualifiedName": "src/formatter.ts.Formatter.renderValue",
+      "displayName": "renderValue",
+      "canonicalIdentity": "node|method|src/formatter.ts.Formatter.renderValue",
+      "entityKey": "31ca83a522692f8fcdee8c05cd8e6e6f6a9fa5c616ef2309a49fc920f8518d11",
+      "file": "src/formatter.ts",
+      "exported": false,
+      "bodyHash": "9354bf5c0bd818237932b1a5585ebbfe1b0be901cb570e9b78a71f3860160ab4"
+    },
+    {
+      "id": "fn:helper.normalize.new",
+      "kind": "function",
+      "qualifiedName": "src/helpers/helper.ts.normalize",
+      "displayName": "normalize",
+      "canonicalIdentity": "node|function|src/helpers/helper.ts.normalize",
+      "entityKey": "63b0a4bca23d9aca91cf0b13e909683bb412dd8608d4b709e5bffdcc7fdde313",
+      "file": "src/helpers/helper.ts",
+      "exported": true,
+      "bodyHash": "0e22fe4531b527c419a37773660372d2566b2586e730a994ce6440e769c9d3e5"
+    }
+  ],
+  "removedNodes": [
+    {
+      "id": "fn:helper.normalize.old",
+      "kind": "function",
+      "qualifiedName": "src/legacy/helper.ts.normalize",
+      "displayName": "normalize",
+      "canonicalIdentity": "node|function|src/legacy/helper.ts.normalize",
+      "entityKey": "1da72e21f224ebbbe48aa4b7963b37d3970d7330282b551028fa00cce5083aa6",
+      "file": "src/legacy/helper.ts",
+      "exported": true,
+      "bodyHash": "0e22fe4531b527c419a37773660372d2566b2586e730a994ce6440e769c9d3e5"
+    },
+    {
+      "id": "method:formatter.formatValue",
+      "kind": "method",
+      "qualifiedName": "src/formatter.ts.Formatter.formatValue",
+      "displayName": "formatValue",
+      "canonicalIdentity": "node|method|src/formatter.ts.Formatter.formatValue",
+      "entityKey": "51e26ca25d7e0b4afa39801858aa4c4bbc6cdc55c08fb154e44d601564b1069d",
+      "file": "src/formatter.ts",
+      "exported": false,
+      "bodyHash": "9354bf5c0bd818237932b1a5585ebbfe1b0be901cb570e9b78a71f3860160ab4"
+    },
+    {
+      "id": "file:src/legacy/helper.ts",
+      "kind": "file",
+      "qualifiedName": "src/legacy/helper.ts",
+      "displayName": "helper.ts",
+      "canonicalIdentity": "node|file|src/legacy/helper.ts",
+      "entityKey": "7eefb78275275643ab29cadb1941da9f4b1d63dad065cd86040a4d9137b01c6e",
+      "file": "src/legacy/helper.ts",
+      "exported": false,
+      "bodyHash": "f8c938469130d4b334a313898ec600256a5b9506df3c7f145195d485fd452481"
+    }
+  ],
+  "changedNodeMemberships": [
+    {
+      "entityKey": "2e88d3794109a8e3ff09c524bc458969cce8a7234d80e682c909b1b5e646362f",
+      "nodeIdBefore": "file:src/formatter.ts",
+      "nodeIdAfter": "file:src/formatter.ts",
+      "changes": [
+        {
+          "field": "bodyHash",
+          "before": "28fcd7f76556011f3e862daece4240348db9c9d0a7edd98a2f0026907c4b1ef7",
+          "after": "7569b73ea3b1a563778f7a4eece33b5265efd09228a8b086ad703cbd6d1ae5a5"
+        }
+      ]
+    },
+    {
+      "entityKey": "570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b",
+      "nodeIdBefore": "fn:task.processTask",
+      "nodeIdAfter": "fn:task.processTask",
+      "changes": [
+        {
+          "field": "bodyHash",
+          "before": "6a4c4b8155c85dbedade848ea8296215bae2c39b54ac5a0fa50fdbad4595fc68",
+          "after": "1b5af58f5dd7002787fd38753fdbb63a0ee1fe149ae070b61e03a658ee450e1c"
+        }
+      ]
+    },
+    {
+      "entityKey": "7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed",
+      "nodeIdBefore": "file:src/task.ts",
+      "nodeIdAfter": "file:src/task.ts",
+      "changes": [
+        {
+          "field": "bodyHash",
+          "before": "6a4c4b8155c85dbedade848ea8296215bae2c39b54ac5a0fa50fdbad4595fc68",
+          "after": "1b5af58f5dd7002787fd38753fdbb63a0ee1fe149ae070b61e03a658ee450e1c"
+        }
+      ]
+    }
+  ],
+  "addedEdges": [
+    {
+      "id": "edge:040",
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "method:notifier.Notifier.send",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|calls|613d8834dd7359a0b0cae9171dd20d19cdb8f83f245e846763ca29595aaa5d72",
+      "entityKey": "04a821617dc73186466faffe2f8b8ca752b7f55f1db12360f80450abed37f101",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 12,
+          "contains": "notifier.send"
+        }
+      ]
+    },
+    {
+      "id": "edge:041",
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "method:formatter.renderValue",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|calls|31ca83a522692f8fcdee8c05cd8e6e6f6a9fa5c616ef2309a49fc920f8518d11",
+      "entityKey": "055ac83d500ca50c5f440974c76b79fd6def47b5e4814d2629b70c54da00dfe6",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 14,
+          "contains": "formatter.renderValue"
+        }
+      ]
+    },
+    {
+      "id": "edge:035",
+      "src": "file:src/task.ts",
+      "relation": "imports",
+      "dst": "file:src/notifier.ts",
+      "canonicalIdentity": "edge|7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed|imports|9839cee9dbdf6f2405b80aee5694096b70cb89bc17b16b7e7747eb93432d89bd",
+      "entityKey": "09fcb966041c5c89a5b39334c1053d01f55eb6e83e56ba2a4596e467068bd2ee",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 3,
+          "contains": "./notifier.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:034",
+      "src": "file:src/task.ts",
+      "relation": "imports",
+      "dst": "file:src/helpers/helper.ts",
+      "canonicalIdentity": "edge|7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed|imports|03a43d86cb4a6d6c4d441644800163d1d541e4acef6d8b28f991efd102a29d58",
+      "entityKey": "4b933d95e12de2def17897854ed89d0ee8c6c4ee24d50136f79e10660b7bf230",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 2,
+          "contains": "./helpers/helper.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:012",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/helpers/helper.ts",
+      "canonicalIdentity": "edge|b6d828141f3d2c67045e16e8311a82251a9abb5d7626a7f129c0590e61391a11|contains|03a43d86cb4a6d6c4d441644800163d1d541e4acef6d8b28f991efd102a29d58",
+      "entityKey": "5e8b11a01a5624799d6d8ac3eef6e8a6b6cd96cdadda784c500dccedce9c0607",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/helpers/helper.ts",
+          "line": 1,
+          "contains": "export function normalize(value: string): string {"
+        }
+      ]
+    },
+    {
+      "id": "edge:021",
+      "src": "file:src/formatter.ts",
+      "relation": "contains",
+      "dst": "method:formatter.renderValue",
+      "canonicalIdentity": "edge|2e88d3794109a8e3ff09c524bc458969cce8a7234d80e682c909b1b5e646362f|contains|31ca83a522692f8fcdee8c05cd8e6e6f6a9fa5c616ef2309a49fc920f8518d11",
+      "entityKey": "5ee6ef340a4b3df626a638043cdfb5edfce93280abe231049fc813ff89d6ad54",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/formatter.ts",
+          "line": 2,
+          "contains": "renderValue"
+        }
+      ]
+    },
+    {
+      "id": "edge:039",
+      "src": "fn:task.processTask",
+      "relation": "references",
+      "dst": "class:resolver.Resolver",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|references|87c3a9377db4a6780672a12a59a0b615b8e3ee70aee2a0327517082298e6d984",
+      "entityKey": "7d79bde2c2b775b7d11c1115681807a8a0c1bb3a00940c19d99365bc92eadeac",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 9,
+          "contains": "resolver: Resolver"
+        }
+      ]
+    },
+    {
+      "id": "edge:025",
+      "src": "file:src/helpers/helper.ts",
+      "relation": "contains",
+      "dst": "fn:helper.normalize.new",
+      "canonicalIdentity": "edge|03a43d86cb4a6d6c4d441644800163d1d541e4acef6d8b28f991efd102a29d58|contains|63b0a4bca23d9aca91cf0b13e909683bb412dd8608d4b709e5bffdcc7fdde313",
+      "entityKey": "acb36e047e4b2e32b6240b4a15324c391d4ae0dcd3ae642081771660d9e5a2a8",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/helpers/helper.ts",
+          "line": 1,
+          "contains": "normalize"
+        }
+      ]
+    },
+    {
+      "id": "edge:043",
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "fn:helper.normalize.new",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|calls|63b0a4bca23d9aca91cf0b13e909683bb412dd8608d4b709e5bffdcc7fdde313",
+      "entityKey": "af66c3057693491f7316549cc19e975c73449feeeb6e2f0e882a7fa5ff79e600",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 13,
+          "contains": "normalize(input)"
+        }
+      ]
+    },
+    {
+      "id": "edge:031",
+      "src": "class:formatter.Formatter",
+      "relation": "contains",
+      "dst": "method:formatter.renderValue",
+      "canonicalIdentity": "edge|81ee30875bbb77eb25ef1e69de2b58108c45f3906be6f68f8b5feff41065ea25|contains|31ca83a522692f8fcdee8c05cd8e6e6f6a9fa5c616ef2309a49fc920f8518d11",
+      "entityKey": "cb2eee60bda9666bef431d6021ea5fd77868a8dd6cf3b7f00155b4b4a77f9de8",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/formatter.ts",
+          "line": 2,
+          "contains": "renderValue"
+        }
+      ]
+    },
+    {
+      "id": "edge:038",
+      "src": "fn:task.processTask",
+      "relation": "references",
+      "dst": "class:notifier.Notifier",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|references|9b15237b3ef926de4e325a2df727002bcd6262fb0a24e5c61577323182599a12",
+      "entityKey": "cfebb15d9a38d91d6a0900e27915836ea4981050488a9519a2b63d4213792c49",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 8,
+          "contains": "notifier: Notifier"
+        }
+      ]
+    },
+    {
+      "id": "edge:026",
+      "src": "file:src/helpers/helper.ts",
+      "relation": "exports",
+      "dst": "fn:helper.normalize.new",
+      "canonicalIdentity": "edge|03a43d86cb4a6d6c4d441644800163d1d541e4acef6d8b28f991efd102a29d58|exports|63b0a4bca23d9aca91cf0b13e909683bb412dd8608d4b709e5bffdcc7fdde313",
+      "entityKey": "de9173ca5e541bae22bb7b7729bbff84cf6a82f80dd4395a50d7834ffacb4ebd",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/helpers/helper.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    }
+  ],
+  "removedEdges": [
+    {
+      "id": "edge:021",
+      "src": "file:src/formatter.ts",
+      "relation": "contains",
+      "dst": "method:formatter.formatValue",
+      "canonicalIdentity": "edge|2e88d3794109a8e3ff09c524bc458969cce8a7234d80e682c909b1b5e646362f|contains|51e26ca25d7e0b4afa39801858aa4c4bbc6cdc55c08fb154e44d601564b1069d",
+      "entityKey": "0c2e86826ede6a1932b4555655182ccbec3e1688e59a3bf16bae491c4fe49b22",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/formatter.ts",
+          "line": 2,
+          "contains": "formatValue"
+        }
+      ]
+    },
+    {
+      "id": "edge:035",
+      "src": "file:src/task.ts",
+      "relation": "imports",
+      "dst": "file:src/legacy/helper.ts",
+      "canonicalIdentity": "edge|7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed|imports|7eefb78275275643ab29cadb1941da9f4b1d63dad065cd86040a4d9137b01c6e",
+      "entityKey": "2d999a58046653db732b5e53144bf51ea5b91dc376f780c8d3d7ce1f4a88ffd5",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 3,
+          "contains": "./legacy/helper.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:039",
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "method:audit.Audit.record",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|calls|57338bba507091f59a91f9ee47b3cb500fb45a7da476ee46afe23a67f74211c6",
+      "entityKey": "3f2af838b1a9e3d8a07cfd50c1b444922ff5f3d02144fdd3cf7fb2b265ab2bce",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 12,
+          "contains": "audit.record"
+        }
+      ]
+    },
+    {
+      "id": "edge:025",
+      "src": "file:src/legacy/helper.ts",
+      "relation": "contains",
+      "dst": "fn:helper.normalize.old",
+      "canonicalIdentity": "edge|7eefb78275275643ab29cadb1941da9f4b1d63dad065cd86040a4d9137b01c6e|contains|1da72e21f224ebbbe48aa4b7963b37d3970d7330282b551028fa00cce5083aa6",
+      "entityKey": "552c5b4d3002d15f95c22a3331415d0b75de780ec39aea088fe7f411632f9bf8",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/legacy/helper.ts",
+          "line": 1,
+          "contains": "normalize"
+        }
+      ]
+    },
+    {
+      "id": "edge:031",
+      "src": "class:formatter.Formatter",
+      "relation": "contains",
+      "dst": "method:formatter.formatValue",
+      "canonicalIdentity": "edge|81ee30875bbb77eb25ef1e69de2b58108c45f3906be6f68f8b5feff41065ea25|contains|51e26ca25d7e0b4afa39801858aa4c4bbc6cdc55c08fb154e44d601564b1069d",
+      "entityKey": "605c16c5bdadf5bc9783d45ced22affcd207d66f6eb3abbd9f505193957b099f",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/formatter.ts",
+          "line": 2,
+          "contains": "formatValue"
+        }
+      ]
+    },
+    {
+      "id": "edge:040",
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "method:formatter.formatValue",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|calls|51e26ca25d7e0b4afa39801858aa4c4bbc6cdc55c08fb154e44d601564b1069d",
+      "entityKey": "9796a490d11bdb844e5240de4052fd60cc176bb6db202ba8200261db203f59f9",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 14,
+          "contains": "formatter.formatValue"
+        }
+      ]
+    },
+    {
+      "id": "edge:042",
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "fn:helper.normalize.old",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|calls|1da72e21f224ebbbe48aa4b7963b37d3970d7330282b551028fa00cce5083aa6",
+      "entityKey": "a0d9d2e7a469c7ff2cfbf6e37bcadd2e0c800dba197b85049757614846fdcc1d",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 13,
+          "contains": "normalize(input)"
+        }
+      ]
+    },
+    {
+      "id": "edge:033",
+      "src": "file:src/task.ts",
+      "relation": "imports",
+      "dst": "file:src/audit.ts",
+      "canonicalIdentity": "edge|7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed|imports|0afb134943a90ce07f837cebac18849b2a8e9ecf9a892324dcbaf230c9f225ad",
+      "entityKey": "a525bbd1f319b5577fd2b84f4809c15ed91c0025db95deb0a2598f28e313bcfc",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 1,
+          "contains": "./audit.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:026",
+      "src": "file:src/legacy/helper.ts",
+      "relation": "exports",
+      "dst": "fn:helper.normalize.old",
+      "canonicalIdentity": "edge|7eefb78275275643ab29cadb1941da9f4b1d63dad065cd86040a4d9137b01c6e|exports|1da72e21f224ebbbe48aa4b7963b37d3970d7330282b551028fa00cce5083aa6",
+      "entityKey": "a6a47cd8e750bbdb34a8db78014ef15f42f5e09ddda3177dc58cdb793c6923ba",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/legacy/helper.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:012",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/legacy/helper.ts",
+      "canonicalIdentity": "edge|b6d828141f3d2c67045e16e8311a82251a9abb5d7626a7f129c0590e61391a11|contains|7eefb78275275643ab29cadb1941da9f4b1d63dad065cd86040a4d9137b01c6e",
+      "entityKey": "abd0fd9641a20a5d8ebf5ddb1190e210e9738e6f2f7b863ae829deee1ed6f5c0",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/legacy/helper.ts",
+          "line": 1,
+          "contains": "export function normalize(value: string): string {"
+        }
+      ]
+    },
+    {
+      "id": "edge:038",
+      "src": "fn:task.processTask",
+      "relation": "references",
+      "dst": "class:audit.Audit",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|references|f50eec278304fe1d1758fe59d0b1fe6eb224674dedebc194e9976609ab206215",
+      "entityKey": "bd53d5a4a09cf9f8402d0df2a4cdbfe29b2d289d01f21fc1c116a5714d0edf63",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 8,
+          "contains": "audit: Audit"
+        }
+      ]
+    }
+  ],
+  "changedEdgeMemberships": [
+    {
+      "entityKey": "62d557ea261df9336622a88b289c213a5a10afe1d2a54f6c6e6edb871d46ce62",
+      "edgeIdBefore": "edge:041",
+      "edgeIdAfter": "edge:042",
+      "changes": [
+        {
+          "field": "origin",
+          "before": "heuristic",
+          "after": "compiler"
+        },
+        {
+          "field": "confidence",
+          "before": "likely",
+          "after": "certain"
+        },
+        {
+          "field": "resolution",
+          "before": "partial",
+          "after": "resolved"
+        }
+      ]
+    }
+  ]
+}

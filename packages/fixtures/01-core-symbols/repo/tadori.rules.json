@@ -1,0 +1,9 @@
+{
+  "boundaries": [
+    {
+      "id": "public-must-not-import-internal",
+      "from": "src/public/**",
+      "deny": ["src/internal/**"]
+    }
+  ]
+}

@@ -1,0 +1,1901 @@
+{
+  "schemaVersion": "1.0.0",
+  "fixture": {
+    "id": "express-routes",
+    "snapshot": "base",
+    "packageName": "@tadori-fixtures/express-routes",
+    "purpose": "Ground truth for Express route extraction, literal versus computed route confidence, external imports, DI-style controller/service relationships, dynamic property dispatch, test linkage, ADR links, and a controller-to-infrastructure boundary violation.",
+    "relationStrata": [
+      "contains",
+      "imports",
+      "exports",
+      "references",
+      "calls",
+      "tests",
+      "routes_to",
+      "documents"
+    ],
+    "nastyCases": [
+      "Express literal GET route",
+      "Express computed path identifier route",
+      "Controller property handlers rather than method declarations",
+      "DI-style constructor injection",
+      "Dynamic controller[action]() unresolved call",
+      "Static test property reference and misleading admin test name",
+      "ADR exact path, unique symbols, generic ambiguous name, and missing path",
+      "Seeded controllers-to-infra boundary violation"
+    ],
+    "indexedFiles": [
+      "src/services/user-service.ts",
+      "src/services/audit-service.ts",
+      "src/infra/db.ts",
+      "src/controllers/user-controller.ts",
+      "src/controllers/admin-controller.ts",
+      "src/container.ts",
+      "src/routes/users.ts",
+      "src/routes/admin.ts",
+      "src/app.ts",
+      "src/dispatch.ts",
+      "tests/user-controller.test.ts",
+      "tests/adminish.test.ts",
+      "docs/ADR-002-routes.md"
+    ],
+    "supportFiles": [
+      "package.json",
+      "tsconfig.json",
+      "tadori.rules.json",
+      "types/express.d.ts"
+    ]
+  },
+  "analyzerContract": {
+    "functionValuedClassProperties": "method nodes",
+    "expressLiteralRoute": "compiler/certain/resolved",
+    "expressComputedIdentifierRoute": "heuristic/likely/partial",
+    "middlewareMountsAreRouteNodes": false,
+    "constructorCallsAreEdges": false,
+    "externalModules": "external_dep node plus file-to-external imports edge"
+  },
+  "nodes": [
+    {
+      "id": "pkg:root",
+      "kind": "package",
+      "qualifiedName": "@tadori-fixtures/express-routes",
+      "displayName": "@tadori-fixtures/express-routes",
+      "canonicalIdentity": "node|package|@tadori-fixtures/express-routes",
+      "entityKey": "35ea30010a1a40d8872ecd0772b2c1a953a0935cc8413de795195a3103f2544f",
+      "file": null,
+      "exported": false
+    },
+    {
+      "id": "file:src/services/user-service.ts",
+      "kind": "file",
+      "qualifiedName": "src/services/user-service.ts",
+      "displayName": "user-service.ts",
+      "canonicalIdentity": "node|file|src/services/user-service.ts",
+      "entityKey": "1eb841b3a7080223f6ceb731613a95a6d3102e5f000fb4e99bc0f908b0af83a4",
+      "file": "src/services/user-service.ts",
+      "exported": false,
+      "bodyHash": "e3a8f8b31692c75341ec1b31b9203ee60f66bc948f6f06c075b73fc0fc5bf547"
+    },
+    {
+      "id": "file:src/services/audit-service.ts",
+      "kind": "file",
+      "qualifiedName": "src/services/audit-service.ts",
+      "displayName": "audit-service.ts",
+      "canonicalIdentity": "node|file|src/services/audit-service.ts",
+      "entityKey": "8922dc139b9be3e79cd0598e338b348f37ecd7bb4cdfe050a5da3c8c1c8d335c",
+      "file": "src/services/audit-service.ts",
+      "exported": false,
+      "bodyHash": "e57f817c211eef467ab5e86ba999cc7de6d272fe7cafaaab4bb48d0fc3bd9186"
+    },
+    {
+      "id": "file:src/infra/db.ts",
+      "kind": "file",
+      "qualifiedName": "src/infra/db.ts",
+      "displayName": "db.ts",
+      "canonicalIdentity": "node|file|src/infra/db.ts",
+      "entityKey": "78b864ba0cafbe0e197a270c312e3f7f77dc7e67557af7265e0cc5c4dcb346c4",
+      "file": "src/infra/db.ts",
+      "exported": false,
+      "bodyHash": "a54cc43a5a4d6781b9f353898be12813a8f7633c253a5c33db56e381166df195"
+    },
+    {
+      "id": "file:src/controllers/user-controller.ts",
+      "kind": "file",
+      "qualifiedName": "src/controllers/user-controller.ts",
+      "displayName": "user-controller.ts",
+      "canonicalIdentity": "node|file|src/controllers/user-controller.ts",
+      "entityKey": "45c2269a6213096d01777f8560384490e1ddaa2b70c70e11445d5b1800bbd610",
+      "file": "src/controllers/user-controller.ts",
+      "exported": false,
+      "bodyHash": "45832d5fece4c54547a1161e4bdf150038a093b781c338453d882072bddb217f"
+    },
+    {
+      "id": "file:src/controllers/admin-controller.ts",
+      "kind": "file",
+      "qualifiedName": "src/controllers/admin-controller.ts",
+      "displayName": "admin-controller.ts",
+      "canonicalIdentity": "node|file|src/controllers/admin-controller.ts",
+      "entityKey": "1742cbb2ac2c0682712a77c9755b3232b3199d46731c14d89e9ff44fe9ec489c",
+      "file": "src/controllers/admin-controller.ts",
+      "exported": false,
+      "bodyHash": "41658ad7b595fc9874f7d7fb7d66c84c720c5107d5a325bf5eb5645e483a5986"
+    },
+    {
+      "id": "file:src/container.ts",
+      "kind": "file",
+      "qualifiedName": "src/container.ts",
+      "displayName": "container.ts",
+      "canonicalIdentity": "node|file|src/container.ts",
+      "entityKey": "d71af4e9ed45c151b208c7c7f5fe31ce739c562a35df185cd61115f0b0162120",
+      "file": "src/container.ts",
+      "exported": false,
+      "bodyHash": "2c800c88a5a1c321c5b9a9442f902d0002ab658004ba6e4e980ed4fb47ff96ae"
+    },
+    {
+      "id": "file:src/routes/users.ts",
+      "kind": "file",
+      "qualifiedName": "src/routes/users.ts",
+      "displayName": "users.ts",
+      "canonicalIdentity": "node|file|src/routes/users.ts",
+      "entityKey": "d44b57e20034427db3c2a4a1e1409ff94ad6757629ac427607a6f4a885d65284",
+      "file": "src/routes/users.ts",
+      "exported": false,
+      "bodyHash": "e98c45e75449937eb29e33fb6d8afead72c95559714d29b882b92ece8f442962"
+    },
+    {
+      "id": "file:src/routes/admin.ts",
+      "kind": "file",
+      "qualifiedName": "src/routes/admin.ts",
+      "displayName": "admin.ts",
+      "canonicalIdentity": "node|file|src/routes/admin.ts",
+      "entityKey": "81901dc4e6d66345c756f0818e5082e328f0c026259c8b3b3a8ce5aa8e273add",
+      "file": "src/routes/admin.ts",
+      "exported": false,
+      "bodyHash": "d72d56210e3cd4e61f845633d8c986bb8c8dc1ab1ff375ce6e3ce534a66b38be"
+    },
+    {
+      "id": "file:src/app.ts",
+      "kind": "file",
+      "qualifiedName": "src/app.ts",
+      "displayName": "app.ts",
+      "canonicalIdentity": "node|file|src/app.ts",
+      "entityKey": "0e461d557f39de54e830ba6724c544b1dbff8afab0b5c06200a6066a11641269",
+      "file": "src/app.ts",
+      "exported": false,
+      "bodyHash": "45a8e54edb6a9ea46e01269ab29188a4cf246b5d73e5f8ccf8c13649db7dbced"
+    },
+    {
+      "id": "file:src/dispatch.ts",
+      "kind": "file",
+      "qualifiedName": "src/dispatch.ts",
+      "displayName": "dispatch.ts",
+      "canonicalIdentity": "node|file|src/dispatch.ts",
+      "entityKey": "c8defba44909d6c073a4952c3757fe055924becfdacc3565313d88e1af0d14b0",
+      "file": "src/dispatch.ts",
+      "exported": false,
+      "bodyHash": "d79aa3da2027502848bc1d7e0041db25c5e90883ab5aac28e0969872660fea14"
+    },
+    {
+      "id": "file:tests/user-controller.test.ts",
+      "kind": "file",
+      "qualifiedName": "tests/user-controller.test.ts",
+      "displayName": "user-controller.test.ts",
+      "canonicalIdentity": "node|file|tests/user-controller.test.ts",
+      "entityKey": "c2ebfa6f924809cb36648b15675f2a1576657c2945a8034986ddac94b5960169",
+      "file": "tests/user-controller.test.ts",
+      "exported": false,
+      "bodyHash": "3dd3c7813cda6552d4b5b9a565b7f631ebda777e507dc6f844a6ac8f206dde90"
+    },
+    {
+      "id": "file:tests/adminish.test.ts",
+      "kind": "file",
+      "qualifiedName": "tests/adminish.test.ts",
+      "displayName": "adminish.test.ts",
+      "canonicalIdentity": "node|file|tests/adminish.test.ts",
+      "entityKey": "cbbcf17679ee46cd77d947a6dbdef633e980a672fba1ac1a11917ff1054c1cf5",
+      "file": "tests/adminish.test.ts",
+      "exported": false,
+      "bodyHash": "cde7b288447784f66bbdeef1fb41232dfb38f08eafef868b9e699297d7fd482d"
+    },
+    {
+      "id": "file:docs/ADR-002-routes.md",
+      "kind": "file",
+      "qualifiedName": "docs/ADR-002-routes.md",
+      "displayName": "ADR-002-routes.md",
+      "canonicalIdentity": "node|file|docs/ADR-002-routes.md",
+      "entityKey": "86bf0900e01d7220b138423645dd5e1ac56e927506591b7cc94b1312c2819258",
+      "file": "docs/ADR-002-routes.md",
+      "exported": false,
+      "bodyHash": "c222389efdc27f0de7657300d45b369bf062d992376569e0bedd68f69a767ba5"
+    },
+    {
+      "id": "ext:express",
+      "kind": "external_dep",
+      "qualifiedName": "npm:express",
+      "displayName": "express",
+      "canonicalIdentity": "node|external_dep|npm:express",
+      "entityKey": "669c345ad482b028688c373fa3493c160212976645ceab3676c6f1d0f7399608",
+      "file": null,
+      "exported": false
+    },
+    {
+      "id": "class:service.UserService",
+      "kind": "class",
+      "qualifiedName": "src/services/user-service.ts.UserService",
+      "displayName": "UserService",
+      "canonicalIdentity": "node|class|src/services/user-service.ts.UserService",
+      "entityKey": "e6c2f0153adf21104a82315c38f74f07ff19550d15681883ab1819edfe79f6e7",
+      "file": "src/services/user-service.ts",
+      "exported": true,
+      "bodyHash": "2fd405844182ac602f508338a9675861e6e87ee8e43a9752b87ac715c831fe08"
+    },
+    {
+      "id": "method:service.UserService.getUser",
+      "kind": "method",
+      "qualifiedName": "src/services/user-service.ts.UserService.getUser",
+      "displayName": "getUser",
+      "canonicalIdentity": "node|method|src/services/user-service.ts.UserService.getUser",
+      "entityKey": "06bf28fe247acb92afd2cd67c31d1e501ae768ed2d8040f4775c0f41b8782056",
+      "file": "src/services/user-service.ts",
+      "exported": false,
+      "bodyHash": "dc1e00ef724d458fecb550f82707d92d058f36f3d48aec5e0c2cfbf43bf9cd87"
+    },
+    {
+      "id": "class:service.AuditService",
+      "kind": "class",
+      "qualifiedName": "src/services/audit-service.ts.AuditService",
+      "displayName": "AuditService",
+      "canonicalIdentity": "node|class|src/services/audit-service.ts.AuditService",
+      "entityKey": "89386591495f848f6afbb54cb4ad4797afac372c5a6e57de65b636e8b11cb27b",
+      "file": "src/services/audit-service.ts",
+      "exported": true,
+      "bodyHash": "aab17da715c1d81b89b6df894bf605a314f8d0b44a21a5f17b36729393f17785"
+    },
+    {
+      "id": "method:service.AuditService.record",
+      "kind": "method",
+      "qualifiedName": "src/services/audit-service.ts.AuditService.record",
+      "displayName": "record",
+      "canonicalIdentity": "node|method|src/services/audit-service.ts.AuditService.record",
+      "entityKey": "9ef513a8a5d531ff64b309e998695444363a47bf63ecc4d56a0068d32a7fbe6b",
+      "file": "src/services/audit-service.ts",
+      "exported": false,
+      "bodyHash": "5503690b5f587ff7119ea48a011932517ebafbacb9c7a375220d075adb00709f"
+    },
+    {
+      "id": "fn:infra.unsafeLookup",
+      "kind": "function",
+      "qualifiedName": "src/infra/db.ts.unsafeLookup",
+      "displayName": "unsafeLookup",
+      "canonicalIdentity": "node|function|src/infra/db.ts.unsafeLookup",
+      "entityKey": "ed77c634bc48312e9c64eb3051c687b878dba314d17788886887dc1d4e9a7d41",
+      "file": "src/infra/db.ts",
+      "exported": true,
+      "bodyHash": "b1e4be101875e83f4f86a252135597b26b44cc9886a17c4e62cbb1a715aefc57"
+    },
+    {
+      "id": "class:controller.UserController",
+      "kind": "class",
+      "qualifiedName": "src/controllers/user-controller.ts.UserController",
+      "displayName": "UserController",
+      "canonicalIdentity": "node|class|src/controllers/user-controller.ts.UserController",
+      "entityKey": "cc55455f8e3bcf8a7e08cb53c4a3fe18f28d08d8fd9ce43ae8fc5e404d59b07d",
+      "file": "src/controllers/user-controller.ts",
+      "exported": true,
+      "bodyHash": "fd6b4d29d4481aa08b9b58f420096ff7a3a478c5bbac39f73acd81f24a88cc37"
+    },
+    {
+      "id": "method:controller.UserController.getUser",
+      "kind": "method",
+      "qualifiedName": "src/controllers/user-controller.ts.UserController.getUser",
+      "displayName": "getUser",
+      "canonicalIdentity": "node|method|src/controllers/user-controller.ts.UserController.getUser",
+      "entityKey": "992a39f495eb362069800c9d825f3d501bd9892ecd468459102cfddb407e8495",
+      "file": "src/controllers/user-controller.ts",
+      "exported": false,
+      "bodyHash": "0ab99a490dc8e9686291ca481af860594861bf4572d18ab510a34a2ec58b3da5",
+      "notes": [
+        "Function-valued class property is modeled as a method node."
+      ]
+    },
+    {
+      "id": "class:controller.AdminController",
+      "kind": "class",
+      "qualifiedName": "src/controllers/admin-controller.ts.AdminController",
+      "displayName": "AdminController",
+      "canonicalIdentity": "node|class|src/controllers/admin-controller.ts.AdminController",
+      "entityKey": "9a7cf92cf6797f19e486bd97bc446a0a8287dcad02399167de1f0d054581dfae",
+      "file": "src/controllers/admin-controller.ts",
+      "exported": true,
+      "bodyHash": "518c55622be35023cc3afe6f8db67f61eb48f0179d3a225cde5bd3517892256e"
+    },
+    {
+      "id": "method:controller.AdminController.createAdmin",
+      "kind": "method",
+      "qualifiedName": "src/controllers/admin-controller.ts.AdminController.createAdmin",
+      "displayName": "createAdmin",
+      "canonicalIdentity": "node|method|src/controllers/admin-controller.ts.AdminController.createAdmin",
+      "entityKey": "950ef3eb12908efee94616e3d0106d5b1b28271d5cce3fe92805dc1e90ea3909",
+      "file": "src/controllers/admin-controller.ts",
+      "exported": false,
+      "bodyHash": "50430c98908c4730a9064c141cced95e317ad414311fbe5a8503d17e14705361",
+      "notes": [
+        "Function-valued class property is modeled as a method node."
+      ]
+    },
+    {
+      "id": "fn:container.makeUserController",
+      "kind": "function",
+      "qualifiedName": "src/container.ts.makeUserController",
+      "displayName": "makeUserController",
+      "canonicalIdentity": "node|function|src/container.ts.makeUserController",
+      "entityKey": "09d55be74c4614bb8b25f83de7a524fbd21e2351863fa5c38e7f2bae9305fa4f",
+      "file": "src/container.ts",
+      "exported": true,
+      "bodyHash": "2947ad8ae97fca0be8407bd2b7fe685e9b6bfb96da22afe4e725901649263fb3"
+    },
+    {
+      "id": "fn:container.makeAdminController",
+      "kind": "function",
+      "qualifiedName": "src/container.ts.makeAdminController",
+      "displayName": "makeAdminController",
+      "canonicalIdentity": "node|function|src/container.ts.makeAdminController",
+      "entityKey": "3d740a93fd4ff9a92863293ad4b5242c45669612260fb8b60d4cc0c08212b268",
+      "file": "src/container.ts",
+      "exported": true,
+      "bodyHash": "a675a0e21ede527f5fc3043a46ac6e00a0f2b76ede06e539ac99f203eb2a3c59"
+    },
+    {
+      "id": "route:users.get",
+      "kind": "route",
+      "qualifiedName": "route:GET /users/:id@src/routes/users.ts",
+      "displayName": "GET /users/:id",
+      "canonicalIdentity": "node|route|route:GET /users/:id@src/routes/users.ts",
+      "entityKey": "3515ee1e143cef27a3a190276cfb0c1cdef345ca1fa7000dfcbed70e029b9352",
+      "file": "src/routes/users.ts",
+      "exported": false,
+      "bodyHash": "426693dcdc8909233ec3f8a60808ab304bb5628eb116b29e6f86a6575bdc0a33"
+    },
+    {
+      "id": "route:admin.post-computed",
+      "kind": "route",
+      "qualifiedName": "route:POST <computed:adminPath>@src/routes/admin.ts",
+      "displayName": "POST <computed:adminPath>",
+      "canonicalIdentity": "node|route|route:POST <computed:adminPath>@src/routes/admin.ts",
+      "entityKey": "3bccfc5dd95cf82315ee00ede645dbaa0fa03fa420ed52eb8264915d936551a8",
+      "file": "src/routes/admin.ts",
+      "exported": false,
+      "bodyHash": "d2e8a7cdac2ed5e0c78076dabead3d94460d290b4aed87eef7d3426a2671b446",
+      "notes": [
+        "Path value is statically declared but registered through an identifier; contract labels route extraction likely/partial."
+      ]
+    },
+    {
+      "id": "fn:dispatch.dispatch",
+      "kind": "function",
+      "qualifiedName": "src/dispatch.ts.dispatch",
+      "displayName": "dispatch",
+      "canonicalIdentity": "node|function|src/dispatch.ts.dispatch",
+      "entityKey": "81e0b3ab8be759683fab31f0e26560c67e6ff10a7506a2eac8877553db775b66",
+      "file": "src/dispatch.ts",
+      "exported": true,
+      "bodyHash": "657ca9180b355ee662132dab3f01c09fdb5e40f2b3233ea52ab743f66189ed4a"
+    },
+    {
+      "id": "unresolved:dispatch.controller-index",
+      "kind": "unresolved",
+      "qualifiedName": "src/dispatch.ts::<unresolved controller[action]>",
+      "displayName": "controller[action]",
+      "canonicalIdentity": "node|unresolved|src/dispatch.ts::<unresolved controller[action]>",
+      "entityKey": "e5075dcf0122f2c6cfaac784194539487b8506ff7fb24cee02a27bb5239524b4",
+      "file": "src/dispatch.ts",
+      "exported": false
+    },
+    {
+      "id": "test:user-controller",
+      "kind": "test",
+      "qualifiedName": "tests/user-controller.test.ts::user controller delegates to the service",
+      "displayName": "user controller delegates to the service",
+      "canonicalIdentity": "node|test|tests/user-controller.test.ts::user controller delegates to the service",
+      "entityKey": "58e15d45b9331306d6a2ea506202dde631067036f2857fd6657ee4331eca0912",
+      "file": "tests/user-controller.test.ts",
+      "exported": false
+    },
+    {
+      "id": "test:adminish",
+      "kind": "test",
+      "qualifiedName": "tests/adminish.test.ts::admin route exists",
+      "displayName": "admin route exists",
+      "canonicalIdentity": "node|test|tests/adminish.test.ts::admin route exists",
+      "entityKey": "ad83a8ddbc327de7967b39d145486a023733d2beb16f28630f5c65841e438b2c",
+      "file": "tests/adminish.test.ts",
+      "exported": false
+    },
+    {
+      "id": "adr:routes",
+      "kind": "adr",
+      "qualifiedName": "docs/ADR-002-routes.md::ADR-002",
+      "displayName": "ADR-002: Keep HTTP routing thin",
+      "canonicalIdentity": "node|adr|docs/ADR-002-routes.md::ADR-002",
+      "entityKey": "50217a5aed978baef83e8a4d413bf1bd12ec1f1d0813d5c9a31f8a51fa9c2fbc",
+      "file": "docs/ADR-002-routes.md",
+      "exported": false
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:002",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/services/user-service.ts",
+      "canonicalIdentity": "edge|35ea30010a1a40d8872ecd0772b2c1a953a0935cc8413de795195a3103f2544f|contains|1eb841b3a7080223f6ceb731613a95a6d3102e5f000fb4e99bc0f908b0af83a4",
+      "entityKey": "72a03b7db2164d451453dfa731d497027e80728a88ea52d853cdffde38cce302",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/services/user-service.ts",
+          "line": 1,
+          "contains": "export class UserService {"
+        }
+      ]
+    },
+    {
+      "id": "edge:004",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/services/audit-service.ts",
+      "canonicalIdentity": "edge|35ea30010a1a40d8872ecd0772b2c1a953a0935cc8413de795195a3103f2544f|contains|8922dc139b9be3e79cd0598e338b348f37ecd7bb4cdfe050a5da3c8c1c8d335c",
+      "entityKey": "e39ec619fdacfb253dfc09c6fbe785e787970e54abfa8f6e9ebb74bdf7b5e4db",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/services/audit-service.ts",
+          "line": 1,
+          "contains": "export class AuditService {"
+        }
+      ]
+    },
+    {
+      "id": "edge:006",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/infra/db.ts",
+      "canonicalIdentity": "edge|35ea30010a1a40d8872ecd0772b2c1a953a0935cc8413de795195a3103f2544f|contains|78b864ba0cafbe0e197a270c312e3f7f77dc7e67557af7265e0cc5c4dcb346c4",
+      "entityKey": "5e40b94977ec8531d6dd859d5ea6e4a840240af02bec822224a7adfc56f732b8",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/infra/db.ts",
+          "line": 1,
+          "contains": "export function unsafeLookup(id: string): { id: string } {"
+        }
+      ]
+    },
+    {
+      "id": "edge:008",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/controllers/user-controller.ts",
+      "canonicalIdentity": "edge|35ea30010a1a40d8872ecd0772b2c1a953a0935cc8413de795195a3103f2544f|contains|45c2269a6213096d01777f8560384490e1ddaa2b70c70e11445d5b1800bbd610",
+      "entityKey": "4b9e3fbcfec83530e6661ee226ebcb7d16d5bb2da67d0a34f5977978c960c59e",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/user-controller.ts",
+          "line": 1,
+          "contains": "import type { Request, Response } from \"express\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:010",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/controllers/admin-controller.ts",
+      "canonicalIdentity": "edge|35ea30010a1a40d8872ecd0772b2c1a953a0935cc8413de795195a3103f2544f|contains|1742cbb2ac2c0682712a77c9755b3232b3199d46731c14d89e9ff44fe9ec489c",
+      "entityKey": "bd278beddc32ff303ac0bfb4c2b5ec2dfa8589bb161b211cf985822fb05cc9c4",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/admin-controller.ts",
+          "line": 1,
+          "contains": "import type { Request, Response } from \"express\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:012",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/container.ts",
+      "canonicalIdentity": "edge|35ea30010a1a40d8872ecd0772b2c1a953a0935cc8413de795195a3103f2544f|contains|d71af4e9ed45c151b208c7c7f5fe31ce739c562a35df185cd61115f0b0162120",
+      "entityKey": "633bcdd924b3ba87462c57edd5903d999c17db43e87bd3f473aff0aad788b3dc",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/container.ts",
+          "line": 1,
+          "contains": "import { AdminController } from \"./controllers/admin-controller.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:014",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/routes/users.ts",
+      "canonicalIdentity": "edge|35ea30010a1a40d8872ecd0772b2c1a953a0935cc8413de795195a3103f2544f|contains|d44b57e20034427db3c2a4a1e1409ff94ad6757629ac427607a6f4a885d65284",
+      "entityKey": "6189cf765976d8da1a204af970531971eac738005aa783e79089fa34e8c28b1f",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/routes/users.ts",
+          "line": 1,
+          "contains": "import { Router } from \"express\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:016",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/routes/admin.ts",
+      "canonicalIdentity": "edge|35ea30010a1a40d8872ecd0772b2c1a953a0935cc8413de795195a3103f2544f|contains|81901dc4e6d66345c756f0818e5082e328f0c026259c8b3b3a8ce5aa8e273add",
+      "entityKey": "97954a7c7b34ddabbb414227670cbcf4fdb6d7ce80440468f6b884b64d9dbf87",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/routes/admin.ts",
+          "line": 1,
+          "contains": "import { Router } from \"express\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:018",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/app.ts",
+      "canonicalIdentity": "edge|35ea30010a1a40d8872ecd0772b2c1a953a0935cc8413de795195a3103f2544f|contains|0e461d557f39de54e830ba6724c544b1dbff8afab0b5c06200a6066a11641269",
+      "entityKey": "537f461347b01ca0107aaa6456e43151f86f866dbba8b9de78b30b33ee3a5885",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/app.ts",
+          "line": 1,
+          "contains": "import express from \"express\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:020",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:src/dispatch.ts",
+      "canonicalIdentity": "edge|35ea30010a1a40d8872ecd0772b2c1a953a0935cc8413de795195a3103f2544f|contains|c8defba44909d6c073a4952c3757fe055924becfdacc3565313d88e1af0d14b0",
+      "entityKey": "c9f9d4ffdf7c9a01c65b3dba2d96f87df7667b54d75cc2aad38452aca3ad80d9",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/dispatch.ts",
+          "line": 1,
+          "contains": "import { makeUserController } from \"./container.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:022",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:tests/user-controller.test.ts",
+      "canonicalIdentity": "edge|35ea30010a1a40d8872ecd0772b2c1a953a0935cc8413de795195a3103f2544f|contains|c2ebfa6f924809cb36648b15675f2a1576657c2945a8034986ddac94b5960169",
+      "entityKey": "890805dfbe0dee679c6b6b4ab859148bb8d4698cbb27023454e88296f0843183",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/user-controller.test.ts",
+          "line": 1,
+          "contains": "import { UserController } from \"../src/controllers/user-controller.js\";"
+        }
+      ]
+    },
+    {
+      "id": "edge:024",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:tests/adminish.test.ts",
+      "canonicalIdentity": "edge|35ea30010a1a40d8872ecd0772b2c1a953a0935cc8413de795195a3103f2544f|contains|cbbcf17679ee46cd77d947a6dbdef633e980a672fba1ac1a11917ff1054c1cf5",
+      "entityKey": "4aaf6c27cffdba4bd7aed1f25e24b77219b45f7516a24b8854522a100412b51a",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/adminish.test.ts",
+          "line": 1,
+          "contains": "declare function test(name: string, fn: () => void): void;"
+        }
+      ]
+    },
+    {
+      "id": "edge:026",
+      "src": "pkg:root",
+      "relation": "contains",
+      "dst": "file:docs/ADR-002-routes.md",
+      "canonicalIdentity": "edge|35ea30010a1a40d8872ecd0772b2c1a953a0935cc8413de795195a3103f2544f|contains|86bf0900e01d7220b138423645dd5e1ac56e927506591b7cc94b1312c2819258",
+      "entityKey": "692079b0761637912a43253fcdbdf2ab8621db93d2ea900138bf370a11748532",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-002-routes.md",
+          "line": 1,
+          "contains": "# ADR-002: Keep HTTP routing thin"
+        }
+      ]
+    },
+    {
+      "id": "edge:027",
+      "src": "file:src/services/user-service.ts",
+      "relation": "contains",
+      "dst": "class:service.UserService",
+      "canonicalIdentity": "edge|1eb841b3a7080223f6ceb731613a95a6d3102e5f000fb4e99bc0f908b0af83a4|contains|e6c2f0153adf21104a82315c38f74f07ff19550d15681883ab1819edfe79f6e7",
+      "entityKey": "a0ca9bc1c4978016a293e9de0b6f88e09ba3b66177758de2a54619bfaac6e923",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/services/user-service.ts",
+          "line": 1,
+          "contains": "UserService"
+        }
+      ]
+    },
+    {
+      "id": "edge:028",
+      "src": "file:src/services/user-service.ts",
+      "relation": "exports",
+      "dst": "class:service.UserService",
+      "canonicalIdentity": "edge|1eb841b3a7080223f6ceb731613a95a6d3102e5f000fb4e99bc0f908b0af83a4|exports|e6c2f0153adf21104a82315c38f74f07ff19550d15681883ab1819edfe79f6e7",
+      "entityKey": "313d411b297a672b3e9ace530d04f3006856aabb3a57cbac9ba34e9de8840f32",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/services/user-service.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:029",
+      "src": "file:src/services/user-service.ts",
+      "relation": "contains",
+      "dst": "method:service.UserService.getUser",
+      "canonicalIdentity": "edge|1eb841b3a7080223f6ceb731613a95a6d3102e5f000fb4e99bc0f908b0af83a4|contains|06bf28fe247acb92afd2cd67c31d1e501ae768ed2d8040f4775c0f41b8782056",
+      "entityKey": "7d493b710144aa69e6e3bfd151596405da3ee6b27cbb12f05b0a9f6e663bbffb",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/services/user-service.ts",
+          "line": 2,
+          "contains": "getUser"
+        }
+      ]
+    },
+    {
+      "id": "edge:030",
+      "src": "file:src/services/audit-service.ts",
+      "relation": "contains",
+      "dst": "class:service.AuditService",
+      "canonicalIdentity": "edge|8922dc139b9be3e79cd0598e338b348f37ecd7bb4cdfe050a5da3c8c1c8d335c|contains|89386591495f848f6afbb54cb4ad4797afac372c5a6e57de65b636e8b11cb27b",
+      "entityKey": "21c120ab7aa716651a4556334deb0565cc34b0dccc0795f35c43ae7e4584ac88",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/services/audit-service.ts",
+          "line": 1,
+          "contains": "AuditService"
+        }
+      ]
+    },
+    {
+      "id": "edge:031",
+      "src": "file:src/services/audit-service.ts",
+      "relation": "exports",
+      "dst": "class:service.AuditService",
+      "canonicalIdentity": "edge|8922dc139b9be3e79cd0598e338b348f37ecd7bb4cdfe050a5da3c8c1c8d335c|exports|89386591495f848f6afbb54cb4ad4797afac372c5a6e57de65b636e8b11cb27b",
+      "entityKey": "18c6e75ed1bcfe4aca824c5ad40e12ef6ba778471b12eb9856696c2922167781",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/services/audit-service.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:032",
+      "src": "file:src/services/audit-service.ts",
+      "relation": "contains",
+      "dst": "method:service.AuditService.record",
+      "canonicalIdentity": "edge|8922dc139b9be3e79cd0598e338b348f37ecd7bb4cdfe050a5da3c8c1c8d335c|contains|9ef513a8a5d531ff64b309e998695444363a47bf63ecc4d56a0068d32a7fbe6b",
+      "entityKey": "4f3bb0a4df22e90b2fb4916f9a6b5b9b91ee9d11a3da7e72a8e06e2d70140fb8",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/services/audit-service.ts",
+          "line": 2,
+          "contains": "record"
+        }
+      ]
+    },
+    {
+      "id": "edge:033",
+      "src": "file:src/infra/db.ts",
+      "relation": "contains",
+      "dst": "fn:infra.unsafeLookup",
+      "canonicalIdentity": "edge|78b864ba0cafbe0e197a270c312e3f7f77dc7e67557af7265e0cc5c4dcb346c4|contains|ed77c634bc48312e9c64eb3051c687b878dba314d17788886887dc1d4e9a7d41",
+      "entityKey": "031cef790f164762d843497accc00ff341318011b6cff57fb229a4e2ca394a77",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/infra/db.ts",
+          "line": 1,
+          "contains": "unsafeLookup"
+        }
+      ]
+    },
+    {
+      "id": "edge:034",
+      "src": "file:src/infra/db.ts",
+      "relation": "exports",
+      "dst": "fn:infra.unsafeLookup",
+      "canonicalIdentity": "edge|78b864ba0cafbe0e197a270c312e3f7f77dc7e67557af7265e0cc5c4dcb346c4|exports|ed77c634bc48312e9c64eb3051c687b878dba314d17788886887dc1d4e9a7d41",
+      "entityKey": "db00154d0a19247484db5047e522307630d87cce8bedea6db17b9fe3c2a5154a",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/infra/db.ts",
+          "line": 1,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:035",
+      "src": "file:src/controllers/user-controller.ts",
+      "relation": "contains",
+      "dst": "class:controller.UserController",
+      "canonicalIdentity": "edge|45c2269a6213096d01777f8560384490e1ddaa2b70c70e11445d5b1800bbd610|contains|cc55455f8e3bcf8a7e08cb53c4a3fe18f28d08d8fd9ce43ae8fc5e404d59b07d",
+      "entityKey": "1a3a683cf8a863652183fb325e2dcf4e63a06c64fac1da6716216044512f2e51",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/user-controller.ts",
+          "line": 5,
+          "contains": "UserController"
+        }
+      ]
+    },
+    {
+      "id": "edge:036",
+      "src": "file:src/controllers/user-controller.ts",
+      "relation": "exports",
+      "dst": "class:controller.UserController",
+      "canonicalIdentity": "edge|45c2269a6213096d01777f8560384490e1ddaa2b70c70e11445d5b1800bbd610|exports|cc55455f8e3bcf8a7e08cb53c4a3fe18f28d08d8fd9ce43ae8fc5e404d59b07d",
+      "entityKey": "afafae2d6e5a4d2c14b4728f8b8261a0dfc409a24925d5bdd493c11d5a3ef764",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/user-controller.ts",
+          "line": 5,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:037",
+      "src": "file:src/controllers/user-controller.ts",
+      "relation": "contains",
+      "dst": "method:controller.UserController.getUser",
+      "canonicalIdentity": "edge|45c2269a6213096d01777f8560384490e1ddaa2b70c70e11445d5b1800bbd610|contains|992a39f495eb362069800c9d825f3d501bd9892ecd468459102cfddb407e8495",
+      "entityKey": "bc81fcebc248c4df061e97ab3a29aea54a795700386e4f52d4a2e326a4f7afeb",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/user-controller.ts",
+          "line": 8,
+          "contains": "getUser"
+        }
+      ]
+    },
+    {
+      "id": "edge:038",
+      "src": "file:src/controllers/admin-controller.ts",
+      "relation": "contains",
+      "dst": "class:controller.AdminController",
+      "canonicalIdentity": "edge|1742cbb2ac2c0682712a77c9755b3232b3199d46731c14d89e9ff44fe9ec489c|contains|9a7cf92cf6797f19e486bd97bc446a0a8287dcad02399167de1f0d054581dfae",
+      "entityKey": "d599dcf5c97f776a6ef56c79911a9c61a01fd59bdeff31054d56b371214a2a6b",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/admin-controller.ts",
+          "line": 4,
+          "contains": "AdminController"
+        }
+      ]
+    },
+    {
+      "id": "edge:039",
+      "src": "file:src/controllers/admin-controller.ts",
+      "relation": "exports",
+      "dst": "class:controller.AdminController",
+      "canonicalIdentity": "edge|1742cbb2ac2c0682712a77c9755b3232b3199d46731c14d89e9ff44fe9ec489c|exports|9a7cf92cf6797f19e486bd97bc446a0a8287dcad02399167de1f0d054581dfae",
+      "entityKey": "706c8e7940e07c09b024d59fcba6fb962a1f98aa19f6ca92a60ac4cb16f4bbc3",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/admin-controller.ts",
+          "line": 4,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:040",
+      "src": "file:src/controllers/admin-controller.ts",
+      "relation": "contains",
+      "dst": "method:controller.AdminController.createAdmin",
+      "canonicalIdentity": "edge|1742cbb2ac2c0682712a77c9755b3232b3199d46731c14d89e9ff44fe9ec489c|contains|950ef3eb12908efee94616e3d0106d5b1b28271d5cce3fe92805dc1e90ea3909",
+      "entityKey": "1aea37cc85bd5471c1725d47783cf28e696a37f008b72895999471b6e52234c9",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/admin-controller.ts",
+          "line": 7,
+          "contains": "createAdmin"
+        }
+      ]
+    },
+    {
+      "id": "edge:041",
+      "src": "file:src/container.ts",
+      "relation": "contains",
+      "dst": "fn:container.makeUserController",
+      "canonicalIdentity": "edge|d71af4e9ed45c151b208c7c7f5fe31ce739c562a35df185cd61115f0b0162120|contains|09d55be74c4614bb8b25f83de7a524fbd21e2351863fa5c38e7f2bae9305fa4f",
+      "entityKey": "00fb224656f7e97691f307ba5ad6f88565cc75d5502edabe105f0b28737d4d73",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/container.ts",
+          "line": 6,
+          "contains": "makeUserController"
+        }
+      ]
+    },
+    {
+      "id": "edge:042",
+      "src": "file:src/container.ts",
+      "relation": "exports",
+      "dst": "fn:container.makeUserController",
+      "canonicalIdentity": "edge|d71af4e9ed45c151b208c7c7f5fe31ce739c562a35df185cd61115f0b0162120|exports|09d55be74c4614bb8b25f83de7a524fbd21e2351863fa5c38e7f2bae9305fa4f",
+      "entityKey": "204983900278e1ee2084efad3849f90b0d1006da994198c461800493f92f777e",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/container.ts",
+          "line": 6,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:043",
+      "src": "file:src/container.ts",
+      "relation": "contains",
+      "dst": "fn:container.makeAdminController",
+      "canonicalIdentity": "edge|d71af4e9ed45c151b208c7c7f5fe31ce739c562a35df185cd61115f0b0162120|contains|3d740a93fd4ff9a92863293ad4b5242c45669612260fb8b60d4cc0c08212b268",
+      "entityKey": "568f9c7a2bdefe78b1497e508037f77ffff72e7803ee510cfee7eef7ed7941ae",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/container.ts",
+          "line": 10,
+          "contains": "makeAdminController"
+        }
+      ]
+    },
+    {
+      "id": "edge:044",
+      "src": "file:src/container.ts",
+      "relation": "exports",
+      "dst": "fn:container.makeAdminController",
+      "canonicalIdentity": "edge|d71af4e9ed45c151b208c7c7f5fe31ce739c562a35df185cd61115f0b0162120|exports|3d740a93fd4ff9a92863293ad4b5242c45669612260fb8b60d4cc0c08212b268",
+      "entityKey": "3e7488a210215b412bac7f53779b1a2183598feba42206854746f8f92fb8f739",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/container.ts",
+          "line": 6,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:045",
+      "src": "file:src/routes/users.ts",
+      "relation": "contains",
+      "dst": "route:users.get",
+      "canonicalIdentity": "edge|d44b57e20034427db3c2a4a1e1409ff94ad6757629ac427607a6f4a885d65284|contains|3515ee1e143cef27a3a190276cfb0c1cdef345ca1fa7000dfcbed70e029b9352",
+      "entityKey": "f476f5b681ef36e9a43a14a61ad816e2ce1802353b0f060f40fdaf976fa1fe0f",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/routes/users.ts",
+          "line": 7,
+          "contains": "router.get"
+        }
+      ]
+    },
+    {
+      "id": "edge:046",
+      "src": "file:src/routes/admin.ts",
+      "relation": "contains",
+      "dst": "route:admin.post-computed",
+      "canonicalIdentity": "edge|81901dc4e6d66345c756f0818e5082e328f0c026259c8b3b3a8ce5aa8e273add|contains|3bccfc5dd95cf82315ee00ede645dbaa0fa03fa420ed52eb8264915d936551a8",
+      "entityKey": "b67c7e8ff6379538e530fcfd6459e8827dba21bc7679581a6b9783a0c554ea2f",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/routes/admin.ts",
+          "line": 8,
+          "contains": "router.post"
+        }
+      ]
+    },
+    {
+      "id": "edge:047",
+      "src": "file:src/dispatch.ts",
+      "relation": "contains",
+      "dst": "fn:dispatch.dispatch",
+      "canonicalIdentity": "edge|c8defba44909d6c073a4952c3757fe055924becfdacc3565313d88e1af0d14b0|contains|81e0b3ab8be759683fab31f0e26560c67e6ff10a7506a2eac8877553db775b66",
+      "entityKey": "04beefde3702812f12e32273a6b166e32c056404d226a70db968c88f14c532f8",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/dispatch.ts",
+          "line": 3,
+          "contains": "dispatch"
+        }
+      ]
+    },
+    {
+      "id": "edge:048",
+      "src": "file:src/dispatch.ts",
+      "relation": "exports",
+      "dst": "fn:dispatch.dispatch",
+      "canonicalIdentity": "edge|c8defba44909d6c073a4952c3757fe055924becfdacc3565313d88e1af0d14b0|exports|81e0b3ab8be759683fab31f0e26560c67e6ff10a7506a2eac8877553db775b66",
+      "entityKey": "2326617f48572382cf10ae61442d294fefffce6cd5c4b227525962ee2c6b0728",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/dispatch.ts",
+          "line": 3,
+          "contains": "export"
+        }
+      ]
+    },
+    {
+      "id": "edge:049",
+      "src": "file:src/dispatch.ts",
+      "relation": "contains",
+      "dst": "unresolved:dispatch.controller-index",
+      "canonicalIdentity": "edge|c8defba44909d6c073a4952c3757fe055924becfdacc3565313d88e1af0d14b0|contains|e5075dcf0122f2c6cfaac784194539487b8506ff7fb24cee02a27bb5239524b4",
+      "entityKey": "d03d393885dbc7a91c1000c6e889fc478e137b8cb78da884f1292f1c951a74c4",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/dispatch.ts",
+          "line": 5,
+          "contains": "[action]()"
+        }
+      ]
+    },
+    {
+      "id": "edge:050",
+      "src": "file:tests/user-controller.test.ts",
+      "relation": "contains",
+      "dst": "test:user-controller",
+      "canonicalIdentity": "edge|c2ebfa6f924809cb36648b15675f2a1576657c2945a8034986ddac94b5960169|contains|58e15d45b9331306d6a2ea506202dde631067036f2857fd6657ee4331eca0912",
+      "entityKey": "f7a5e29f93eb44d37b5752c880227f1fd70e7aa4312f32712c7bda600d23a68d",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/user-controller.test.ts",
+          "line": 6,
+          "contains": "user controller delegates to the service"
+        }
+      ]
+    },
+    {
+      "id": "edge:051",
+      "src": "file:tests/adminish.test.ts",
+      "relation": "contains",
+      "dst": "test:adminish",
+      "canonicalIdentity": "edge|cbbcf17679ee46cd77d947a6dbdef633e980a672fba1ac1a11917ff1054c1cf5|contains|ad83a8ddbc327de7967b39d145486a023733d2beb16f28630f5c65841e438b2c",
+      "entityKey": "1c5183856a90562ab55fd0be1897cbdbbf314b0e3e5fbcf53205bb2ae14d9b8d",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/adminish.test.ts",
+          "line": 3,
+          "contains": "admin route exists"
+        }
+      ]
+    },
+    {
+      "id": "edge:052",
+      "src": "file:docs/ADR-002-routes.md",
+      "relation": "contains",
+      "dst": "adr:routes",
+      "canonicalIdentity": "edge|86bf0900e01d7220b138423645dd5e1ac56e927506591b7cc94b1312c2819258|contains|50217a5aed978baef83e8a4d413bf1bd12ec1f1d0813d5c9a31f8a51fa9c2fbc",
+      "entityKey": "ba7d05965ba16d5b266a6299949d8b41f5221768b9eab477a69380675e9bc994",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-002-routes.md",
+          "line": 1,
+          "contains": "ADR-002: Keep HTTP routing thin"
+        }
+      ]
+    },
+    {
+      "id": "edge:053",
+      "src": "class:service.UserService",
+      "relation": "contains",
+      "dst": "method:service.UserService.getUser",
+      "canonicalIdentity": "edge|e6c2f0153adf21104a82315c38f74f07ff19550d15681883ab1819edfe79f6e7|contains|06bf28fe247acb92afd2cd67c31d1e501ae768ed2d8040f4775c0f41b8782056",
+      "entityKey": "3fa74253c32be12986660829e40f3020cd46cd0748e1f0c6d938a4b3bb8fb440",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/services/user-service.ts",
+          "line": 2,
+          "contains": "getUser"
+        }
+      ]
+    },
+    {
+      "id": "edge:054",
+      "src": "class:service.AuditService",
+      "relation": "contains",
+      "dst": "method:service.AuditService.record",
+      "canonicalIdentity": "edge|89386591495f848f6afbb54cb4ad4797afac372c5a6e57de65b636e8b11cb27b|contains|9ef513a8a5d531ff64b309e998695444363a47bf63ecc4d56a0068d32a7fbe6b",
+      "entityKey": "d723e6b663a08e51cda7d518fce4e01ce2741a0f61ce151def50a67e24f41d44",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/services/audit-service.ts",
+          "line": 2,
+          "contains": "record"
+        }
+      ]
+    },
+    {
+      "id": "edge:055",
+      "src": "class:controller.UserController",
+      "relation": "contains",
+      "dst": "method:controller.UserController.getUser",
+      "canonicalIdentity": "edge|cc55455f8e3bcf8a7e08cb53c4a3fe18f28d08d8fd9ce43ae8fc5e404d59b07d|contains|992a39f495eb362069800c9d825f3d501bd9892ecd468459102cfddb407e8495",
+      "entityKey": "05aba8af8ae3ed0f5b27ab26d30724714aec36853e3fcc082f5dce4dda0b17e7",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/user-controller.ts",
+          "line": 8,
+          "contains": "getUser"
+        }
+      ]
+    },
+    {
+      "id": "edge:056",
+      "src": "class:controller.AdminController",
+      "relation": "contains",
+      "dst": "method:controller.AdminController.createAdmin",
+      "canonicalIdentity": "edge|9a7cf92cf6797f19e486bd97bc446a0a8287dcad02399167de1f0d054581dfae|contains|950ef3eb12908efee94616e3d0106d5b1b28271d5cce3fe92805dc1e90ea3909",
+      "entityKey": "b117512d34ca28ae7565e98f987f6502749ce181dd9fdd58b120f06527ff85ee",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/admin-controller.ts",
+          "line": 7,
+          "contains": "createAdmin"
+        }
+      ]
+    },
+    {
+      "id": "edge:057",
+      "src": "file:src/controllers/user-controller.ts",
+      "relation": "imports",
+      "dst": "ext:express",
+      "canonicalIdentity": "edge|45c2269a6213096d01777f8560384490e1ddaa2b70c70e11445d5b1800bbd610|imports|669c345ad482b028688c373fa3493c160212976645ceab3676c6f1d0f7399608",
+      "entityKey": "6cfa8ff55093d7be05e1ee195fe5ca0d8200ee7d89af20c4d7bdad644e417c2d",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/user-controller.ts",
+          "line": 1,
+          "contains": "express"
+        }
+      ]
+    },
+    {
+      "id": "edge:058",
+      "src": "file:src/controllers/admin-controller.ts",
+      "relation": "imports",
+      "dst": "ext:express",
+      "canonicalIdentity": "edge|1742cbb2ac2c0682712a77c9755b3232b3199d46731c14d89e9ff44fe9ec489c|imports|669c345ad482b028688c373fa3493c160212976645ceab3676c6f1d0f7399608",
+      "entityKey": "62095373f8e4cd08a8fc6da2bbefd10ee13cbf9aa4d90c0c8297cf6b5260c61a",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/admin-controller.ts",
+          "line": 1,
+          "contains": "express"
+        }
+      ]
+    },
+    {
+      "id": "edge:059",
+      "src": "file:src/routes/users.ts",
+      "relation": "imports",
+      "dst": "ext:express",
+      "canonicalIdentity": "edge|d44b57e20034427db3c2a4a1e1409ff94ad6757629ac427607a6f4a885d65284|imports|669c345ad482b028688c373fa3493c160212976645ceab3676c6f1d0f7399608",
+      "entityKey": "bcd67298acb3557c70a17c29e6684e993fb6f7395a97c3f00385aa0851670dc1",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/routes/users.ts",
+          "line": 1,
+          "contains": "express"
+        }
+      ]
+    },
+    {
+      "id": "edge:060",
+      "src": "file:src/routes/admin.ts",
+      "relation": "imports",
+      "dst": "ext:express",
+      "canonicalIdentity": "edge|81901dc4e6d66345c756f0818e5082e328f0c026259c8b3b3a8ce5aa8e273add|imports|669c345ad482b028688c373fa3493c160212976645ceab3676c6f1d0f7399608",
+      "entityKey": "074d1c6acf8fe1f1aa0e2814c225566db68e9ca8c68b98257dc41087dca1639c",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/routes/admin.ts",
+          "line": 1,
+          "contains": "express"
+        }
+      ]
+    },
+    {
+      "id": "edge:061",
+      "src": "file:src/app.ts",
+      "relation": "imports",
+      "dst": "ext:express",
+      "canonicalIdentity": "edge|0e461d557f39de54e830ba6724c544b1dbff8afab0b5c06200a6066a11641269|imports|669c345ad482b028688c373fa3493c160212976645ceab3676c6f1d0f7399608",
+      "entityKey": "da09fb12b9c486781db7de0f36e0be425e2260bde5dcfdbc6b2fc30c9102d255",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/app.ts",
+          "line": 1,
+          "contains": "express"
+        }
+      ]
+    },
+    {
+      "id": "edge:062",
+      "src": "file:src/controllers/user-controller.ts",
+      "relation": "imports",
+      "dst": "file:src/infra/db.ts",
+      "canonicalIdentity": "edge|45c2269a6213096d01777f8560384490e1ddaa2b70c70e11445d5b1800bbd610|imports|78b864ba0cafbe0e197a270c312e3f7f77dc7e67557af7265e0cc5c4dcb346c4",
+      "entityKey": "dd6104c52da3dee195b2496ab8fc594fdde958258e999682ed2c15737bbc7d94",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/user-controller.ts",
+          "line": 2,
+          "contains": "../infra/db.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:063",
+      "src": "file:src/controllers/user-controller.ts",
+      "relation": "imports",
+      "dst": "file:src/services/user-service.ts",
+      "canonicalIdentity": "edge|45c2269a6213096d01777f8560384490e1ddaa2b70c70e11445d5b1800bbd610|imports|1eb841b3a7080223f6ceb731613a95a6d3102e5f000fb4e99bc0f908b0af83a4",
+      "entityKey": "06dc26ad20c09c31d0e6a1c8b80c484b767ae79d3d74ce9356d3789b8cdcbb15",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/user-controller.ts",
+          "line": 3,
+          "contains": "../services/user-service.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:064",
+      "src": "file:src/controllers/admin-controller.ts",
+      "relation": "imports",
+      "dst": "file:src/services/audit-service.ts",
+      "canonicalIdentity": "edge|1742cbb2ac2c0682712a77c9755b3232b3199d46731c14d89e9ff44fe9ec489c|imports|8922dc139b9be3e79cd0598e338b348f37ecd7bb4cdfe050a5da3c8c1c8d335c",
+      "entityKey": "1d43854f7e5013c82591bd9b9cb49e3ad773f97838f7e5e625396a572e2e2b29",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/admin-controller.ts",
+          "line": 2,
+          "contains": "../services/audit-service.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:065",
+      "src": "file:src/container.ts",
+      "relation": "imports",
+      "dst": "file:src/controllers/admin-controller.ts",
+      "canonicalIdentity": "edge|d71af4e9ed45c151b208c7c7f5fe31ce739c562a35df185cd61115f0b0162120|imports|1742cbb2ac2c0682712a77c9755b3232b3199d46731c14d89e9ff44fe9ec489c",
+      "entityKey": "f34e1a22785b4ce7eb6d219cb2d9514d8a3a24e1acb740567bf3b9d7dcafa6b9",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/container.ts",
+          "line": 1,
+          "contains": "./controllers/admin-controller.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:066",
+      "src": "file:src/container.ts",
+      "relation": "imports",
+      "dst": "file:src/controllers/user-controller.ts",
+      "canonicalIdentity": "edge|d71af4e9ed45c151b208c7c7f5fe31ce739c562a35df185cd61115f0b0162120|imports|45c2269a6213096d01777f8560384490e1ddaa2b70c70e11445d5b1800bbd610",
+      "entityKey": "8950d6a6d9229d7ca5250b81eb1114753bd7cc916d609a9427a4c8faf19e300a",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/container.ts",
+          "line": 2,
+          "contains": "./controllers/user-controller.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:067",
+      "src": "file:src/container.ts",
+      "relation": "imports",
+      "dst": "file:src/services/audit-service.ts",
+      "canonicalIdentity": "edge|d71af4e9ed45c151b208c7c7f5fe31ce739c562a35df185cd61115f0b0162120|imports|8922dc139b9be3e79cd0598e338b348f37ecd7bb4cdfe050a5da3c8c1c8d335c",
+      "entityKey": "002683013e2d26e57316e3a575d3b3fd3d76c3ee9537c9f9f4775d531cd05fc3",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/container.ts",
+          "line": 3,
+          "contains": "./services/audit-service.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:068",
+      "src": "file:src/container.ts",
+      "relation": "imports",
+      "dst": "file:src/services/user-service.ts",
+      "canonicalIdentity": "edge|d71af4e9ed45c151b208c7c7f5fe31ce739c562a35df185cd61115f0b0162120|imports|1eb841b3a7080223f6ceb731613a95a6d3102e5f000fb4e99bc0f908b0af83a4",
+      "entityKey": "6d6d3ed68d185b7a0aa61a7484df8dcc9c53993eaacc06315d97b81d4dd0d735",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/container.ts",
+          "line": 4,
+          "contains": "./services/user-service.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:069",
+      "src": "file:src/routes/users.ts",
+      "relation": "imports",
+      "dst": "file:src/container.ts",
+      "canonicalIdentity": "edge|d44b57e20034427db3c2a4a1e1409ff94ad6757629ac427607a6f4a885d65284|imports|d71af4e9ed45c151b208c7c7f5fe31ce739c562a35df185cd61115f0b0162120",
+      "entityKey": "6a90bebd7bd37c000cd53c4356b66787228d25e4560650d37e419effb126358b",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/routes/users.ts",
+          "line": 2,
+          "contains": "../container.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:070",
+      "src": "file:src/routes/admin.ts",
+      "relation": "imports",
+      "dst": "file:src/container.ts",
+      "canonicalIdentity": "edge|81901dc4e6d66345c756f0818e5082e328f0c026259c8b3b3a8ce5aa8e273add|imports|d71af4e9ed45c151b208c7c7f5fe31ce739c562a35df185cd61115f0b0162120",
+      "entityKey": "9e102157c2dde915f68076ab55410ed8fd8446a87c713962714075ab970c3892",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/routes/admin.ts",
+          "line": 2,
+          "contains": "../container.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:071",
+      "src": "file:src/app.ts",
+      "relation": "imports",
+      "dst": "file:src/routes/admin.ts",
+      "canonicalIdentity": "edge|0e461d557f39de54e830ba6724c544b1dbff8afab0b5c06200a6066a11641269|imports|81901dc4e6d66345c756f0818e5082e328f0c026259c8b3b3a8ce5aa8e273add",
+      "entityKey": "e7b82eb38973833030fb25b24e04af08c27f3a39b0aa1070d011c93754d090cf",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/app.ts",
+          "line": 2,
+          "contains": "./routes/admin.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:072",
+      "src": "file:src/app.ts",
+      "relation": "imports",
+      "dst": "file:src/routes/users.ts",
+      "canonicalIdentity": "edge|0e461d557f39de54e830ba6724c544b1dbff8afab0b5c06200a6066a11641269|imports|d44b57e20034427db3c2a4a1e1409ff94ad6757629ac427607a6f4a885d65284",
+      "entityKey": "a10602b2d8ad91bb855b483dad1bea66894bdd8647666a0a06dfb929fda6ed76",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/app.ts",
+          "line": 3,
+          "contains": "./routes/users.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:073",
+      "src": "file:src/dispatch.ts",
+      "relation": "imports",
+      "dst": "file:src/container.ts",
+      "canonicalIdentity": "edge|c8defba44909d6c073a4952c3757fe055924becfdacc3565313d88e1af0d14b0|imports|d71af4e9ed45c151b208c7c7f5fe31ce739c562a35df185cd61115f0b0162120",
+      "entityKey": "f77b94efffaea0265bc4ae55b1657c41900076de42d5cb7f7362ed3b576e69af",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/dispatch.ts",
+          "line": 1,
+          "contains": "./container.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:074",
+      "src": "file:tests/user-controller.test.ts",
+      "relation": "imports",
+      "dst": "file:src/controllers/user-controller.ts",
+      "canonicalIdentity": "edge|c2ebfa6f924809cb36648b15675f2a1576657c2945a8034986ddac94b5960169|imports|45c2269a6213096d01777f8560384490e1ddaa2b70c70e11445d5b1800bbd610",
+      "entityKey": "c7293c8099cc9add50a1ced365d1d987aee6e3f5c42eb061b3e6405fad79ee95",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/user-controller.test.ts",
+          "line": 1,
+          "contains": "../src/controllers/user-controller.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:075",
+      "src": "file:tests/user-controller.test.ts",
+      "relation": "imports",
+      "dst": "file:src/services/user-service.ts",
+      "canonicalIdentity": "edge|c2ebfa6f924809cb36648b15675f2a1576657c2945a8034986ddac94b5960169|imports|1eb841b3a7080223f6ceb731613a95a6d3102e5f000fb4e99bc0f908b0af83a4",
+      "entityKey": "2771acfa61e3ddd59caea09965e7856924122458ce6919033cb0e4ccdd757af7",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/user-controller.test.ts",
+          "line": 2,
+          "contains": "../src/services/user-service.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:076",
+      "src": "class:controller.UserController",
+      "relation": "references",
+      "dst": "class:service.UserService",
+      "canonicalIdentity": "edge|cc55455f8e3bcf8a7e08cb53c4a3fe18f28d08d8fd9ce43ae8fc5e404d59b07d|references|e6c2f0153adf21104a82315c38f74f07ff19550d15681883ab1819edfe79f6e7",
+      "entityKey": "b557de92a37e697009cb1a11f8c5581f14f2b97211b21391f5cd9ac1385fea93",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/user-controller.ts",
+          "line": 6,
+          "contains": "users: UserService"
+        }
+      ]
+    },
+    {
+      "id": "edge:077",
+      "src": "class:controller.AdminController",
+      "relation": "references",
+      "dst": "class:service.AuditService",
+      "canonicalIdentity": "edge|9a7cf92cf6797f19e486bd97bc446a0a8287dcad02399167de1f0d054581dfae|references|89386591495f848f6afbb54cb4ad4797afac372c5a6e57de65b636e8b11cb27b",
+      "entityKey": "bbac25d59416fd1f754e0a43e4b2ab920d918c6ebc5db048d1274b7abe20cd4f",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/admin-controller.ts",
+          "line": 5,
+          "contains": "audit: AuditService"
+        }
+      ]
+    },
+    {
+      "id": "edge:078",
+      "src": "fn:container.makeUserController",
+      "relation": "references",
+      "dst": "class:controller.UserController",
+      "canonicalIdentity": "edge|09d55be74c4614bb8b25f83de7a524fbd21e2351863fa5c38e7f2bae9305fa4f|references|cc55455f8e3bcf8a7e08cb53c4a3fe18f28d08d8fd9ce43ae8fc5e404d59b07d",
+      "entityKey": "e67003a20357c8879af9df135c769a005cbf196aef8a3c6d66cd78a6639fab48",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/container.ts",
+          "line": 2,
+          "contains": "UserController"
+        }
+      ]
+    },
+    {
+      "id": "edge:079",
+      "src": "fn:container.makeUserController",
+      "relation": "references",
+      "dst": "class:service.UserService",
+      "canonicalIdentity": "edge|09d55be74c4614bb8b25f83de7a524fbd21e2351863fa5c38e7f2bae9305fa4f|references|e6c2f0153adf21104a82315c38f74f07ff19550d15681883ab1819edfe79f6e7",
+      "entityKey": "a9cdaf8588d36fd4796258b8e63bd95d1b00ca31dd667a1fb2fb73a9ad5e074e",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/container.ts",
+          "line": 4,
+          "contains": "UserService"
+        }
+      ]
+    },
+    {
+      "id": "edge:080",
+      "src": "fn:container.makeAdminController",
+      "relation": "references",
+      "dst": "class:controller.AdminController",
+      "canonicalIdentity": "edge|3d740a93fd4ff9a92863293ad4b5242c45669612260fb8b60d4cc0c08212b268|references|9a7cf92cf6797f19e486bd97bc446a0a8287dcad02399167de1f0d054581dfae",
+      "entityKey": "405501197c24c4d7f4c4e3007812f4b80614435c37b62736bf5503b9a8b12d01",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/container.ts",
+          "line": 1,
+          "contains": "AdminController"
+        }
+      ]
+    },
+    {
+      "id": "edge:081",
+      "src": "fn:container.makeAdminController",
+      "relation": "references",
+      "dst": "class:service.AuditService",
+      "canonicalIdentity": "edge|3d740a93fd4ff9a92863293ad4b5242c45669612260fb8b60d4cc0c08212b268|references|89386591495f848f6afbb54cb4ad4797afac372c5a6e57de65b636e8b11cb27b",
+      "entityKey": "9251eef6fb98dc8ee1ca0a49cbcc0f77519568b48391ba43c7c97ca5f13251a8",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/container.ts",
+          "line": 3,
+          "contains": "AuditService"
+        }
+      ]
+    },
+    {
+      "id": "edge:082",
+      "src": "method:controller.UserController.getUser",
+      "relation": "calls",
+      "dst": "method:service.UserService.getUser",
+      "canonicalIdentity": "edge|992a39f495eb362069800c9d825f3d501bd9892ecd468459102cfddb407e8495|calls|06bf28fe247acb92afd2cd67c31d1e501ae768ed2d8040f4775c0f41b8782056",
+      "entityKey": "66f986a37b35b78d00177d2addd2ad431f730989b789323aab0da907c5e179e9",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/user-controller.ts",
+          "line": 9,
+          "contains": "this.users.getUser"
+        }
+      ]
+    },
+    {
+      "id": "edge:083",
+      "src": "method:controller.UserController.getUser",
+      "relation": "calls",
+      "dst": "fn:infra.unsafeLookup",
+      "canonicalIdentity": "edge|992a39f495eb362069800c9d825f3d501bd9892ecd468459102cfddb407e8495|calls|ed77c634bc48312e9c64eb3051c687b878dba314d17788886887dc1d4e9a7d41",
+      "entityKey": "02eb7bee31c6dd60bf5f355335d4f03c6467a55052db0fb924c4266e46ef9f52",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/user-controller.ts",
+          "line": 2,
+          "contains": "unsafeLookup"
+        }
+      ]
+    },
+    {
+      "id": "edge:084",
+      "src": "method:controller.AdminController.createAdmin",
+      "relation": "calls",
+      "dst": "method:service.AuditService.record",
+      "canonicalIdentity": "edge|950ef3eb12908efee94616e3d0106d5b1b28271d5cce3fe92805dc1e90ea3909|calls|9ef513a8a5d531ff64b309e998695444363a47bf63ecc4d56a0068d32a7fbe6b",
+      "entityKey": "fd6b7189dc6547cd9795692a3a04e4929692e866414568255432a209946ccfc9",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/controllers/admin-controller.ts",
+          "line": 8,
+          "contains": "this.audit.record"
+        }
+      ]
+    },
+    {
+      "id": "edge:085",
+      "src": "fn:dispatch.dispatch",
+      "relation": "calls",
+      "dst": "fn:container.makeUserController",
+      "canonicalIdentity": "edge|81e0b3ab8be759683fab31f0e26560c67e6ff10a7506a2eac8877553db775b66|calls|09d55be74c4614bb8b25f83de7a524fbd21e2351863fa5c38e7f2bae9305fa4f",
+      "entityKey": "2686377d8634a8125fb2c5927c28ec7d5c1167cf9a4e5bd1032a1d8d059668ed",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/dispatch.ts",
+          "line": 4,
+          "contains": "makeUserController()"
+        }
+      ]
+    },
+    {
+      "id": "edge:086",
+      "src": "fn:dispatch.dispatch",
+      "relation": "calls",
+      "dst": "unresolved:dispatch.controller-index",
+      "canonicalIdentity": "edge|81e0b3ab8be759683fab31f0e26560c67e6ff10a7506a2eac8877553db775b66|calls|e5075dcf0122f2c6cfaac784194539487b8506ff7fb24cee02a27bb5239524b4",
+      "entityKey": "51e06358397a01027cf992fe75217e110d72daee54423d902a012dbab52d56cd",
+      "origin": "heuristic",
+      "confidence": "inferred",
+      "resolution": "unresolved",
+      "evidence": [
+        {
+          "file": "src/dispatch.ts",
+          "line": 5,
+          "contains": "[action]()"
+        }
+      ]
+    },
+    {
+      "id": "edge:087",
+      "src": "route:users.get",
+      "relation": "routes_to",
+      "dst": "method:controller.UserController.getUser",
+      "canonicalIdentity": "edge|3515ee1e143cef27a3a190276cfb0c1cdef345ca1fa7000dfcbed70e029b9352|routes_to|992a39f495eb362069800c9d825f3d501bd9892ecd468459102cfddb407e8495",
+      "entityKey": "286d660096a235fddaa860ec7e4bc6f8a53cdc5e4e467d88daf1b716f72dcc53",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/routes/users.ts",
+          "line": 7,
+          "contains": "router.get(\"/users/:id\""
+        }
+      ]
+    },
+    {
+      "id": "edge:088",
+      "src": "route:admin.post-computed",
+      "relation": "routes_to",
+      "dst": "method:controller.AdminController.createAdmin",
+      "canonicalIdentity": "edge|3bccfc5dd95cf82315ee00ede645dbaa0fa03fa420ed52eb8264915d936551a8|routes_to|950ef3eb12908efee94616e3d0106d5b1b28271d5cce3fe92805dc1e90ea3909",
+      "entityKey": "a14e8c6a88abd33221db84ea5991604d10250acc65b7c557f36abc05f68dfd2d",
+      "origin": "heuristic",
+      "confidence": "likely",
+      "resolution": "partial",
+      "evidence": [
+        {
+          "file": "src/routes/admin.ts",
+          "line": 8,
+          "contains": "router.post(adminPath"
+        }
+      ]
+    },
+    {
+      "id": "edge:089",
+      "src": "test:user-controller",
+      "relation": "tests",
+      "dst": "method:controller.UserController.getUser",
+      "canonicalIdentity": "edge|58e15d45b9331306d6a2ea506202dde631067036f2857fd6657ee4331eca0912|tests|992a39f495eb362069800c9d825f3d501bd9892ecd468459102cfddb407e8495",
+      "entityKey": "110562b0408a3f4fc9c8d6e01f28ebc87548ae7022988f0440d8e1faba909c27",
+      "origin": "compiler",
+      "confidence": "likely",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "tests/user-controller.test.ts",
+          "line": 8,
+          "contains": "controller.getUser"
+        }
+      ],
+      "notes": [
+        "Static property reference, not runtime coverage."
+      ]
+    },
+    {
+      "id": "edge:090",
+      "src": "adr:routes",
+      "relation": "documents",
+      "dst": "file:src/routes/users.ts",
+      "canonicalIdentity": "edge|50217a5aed978baef83e8a4d413bf1bd12ec1f1d0813d5c9a31f8a51fa9c2fbc|documents|d44b57e20034427db3c2a4a1e1409ff94ad6757629ac427607a6f4a885d65284",
+      "entityKey": "958d0b12e041b252ca57032fd259b3ab97d33d156bc5752120f15fb2a67c79f6",
+      "origin": "doc",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-002-routes.md",
+          "line": 5,
+          "contains": "`src/routes/users.ts`"
+        }
+      ]
+    },
+    {
+      "id": "edge:091",
+      "src": "adr:routes",
+      "relation": "documents",
+      "dst": "class:controller.UserController",
+      "canonicalIdentity": "edge|50217a5aed978baef83e8a4d413bf1bd12ec1f1d0813d5c9a31f8a51fa9c2fbc|documents|cc55455f8e3bcf8a7e08cb53c4a3fe18f28d08d8fd9ce43ae8fc5e404d59b07d",
+      "entityKey": "e816342ec0791642f9aa4d7330468113be585393c2c661c218a814dc79bcdce1",
+      "origin": "doc",
+      "confidence": "likely",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-002-routes.md",
+          "line": 6,
+          "contains": "`UserController`"
+        }
+      ]
+    },
+    {
+      "id": "edge:092",
+      "src": "adr:routes",
+      "relation": "documents",
+      "dst": "method:controller.AdminController.createAdmin",
+      "canonicalIdentity": "edge|50217a5aed978baef83e8a4d413bf1bd12ec1f1d0813d5c9a31f8a51fa9c2fbc|documents|950ef3eb12908efee94616e3d0106d5b1b28271d5cce3fe92805dc1e90ea3909",
+      "entityKey": "12ab37551bd8bb0e8ca8f55791ea94dbb44b85a86e04cb1ec1d49168ccc0f16b",
+      "origin": "doc",
+      "confidence": "likely",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "docs/ADR-002-routes.md",
+          "line": 7,
+          "contains": "`createAdmin`"
+        }
+      ]
+    }
+  ],
+  "expectedBoundaryViolations": [
+    {
+      "ruleId": "controllers-must-not-import-infra",
+      "src": "file:src/controllers/user-controller.ts",
+      "edgeRelation": "imports",
+      "dst": "file:src/infra/db.ts",
+      "severity": "error",
+      "evidence": [
+        {
+          "file": "src/controllers/user-controller.ts",
+          "line": 2,
+          "contains": "../infra/db.js"
+        }
+      ]
+    }
+  ],
+  "excludedCandidates": [
+    {
+      "kind": "test-link",
+      "file": "tests/adminish.test.ts",
+      "test": "admin route exists",
+      "reason": "Name-only resemblance with no import or symbol reference; no tests edge."
+    },
+    {
+      "kind": "document-link",
+      "file": "docs/ADR-002-routes.md",
+      "text": "src/routes/missing.ts",
+      "reason": "Path does not resolve."
+    },
+    {
+      "kind": "document-link",
+      "file": "docs/ADR-002-routes.md",
+      "text": "controller",
+      "reason": "Generic and ambiguous; multiple controller symbols exist."
+    },
+    {
+      "kind": "route",
+      "file": "src/app.ts",
+      "text": "app.use('/api', ...)",
+      "reason": "Middleware mount calls are not HTTP route nodes in the v1 fixture contract."
+    },
+    {
+      "kind": "constructor-call",
+      "file": "src/container.ts",
+      "text": "new UserController/new UserService",
+      "reason": "Constructor calls are excluded from the v1 call relation contract; type references are emitted instead."
+    }
+  ]
+}

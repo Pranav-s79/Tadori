@@ -1,0 +1,349 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tadori.dev/schemas/expected-graph.schema.json",
+  "title": "Tadori Golden Expected Graph",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "fixture",
+    "analyzerContract",
+    "nodes",
+    "edges",
+    "expectedBoundaryViolations",
+    "excludedCandidates"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "snapshot",
+        "packageName",
+        "purpose",
+        "relationStrata",
+        "nastyCases",
+        "indexedFiles",
+        "supportFiles"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "snapshot": {
+          "type": "string"
+        },
+        "packageName": {
+          "type": "string"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "relationStrata": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/relation"
+          },
+          "uniqueItems": true
+        },
+        "nastyCases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "indexedFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "supportFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "analyzerContract": {
+      "type": "object"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/node"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/edge"
+      }
+    },
+    "expectedBoundaryViolations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/boundaryViolation"
+      }
+    },
+    "excludedCandidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "reason"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "$defs": {
+    "nodeKind": {
+      "enum": [
+        "package",
+        "file",
+        "function",
+        "method",
+        "class",
+        "interface",
+        "type",
+        "route",
+        "test",
+        "adr",
+        "doc_section",
+        "external_dep",
+        "unresolved"
+      ]
+    },
+    "relation": {
+      "enum": [
+        "contains",
+        "imports",
+        "exports",
+        "references",
+        "calls",
+        "implements",
+        "extends",
+        "tests",
+        "routes_to",
+        "documents",
+        "changed_with"
+      ]
+    },
+    "origin": {
+      "enum": [
+        "compiler",
+        "heuristic",
+        "git",
+        "doc",
+        "human",
+        "llm"
+      ]
+    },
+    "confidence": {
+      "enum": [
+        "certain",
+        "likely",
+        "inferred"
+      ]
+    },
+    "resolution": {
+      "enum": [
+        "resolved",
+        "partial",
+        "unresolved"
+      ]
+    },
+    "hex64": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "line",
+        "contains"
+      ],
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "contains": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "qualifiedName",
+        "displayName",
+        "canonicalIdentity",
+        "entityKey",
+        "file",
+        "exported"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/nodeKind"
+        },
+        "qualifiedName": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "canonicalIdentity": {
+          "type": "string"
+        },
+        "entityKey": {
+          "$ref": "#/$defs/hex64"
+        },
+        "file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "exported": {
+          "type": "boolean"
+        },
+        "bodyHash": {
+          "$ref": "#/$defs/hex64"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "src",
+        "relation",
+        "dst",
+        "canonicalIdentity",
+        "entityKey",
+        "origin",
+        "confidence",
+        "resolution",
+        "evidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "src": {
+          "type": "string"
+        },
+        "relation": {
+          "$ref": "#/$defs/relation"
+        },
+        "dst": {
+          "type": "string"
+        },
+        "canonicalIdentity": {
+          "type": "string"
+        },
+        "entityKey": {
+          "$ref": "#/$defs/hex64"
+        },
+        "origin": {
+          "$ref": "#/$defs/origin"
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "resolution": {
+          "$ref": "#/$defs/resolution"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "boundaryViolation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ruleId",
+        "src",
+        "edgeRelation",
+        "dst",
+        "severity",
+        "evidence"
+      ],
+      "properties": {
+        "ruleId": {
+          "type": "string"
+        },
+        "src": {
+          "type": "string"
+        },
+        "edgeRelation": {
+          "$ref": "#/$defs/relation"
+        },
+        "dst": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "warning",
+            "error"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        }
+      }
+    }
+  }
+}

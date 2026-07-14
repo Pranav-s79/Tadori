@@ -1,0 +1,9 @@
+{
+  "boundaries": [
+    {
+      "id": "controllers-must-not-import-infra",
+      "from": "src/controllers/**",
+      "deny": ["src/infra/**"]
+    }
+  ]
+}

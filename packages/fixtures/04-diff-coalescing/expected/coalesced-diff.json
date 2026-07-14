@@ -1,0 +1,373 @@
+{
+  "schemaVersion": "1.0.0",
+  "fixtureId": "diff-coalescing",
+  "baseSnapshot": "before",
+  "headSnapshot": "after",
+  "nodePairs": [
+    {
+      "beforeNodeId": "file:src/legacy/helper.ts",
+      "afterNodeId": "file:src/helpers/helper.ts",
+      "class": "moved_or_renamed_likely",
+      "stage": "A",
+      "basis": [
+        "kind",
+        "unqualifiedName",
+        "bodyHash",
+        "analyzerVersion"
+      ],
+      "label": "Moved or renamed \u2014 likely"
+    },
+    {
+      "beforeNodeId": "fn:helper.normalize.old",
+      "afterNodeId": "fn:helper.normalize.new",
+      "class": "moved_or_renamed_likely",
+      "stage": "A",
+      "basis": [
+        "kind",
+        "unqualifiedName",
+        "bodyHash",
+        "analyzerVersion"
+      ],
+      "label": "Moved or renamed \u2014 likely"
+    },
+    {
+      "beforeNodeId": "method:formatter.formatValue",
+      "afterNodeId": "method:formatter.renderValue",
+      "class": "moved_or_renamed_likely",
+      "stage": "B",
+      "basis": [
+        "kind",
+        "bodyHash",
+        "analyzerVersion",
+        "uniqueCandidate"
+      ],
+      "label": "Moved or renamed \u2014 likely"
+    }
+  ],
+  "edgePairs": [
+    {
+      "beforeEdgeId": "edge:021",
+      "afterEdgeId": "edge:021",
+      "relation": "contains",
+      "class": "moved_or_renamed_likely",
+      "label": "Moved or renamed \u2014 likely",
+      "beforeSrc": "file:src/formatter.ts",
+      "afterSrc": "file:src/formatter.ts",
+      "beforeDst": "method:formatter.formatValue",
+      "afterDst": "method:formatter.renderValue"
+    },
+    {
+      "beforeEdgeId": "edge:035",
+      "afterEdgeId": "edge:034",
+      "relation": "imports",
+      "class": "moved_or_renamed_likely",
+      "label": "Moved or renamed \u2014 likely",
+      "beforeSrc": "file:src/task.ts",
+      "afterSrc": "file:src/task.ts",
+      "beforeDst": "file:src/legacy/helper.ts",
+      "afterDst": "file:src/helpers/helper.ts"
+    },
+    {
+      "beforeEdgeId": "edge:025",
+      "afterEdgeId": "edge:025",
+      "relation": "contains",
+      "class": "moved_or_renamed_likely",
+      "label": "Moved or renamed \u2014 likely",
+      "beforeSrc": "file:src/legacy/helper.ts",
+      "afterSrc": "file:src/helpers/helper.ts",
+      "beforeDst": "fn:helper.normalize.old",
+      "afterDst": "fn:helper.normalize.new"
+    },
+    {
+      "beforeEdgeId": "edge:031",
+      "afterEdgeId": "edge:031",
+      "relation": "contains",
+      "class": "moved_or_renamed_likely",
+      "label": "Moved or renamed \u2014 likely",
+      "beforeSrc": "class:formatter.Formatter",
+      "afterSrc": "class:formatter.Formatter",
+      "beforeDst": "method:formatter.formatValue",
+      "afterDst": "method:formatter.renderValue"
+    },
+    {
+      "beforeEdgeId": "edge:040",
+      "afterEdgeId": "edge:041",
+      "relation": "calls",
+      "class": "moved_or_renamed_likely",
+      "label": "Moved or renamed \u2014 likely",
+      "beforeSrc": "fn:task.processTask",
+      "afterSrc": "fn:task.processTask",
+      "beforeDst": "method:formatter.formatValue",
+      "afterDst": "method:formatter.renderValue"
+    },
+    {
+      "beforeEdgeId": "edge:042",
+      "afterEdgeId": "edge:043",
+      "relation": "calls",
+      "class": "moved_or_renamed_likely",
+      "label": "Moved or renamed \u2014 likely",
+      "beforeSrc": "fn:task.processTask",
+      "afterSrc": "fn:task.processTask",
+      "beforeDst": "fn:helper.normalize.old",
+      "afterDst": "fn:helper.normalize.new"
+    },
+    {
+      "beforeEdgeId": "edge:026",
+      "afterEdgeId": "edge:026",
+      "relation": "exports",
+      "class": "moved_or_renamed_likely",
+      "label": "Moved or renamed \u2014 likely",
+      "beforeSrc": "file:src/legacy/helper.ts",
+      "afterSrc": "file:src/helpers/helper.ts",
+      "beforeDst": "fn:helper.normalize.old",
+      "afterDst": "fn:helper.normalize.new"
+    },
+    {
+      "beforeEdgeId": "edge:012",
+      "afterEdgeId": "edge:012",
+      "relation": "contains",
+      "class": "moved_or_renamed_likely",
+      "label": "Moved or renamed \u2014 likely",
+      "beforeSrc": "pkg:root",
+      "afterSrc": "pkg:root",
+      "beforeDst": "file:src/legacy/helper.ts",
+      "afterDst": "file:src/helpers/helper.ts"
+    }
+  ],
+  "ambiguousNodeGroups": [],
+  "residualAddedNodes": [],
+  "residualRemovedNodes": [],
+  "changedNodeMemberships": [
+    {
+      "entityKey": "2e88d3794109a8e3ff09c524bc458969cce8a7234d80e682c909b1b5e646362f",
+      "nodeIdBefore": "file:src/formatter.ts",
+      "nodeIdAfter": "file:src/formatter.ts",
+      "changes": [
+        {
+          "field": "bodyHash",
+          "before": "28fcd7f76556011f3e862daece4240348db9c9d0a7edd98a2f0026907c4b1ef7",
+          "after": "7569b73ea3b1a563778f7a4eece33b5265efd09228a8b086ad703cbd6d1ae5a5"
+        }
+      ]
+    },
+    {
+      "entityKey": "570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b",
+      "nodeIdBefore": "fn:task.processTask",
+      "nodeIdAfter": "fn:task.processTask",
+      "changes": [
+        {
+          "field": "bodyHash",
+          "before": "6a4c4b8155c85dbedade848ea8296215bae2c39b54ac5a0fa50fdbad4595fc68",
+          "after": "1b5af58f5dd7002787fd38753fdbb63a0ee1fe149ae070b61e03a658ee450e1c"
+        }
+      ]
+    },
+    {
+      "entityKey": "7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed",
+      "nodeIdBefore": "file:src/task.ts",
+      "nodeIdAfter": "file:src/task.ts",
+      "changes": [
+        {
+          "field": "bodyHash",
+          "before": "6a4c4b8155c85dbedade848ea8296215bae2c39b54ac5a0fa50fdbad4595fc68",
+          "after": "1b5af58f5dd7002787fd38753fdbb63a0ee1fe149ae070b61e03a658ee450e1c"
+        }
+      ]
+    }
+  ],
+  "residualAddedEdges": [
+    {
+      "id": "edge:040",
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "method:notifier.Notifier.send",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|calls|613d8834dd7359a0b0cae9171dd20d19cdb8f83f245e846763ca29595aaa5d72",
+      "entityKey": "04a821617dc73186466faffe2f8b8ca752b7f55f1db12360f80450abed37f101",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 12,
+          "contains": "notifier.send"
+        }
+      ]
+    },
+    {
+      "id": "edge:035",
+      "src": "file:src/task.ts",
+      "relation": "imports",
+      "dst": "file:src/notifier.ts",
+      "canonicalIdentity": "edge|7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed|imports|9839cee9dbdf6f2405b80aee5694096b70cb89bc17b16b7e7747eb93432d89bd",
+      "entityKey": "09fcb966041c5c89a5b39334c1053d01f55eb6e83e56ba2a4596e467068bd2ee",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 3,
+          "contains": "./notifier.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:039",
+      "src": "fn:task.processTask",
+      "relation": "references",
+      "dst": "class:resolver.Resolver",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|references|87c3a9377db4a6780672a12a59a0b615b8e3ee70aee2a0327517082298e6d984",
+      "entityKey": "7d79bde2c2b775b7d11c1115681807a8a0c1bb3a00940c19d99365bc92eadeac",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 9,
+          "contains": "resolver: Resolver"
+        }
+      ]
+    },
+    {
+      "id": "edge:038",
+      "src": "fn:task.processTask",
+      "relation": "references",
+      "dst": "class:notifier.Notifier",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|references|9b15237b3ef926de4e325a2df727002bcd6262fb0a24e5c61577323182599a12",
+      "entityKey": "cfebb15d9a38d91d6a0900e27915836ea4981050488a9519a2b63d4213792c49",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 8,
+          "contains": "notifier: Notifier"
+        }
+      ]
+    }
+  ],
+  "residualRemovedEdges": [
+    {
+      "id": "edge:039",
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "method:audit.Audit.record",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|calls|57338bba507091f59a91f9ee47b3cb500fb45a7da476ee46afe23a67f74211c6",
+      "entityKey": "3f2af838b1a9e3d8a07cfd50c1b444922ff5f3d02144fdd3cf7fb2b265ab2bce",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 12,
+          "contains": "audit.record"
+        }
+      ]
+    },
+    {
+      "id": "edge:033",
+      "src": "file:src/task.ts",
+      "relation": "imports",
+      "dst": "file:src/audit.ts",
+      "canonicalIdentity": "edge|7597f6a1fedf2bf59237174bb751f46d1c25869a2dea649daa88e133eaf686ed|imports|0afb134943a90ce07f837cebac18849b2a8e9ecf9a892324dcbaf230c9f225ad",
+      "entityKey": "a525bbd1f319b5577fd2b84f4809c15ed91c0025db95deb0a2598f28e313bcfc",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 1,
+          "contains": "./audit.js"
+        }
+      ]
+    },
+    {
+      "id": "edge:038",
+      "src": "fn:task.processTask",
+      "relation": "references",
+      "dst": "class:audit.Audit",
+      "canonicalIdentity": "edge|570344b711fd4cea1238a03ce8f117ae92efe07a19183859848f69bd2016198b|references|f50eec278304fe1d1758fe59d0b1fe6eb224674dedebc194e9976609ab206215",
+      "entityKey": "bd53d5a4a09cf9f8402d0df2a4cdbfe29b2d289d01f21fc1c116a5714d0edf63",
+      "origin": "compiler",
+      "confidence": "certain",
+      "resolution": "resolved",
+      "evidence": [
+        {
+          "file": "src/task.ts",
+          "line": 8,
+          "contains": "audit: Audit"
+        }
+      ]
+    }
+  ],
+  "changedEdgeMemberships": [
+    {
+      "entityKey": "62d557ea261df9336622a88b289c213a5a10afe1d2a54f6c6e6edb871d46ce62",
+      "edgeIdBefore": "edge:041",
+      "edgeIdAfter": "edge:042",
+      "changes": [
+        {
+          "field": "origin",
+          "before": "heuristic",
+          "after": "compiler"
+        },
+        {
+          "field": "confidence",
+          "before": "likely",
+          "after": "certain"
+        },
+        {
+          "field": "resolution",
+          "before": "partial",
+          "after": "resolved"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "Raw graph identities remain unchanged; coalescing is presentation-time only.",
+    "Recursive functions whose bodies contain self-references will not Stage-B match after rename because the body text and body hash change with the name; raw added/removed diff is the accepted fallback."
+  ],
+  "semanticAssertions": {
+    "fileMove": {
+      "before": "file:src/legacy/helper.ts",
+      "after": "file:src/helpers/helper.ts",
+      "expectedClass": "moved_or_renamed_likely"
+    },
+    "symbolRename": {
+      "before": "method:formatter.formatValue",
+      "after": "method:formatter.renderValue",
+      "expectedClass": "moved_or_renamed_likely"
+    },
+    "genuineEdgeAddition": {
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "method:notifier.Notifier.send"
+    },
+    "genuineEdgeRemoval": {
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "method:audit.Audit.record"
+    },
+    "resolutionUpgrade": {
+      "src": "fn:task.processTask",
+      "relation": "calls",
+      "dst": "method:resolver.Resolver.resolve",
+      "before": {
+        "origin": "heuristic",
+        "confidence": "likely",
+        "resolution": "partial"
+      },
+      "after": {
+        "origin": "compiler",
+        "confidence": "certain",
+        "resolution": "resolved"
+      }
+    }
+  }
+}

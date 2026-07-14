@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "1.0.0",
+  "root": "packages/fixtures",
+  "fixtures": [
+    {
+      "id": "core-symbols",
+      "path": "packages/fixtures/01-core-symbols",
+      "snapshot": "base",
+      "sourceRoot": "repo",
+      "expectedGraph": "expected/graph.json",
+      "fileCount": 15,
+      "indexedFileCount": 12,
+      "expectedNodeCount": 32,
+      "expectedEdgeCount": 72,
+      "covers": [
+        "aliased imports",
+        "re-exports",
+        "barrels",
+        "overloads",
+        "recursive functions",
+        "DI interface dispatch",
+        "dynamic obj[k]() unresolved call",
+        "static and unlinked tests",
+        "ADR resolving and non-resolving references",
+        "seeded boundary violation"
+      ]
+    },
+    {
+      "id": "express-routes",
+      "path": "packages/fixtures/02-express-routes",
+      "snapshot": "base",
+      "sourceRoot": "repo",
+      "expectedGraph": "expected/graph.json",
+      "fileCount": 17,
+      "indexedFileCount": 13,
+      "expectedNodeCount": 33,
+      "expectedEdgeCount": 79,
+      "covers": [
+        "Express literal route",
+        "Express computed route",
+        "DI injection",
+        "dynamic obj[k]() unresolved call",
+        "function-valued class handlers",
+        "linked and ambiguous tests",
+        "ADR links",
+        "seeded boundary violation"
+      ]
+    },
+    {
+      "id": "next-routes",
+      "path": "packages/fixtures/03-next-routes",
+      "snapshot": "base",
+      "sourceRoot": "repo",
+      "expectedGraph": "expected/graph.json",
+      "fileCount": 13,
+      "indexedFileCount": 11,
+      "expectedNodeCount": 30,
+      "expectedEdgeCount": 68,
+      "covers": [
+        "Next App Router GET and POST",
+        "Next App Router page",
+        "Next Pages Router API",
+        "Next Pages Router page",
+        "barrel exports",
+        "linked and ambiguous tests",
+        "ADR links"
+      ]
+    },
+    {
+      "id": "diff-coalescing",
+      "path": "packages/fixtures/04-diff-coalescing",
+      "snapshots": [
+        "before",
+        "after"
+      ],
+      "expectedBeforeGraph": "expected/before-graph.json",
+      "expectedAfterGraph": "expected/after-graph.json",
+      "expectedRawDiff": "expected/raw-diff.json",
+      "expectedCoalescedDiff": "expected/coalesced-diff.json",
+      "beforeFileCount": 8,
+      "afterFileCount": 8,
+      "beforeNodeCount": 17,
+      "afterNodeCount": 17,
+      "beforeEdgeCount": 36,
+      "afterEdgeCount": 37,
+      "covers": [
+        "file move",
+        "symbol rename",
+        "genuine call addition",
+        "genuine call removal",
+        "resolution/provenance upgrade",
+        "raw versus coalesced diff"
+      ]
+    }
+  ]
+}
