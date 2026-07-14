@@ -19,4 +19,4 @@ if (failed) {
   console.error("One or more fixture comparisons failed.");
   process.exit(1);
 }
-console.log("All fixture comparisons passed for the Weeks 1-2 relation subset.");
+console.log("All fixture comparisons passed for the active milestone relation set.");

@@ -401,7 +401,7 @@ export function compareGraphs(
   for (const actualEdge of actual.edges) {
     if (!isSupportedRelation(actualEdge.relation)) {
       failures.push(
-        `Analyzer emitted deferred relation ${actualEdge.relation}; Weeks 1-2 must not emit it`
+        `Analyzer emitted deferred relation ${actualEdge.relation}; the active milestone must not emit it`
       );
     }
   }
