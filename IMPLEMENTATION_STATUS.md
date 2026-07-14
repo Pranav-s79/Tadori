@@ -1,11 +1,31 @@
 # Tadori Implementation Status
 
-Last updated: 2026-07-13 (Weeks 1–2 complete)
+Last updated: 2026-07-14 (Weeks 1–2 complete; repository relocated and baseline
+re-validated; Week 3 starting)
 
 ## Current milestone
 
 **Weeks 1–2 — Store + core extraction** (frozen v2.1 gates §14). All applicable
 completion gates pass; see "Validation results" below.
+
+## Repository environment (2026-07-14)
+
+- The repository moved machines and now lives at `C:\SideProjects\Tadori`
+  (previously `D:\Electrical\Side_Projects\Tadori`, then briefly nested at
+  `C:\SideProjects\Tadori\Tadori`). The nested checkout was flattened into the
+  outer folder; the outer folder's pre-existing `.claude/settings.json` /
+  `.claude/settings.local.json` (Claude Code plugin state) were preserved and
+  merged with the repo-tracked `.claude/README.md` + skills. Git history and
+  `origin` remote are intact.
+- The machine's global Node is 25.x with no C++ toolchain, which cannot build
+  `better-sqlite3`. `.npmrc` pins `use-node-version=22.14.0` so pnpm runs
+  everything under Node 22 LTS, where better-sqlite3 prebuilt binaries exist.
+- The machine's global `core.autocrlf=true` checked fixtures out with CRLF,
+  breaking every frozen file-node `bodyHash` (SHA-256 over exact LF bytes) —
+  observed as 12/13/11/6/6 node field mismatches across the five snapshots.
+  `.gitattributes` now forces `* text=auto eol=lf`, and the working tree was
+  byte-normalized back to LF. Fixture *expectations were not touched*; only
+  checkout behavior was fixed.
 
 ## Completed capabilities
 
@@ -140,9 +160,8 @@ next-routes 22/42, diff-coalescing before 17/30, after 17/30.
   later milestone (fixtures are single-project).
 - Only top-level declarations become symbol nodes (matches the fixture
   contract; nested function extraction is not required by any fixture).
-- The repository is not a git repository, so the "inspect the current Git
-  diff" step of the validation loop was performed by re-reading changed files;
-  recommend `git init` + an initial commit before Week 3.
+- (Resolved 2026-07-14) The repository is now a git repository (`main`, with
+  `origin`); the "inspect the current Git diff" validation step runs normally.
 
 ## Immediate next task (Week 3 — do not start without instruction)
 

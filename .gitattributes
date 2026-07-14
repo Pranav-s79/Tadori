@@ -1,0 +1,8 @@
+# Frozen fixture file-node bodyHash values are SHA-256 over the exact
+# checked-in (LF) bytes. Force LF on checkout so autocrlf machines do not
+# break the golden hashes. Binary files are auto-detected and untouched.
+* text=auto eol=lf
+*.pdf binary
+*.png binary
+*.jpg binary
+*.ico binary
