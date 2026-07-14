@@ -8,6 +8,29 @@ re-validated; Week 3 starting)
 **Weeks 1–2 — Store + core extraction** (frozen v2.1 gates §14). All applicable
 completion gates pass; see "Validation results" below.
 
+## Dual-agent configuration (Phase A — complete, 2026-07-14)
+
+- Canonical skills in `agent-skills/` sync byte-identically into
+  `.claude/skills` and `.agents/skills` (`pnpm skills:sync` / `skills:check`).
+- Added the missing `.agents/README.md` (Codex counterpart of
+  `.claude/README.md`) and `docs/CLI_CONTRACT.md` (frozen `tadori serve .`
+  contract: resolve repo → load config → reuse/refresh valid snapshot →
+  validate → local API on 127.0.0.1 → visualization → open browser → print
+  facts → clean Ctrl+C; frozen flags; 2d default). No CLI implementation yet.
+- Added frontmatter validation (`scripts/skill-frontmatter.mjs`): sync refuses
+  to run and check fails when a canonical SKILL.md has missing/unterminated
+  frontmatter, a wrong `name:`, or an empty `description:` (verified by
+  breaking a skill and observing exit 1 from both commands).
+- Fixed a stale-copy defect: sync overwrote `.tadori-generated.json` *before*
+  the removal pass read it, so a skill dropped from the canonical list was
+  never cleaned up (dead code). Sync now snapshots the previous manifest first;
+  verified a manifest-listed `tadori-retired` directory is removed while an
+  unrelated `third-party-example` skill is preserved.
+- Gates executed 2026-07-14: sync passes; check passes; second sync produces
+  no git diff (idempotent); unrelated skills preserved; stale generated copies
+  removed; malformed frontmatter fails; project skills tracked by git while
+  `.claude/settings.local.json`/credentials/cache/sessions stay ignored.
+
 ## Repository environment (2026-07-14)
 
 - The repository moved machines and now lives at `C:\SideProjects\Tadori`
