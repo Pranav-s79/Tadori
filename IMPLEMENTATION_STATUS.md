@@ -1,11 +1,69 @@
 # Tadori Implementation Status
 
-Last updated: 2026-07-14 (Week 3 semantic extraction complete)
+Last updated: 2026-07-14 (Week 5 deterministic context selection complete)
 
 ## Current milestone
 
-**Week 3 — Semantic extraction** (frozen v2.1 gates §14). All five golden
-fixture snapshots pass exact comparison over the full Week 3 relation set.
+**Week 5 — Deterministic context selection and budgeting** (frozen v2.1
+Phase D). The six-tool MCP surface now applies the frozen linear ranking,
+hard-required structural context, bounded pagination, explainable omissions,
+and whole-response token budgets. The next roadmap task is Week 6 incremental
+indexing and hardening.
+
+## Week 5 — Context selection and budgeting (complete, 2026-07-14)
+
+- Added one explicit ranking policy in `packages/mcp/src/ranking.ts` with the
+  frozen weights: BM25 3.0, graph proximity 2.5, log fan-in 1.0, 90-day churn
+  1.0, linked test 1.5, linked decision 1.0, and same package 0.5. Proximity is
+  exactly `1 / (1 + graph_distance)`; deterministic ties use confidence and
+  entity identity.
+- Task-text BM25, churn, linked decisions, and declared boundaries are not
+  available from the current snapshot/session contract. They contribute zero
+  and are labeled unavailable instead of being guessed. Missing package
+  metadata is also tri-state unavailable rather than scored as false.
+- Hard requirements are discovered against the anchor independently of the
+  caller's presentation relation filter: direct callers/callees, exact
+  signature-referenced type/interface definitions, certain linked tests, and
+  (when later available) declared-boundary neighbors. Compiler/certain/resolved
+  direct calls receive the protected priority tier; heuristic direct edges stay
+  hard but retain their lower confidence and priority.
+- `symbol_context` now returns compact per-candidate score explanations,
+  policy/version/weight metadata, unavailable signals, hard requirements,
+  critical-context counts, selected representation, and an exact serialized
+  token estimate. Confidence is derived from anchor/predecessor path evidence,
+  never from unrelated incident edges.
+- Budget reduction follows body → signature → name before ranked nodes are
+  removed. Both resolved and ambiguous calls enforce the whole serialized
+  response budget, select the largest fitting deterministic prefix by binary
+  search, retain named next omissions when space permits, and never return a
+  non-progressing cursor.
+- Pagination is stable over ranked offsets. Depth-2 pages carry connector nodes
+  and required path edges without reporting returned connectors as omitted;
+  terminal connector-only remainders correctly close with no cursor. Relation,
+  test, and document groupings use entity-key references so evidence-bearing
+  entities are serialized once.
+- Every truncated response includes named and/or aggregate omission accounting
+  for nodes and edges, reasons, continuation, and whether hard-required context
+  remains. Duplicate relation filters are rejected before traversal.
+- Added adversarial coverage for 1,024-token and exact-boundary budgets,
+  long-signature ambiguity, deterministic repeats, more than 100 hard
+  neighbors, compiler-certain versus inferred ordering, relation-independent
+  hard tests and signature types, unrelated incident edges, unresolved
+  provenance, connector reconciliation, terminal connector pages, duplicate
+  filters, and no-silent-omission accounting.
+
+### Week 5 validation (executed 2026-07-14)
+
+| Check | Result |
+|---|---|
+| `pnpm install --frozen-lockfile` | clean; lockfile already current |
+| `pnpm skills:sync` / `pnpm skills:check` | pass; 4 canonical skills synchronized and verified in both agent trees |
+| `pnpm typecheck` / `pnpm lint` | pass |
+| `pnpm test` | **132/132** tests, 17 files |
+| `python validate_fixtures.py` / `pnpm fixtures:validate` | pass |
+| `pnpm fixtures:index` | **PASS ×5**; exact expected graphs, zero dangling endpoints and foreign-key rows |
+| `pnpm fixtures:typecheck` | pass ×5 |
+| Focused spec-guardian and adversarial runtime reviews | clean after fixes; no remaining blocker/high/medium finding |
 
 ## Week 3 — Semantic extraction (complete, 2026-07-14)
 
@@ -225,6 +283,10 @@ All applicable completion gates pass; see "Validation results" below.
   validate snapshot membership and write atomically; active MCP tasks prevent
   snapshot pruning. The stdio transport emits protocol only on stdout, survives
   malformed lines, restarts cleanly, and closes tasks on normal EOF/shutdown.
+  Week 5 adds the frozen explainable linear ranking, anchor-specific hard
+  includes, confidence/evidence-aware ordering, representation degradation,
+  exact whole-response budgets, stable context cursors/connectors, and complete
+  named/aggregate omission accounting without changing the six-tool surface.
 
 ## Validation results (all executed and observed on this machine)
 
@@ -233,7 +295,7 @@ All applicable completion gates pass; see "Validation results" below.
 | `pnpm install` | clean |
 | `pnpm typecheck` (strict, `noUncheckedIndexedAccess`) | pass |
 | `pnpm lint` | pass |
-| `pnpm test` | 122/122 tests, 16 files, all pass |
+| `pnpm test` | 132/132 tests, 17 files, all pass |
 | `python validate_fixtures.py` | pass |
 | `pnpm fixtures:validate` | pass |
 | `pnpm fixtures:typecheck` (all 5 fixture repos, `tsc --noEmit`) | pass |
@@ -337,13 +399,47 @@ after 17/37.
 - (Resolved 2026-07-14) The repository is now a git repository (`main`, with
   `origin`); the "inspect the current Git diff" validation step runs normally.
 
+## Week 5 — Context selection and budgeting (implementation complete, 2026-07-14)
+
+- Added a versioned, explainable linear ranking policy with the frozen weights;
+  BM25 task text, churn, linked decisions, and declared boundaries are marked
+  unavailable rather than fabricated, and same-package metadata is tri-state.
+- Enforced anchor-specific hard requirements for direct callers/callees,
+  certain linked tests, and type/interface definitions appearing in the anchor
+  signature. Compiler-certain direct facts outrank heuristic hard facts, and
+  unrelated incident edges cannot create hard labels or confidence.
+- Added deterministic tie-breaking, confidence-aware path ordering, explicit
+  raw component explanations, body/signature/name degradation, bounded page
+  selection, advancing cursors, connector preservation, and terminal-page
+  handling without duplicate omission records.
+- Normalized relation/test/document references in context responses, rejected
+  duplicate relation filters, preserved stale/evidence/provenance labels, and
+  kept omission counts reconciled across detailed and aggregate manifests.
+- Added focused ranking/context tests for exact weights, hard priority,
+  confidence and unresolved edges, signature-only hard includes, unrelated
+  edges, tiny and exact budgets, long ambiguity, high degree, connector pages,
+  terminal pages, duplicate filters, and pagination continuity.
+
+### Week 5 focused validation (executed 2026-07-14)
+
+| Check | Result |
+|---|---|
+| `pnpm typecheck` | pass |
+| focused ESLint (`@tadori/mcp` changed files) | pass |
+| focused MCP/ranking tests | **21/21** pass |
+| adversarial MCP matrix (review subagent) | clean: 39 tests across 6 files |
+| `git diff --check` | pass |
+
+The full repository gate (`pnpm test`, fixture validation/index/typecheck, and
+the required skills checks) is the next resume action because this branch was
+pushed immediately at the user's request.
+
 ## Current roadmap phase
 
-Week 4 / Phase C is complete and validated. The next task is Week 5 / Phase D:
-extract deterministic ranking and context selection into explicit policy,
-enforce hard-required structural neighbors before heuristic scoring, add query
-explanations and confidence-aware ordering, and extend exact-boundary,
-high-degree, ambiguity, and pagination-continuity tests. Existing Week 4
-response caps, pagination, token budgets, stale labels, and omission manifests
-are the safe foundation; they do not pre-claim the complete Week 5 ranking
-gate.
+Week 5 / Phase D is complete and validated. The next task is Week 6 / Phase E:
+implement safe incremental repository refresh with file watching, deterministic
+change batching, stale-state tracking during refresh, changed-file parsing,
+affected/dependency-region invalidation, atomic snapshot replacement, crash
+recovery, and measured single-file/package/dependency latency gates. Week 6
+must preserve the frozen snapshot, evidence, identity, and MCP contracts now
+covered by 132 repository tests and the exact five-fixture harness.

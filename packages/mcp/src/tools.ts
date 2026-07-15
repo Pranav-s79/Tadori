@@ -30,6 +30,14 @@ import {
   type ToolName,
   type ToolNode
 } from "./contracts.js";
+import {
+  rankCandidates,
+  RANKING_POLICY_VERSION,
+  RANKING_WEIGHTS,
+  signatureReferencesType,
+  type HardRequirement,
+  type RankedCandidate
+} from "./ranking.js";
 import { estimateTokens, type EntityResolution, type GraphService } from "./service.js";
 
 const IMPACT_RELATIONS: ReadonlySet<Relation> = new Set(["calls", "imports"]);
@@ -37,6 +45,7 @@ const OVERVIEW_RESULT_LIMIT = 100;
 const IMPACT_PAGE_SIZE = 100;
 const AMBIGUITY_LIMIT = 50;
 const FIND_TESTS_LIMIT = 50;
+const CONTEXT_PAGE_SIZE = 100;
 const EDGE_RESULT_LIMIT = 200;
 const EVIDENCE_RESULT_LIMIT = 20;
 const PACKAGE_DEPENDENCY_LIMIT = 50;
@@ -178,6 +187,100 @@ export class TadoriTools {
     };
   }
 
+  private packageName(node: GraphNode): string | null {
+    if (node.file === null) {
+      return node.kind === "package" ? node.displayName : null;
+    }
+    return (
+      this.service.graph.files.find((file) => file.normalizedPath === node.file)
+        ?.packageName ?? null
+    );
+  }
+
+  private selectionExplanation(
+    ranked: readonly RankedCandidate[],
+    pageOffset: number,
+    returnedCandidateCount: number,
+    estimatedResponseTokens: number,
+    omittedExplanationLimit = 10,
+    candidateRepresentation: "signature" | "name" = "signature",
+    returnedConnectorKeys: ReadonlySet<string> = new Set()
+  ): SymbolContextOutput["selection"] {
+    const primary = ranked.slice(pageOffset, pageOffset + returnedCandidateCount);
+    const tail = ranked
+      .slice(pageOffset + returnedCandidateCount)
+      .filter((entry) => !returnedConnectorKeys.has(entry.node.entityKey))
+      .slice(0, omittedExplanationLimit);
+    const explainedKeys = new Set([
+      ...primary.map((entry) => entry.node.entityKey),
+      ...returnedConnectorKeys,
+      ...tail.map((entry) => entry.node.entityKey)
+    ]);
+    const explained = ranked.filter((entry) => explainedKeys.has(entry.node.entityKey));
+    const omittedCritical = ranked
+      .slice(pageOffset + returnedCandidateCount)
+      .filter(
+        (entry) =>
+          !returnedConnectorKeys.has(entry.node.entityKey) &&
+          entry.hardRequirements.length > 0
+      );
+    const unavailableSignals: SymbolContextOutput["selection"]["unavailableSignals"] = [
+      "bm25_task_text",
+      "churn_90d",
+      "linked_decisions",
+      "declared_boundaries"
+    ];
+    if (ranked.some((entry) => entry.components.samePackage.status === "unavailable")) {
+      unavailableSignals.push("same_package");
+    }
+    return {
+      policyVersion: RANKING_POLICY_VERSION,
+      taskTextStatus: "unavailable",
+      unavailableSignals,
+      weights: { ...RANKING_WEIGHTS },
+      pageOffset,
+      returnedCandidateCount,
+      returnedConnectorCount: returnedConnectorKeys.size,
+      totalCandidateCount: ranked.length,
+      criticalRequiredOmittedCount: omittedCritical.length,
+      candidateRepresentation,
+      hardRequiredContextRemaining: omittedCritical.length > 0,
+      estimatedResponseTokens,
+      ranking: explained.map((entry) => ({
+        entityKey: entry.node.entityKey,
+        rank: ranked.indexOf(entry) + 1,
+        score: entry.score,
+        confidence: entry.confidence,
+        hardPriority: entry.hardPriority,
+        hardRequirements: entry.hardRequirements,
+        components: {
+          bm25: entry.components.bm25.raw,
+          proximity: entry.components.proximity.raw,
+          fanIn: entry.components.fanIn.raw,
+          churn: entry.components.churn.raw,
+          linkedTest: entry.components.linkedTest.raw,
+          linkedDecision: entry.components.linkedDecision.raw,
+          samePackage: entry.components.samePackage.raw
+        }
+      }))
+    };
+  }
+
+  private stableSymbolContextEstimate(
+    build: (estimatedResponseTokens: number) => SymbolContextOutput
+  ): SymbolContextOutput {
+    let estimatedResponseTokens = 0;
+    for (let iteration = 0; iteration < 10; iteration += 1) {
+      const output = build(estimatedResponseTokens);
+      const actual = estimateTokens(JSON.stringify(output));
+      if (actual === estimatedResponseTokens) {
+        return output;
+      }
+      estimatedResponseTokens = actual;
+    }
+    throw new Error("symbol_context response token estimate did not converge");
+  }
+
   private evidence(nodeOrEdge: GraphNode | GraphEdge): ToolNode["evidence"] {
     return nodeOrEdge.evidence.slice(0, EVIDENCE_RESULT_LIMIT).map((item) => ({
       file: item.file,
@@ -212,6 +315,9 @@ export class TadoriTools {
     if (preferred === "body" && body === null) {
       representation = node.signature === null ? "name" : "signature";
     }
+    if (preferred === "signature" && node.signature === null) {
+      representation = "name";
+    }
     return {
       entityKey: node.entityKey,
       kind: node.kind,
@@ -220,7 +326,7 @@ export class TadoriTools {
       file: node.file,
       lineStart: node.lineStart,
       lineEnd: node.lineEnd,
-      signature: node.signature,
+      signature: representation === "name" ? null : node.signature,
       exported: node.exported,
       fanIn: this.service.fanIn(node.entityKey),
       representation,
@@ -564,61 +670,116 @@ export class TadoriTools {
     const input: SymbolContextInput = symbolContextInputSchema.parse(raw);
     const resolved = this.resolve(input.anchor);
     if (resolved.node === null) {
-      const bounded = this.boundedCandidates(resolved);
       const wasAmbiguous = resolved.candidates.length > 0;
-      const candidates = [...bounded.candidates];
-      const allOmissions = [...bounded.omissions];
-      const buildAmbiguousOutput = (): SymbolContextOutput => {
-        const returnedKeys = new Set(candidates.map((candidate) => candidate.entityKey));
-        const rankByKind = { node: 0, edge: 0 };
-        const uniqueOmissions = [...new Map(
-          allOmissions
-            .filter((item) => !returnedKeys.has(item.entityKey))
-            .map((item) => [`${item.targetKind}:${item.entityKey}`, item])
-        ).values()].map((item) => ({
-          ...item,
-          rank: (rankByKind[item.targetKind] += 1)
+      const pageOffset = parseOffset(input.cursor);
+      const orderedCandidates = uniqueNodes(resolved.candidates);
+      if (pageOffset > orderedCandidates.length) {
+        throw new RangeError("cursor is beyond the ambiguous candidate set");
+      }
+      const pageCandidateNodes = orderedCandidates.slice(
+        pageOffset,
+        pageOffset + AMBIGUITY_LIMIT
+      );
+      let candidateRepresentation: "signature" | "name" = pageCandidateNodes.some(
+        (node) => node.signature !== null
+      )
+        ? "signature"
+        : "name";
+      let pageCandidates = pageCandidateNodes.map((node) =>
+        this.node(node, candidateRepresentation)
+      );
+      const candidates = [...pageCandidates];
+      const buildAmbiguousOutput = (estimatedResponseTokens: number): SymbolContextOutput => {
+        const continuationOffset = pageOffset + candidates.length;
+        const remaining = orderedCandidates.slice(continuationOffset);
+        const omissions = remaining.slice(0, 10).map((node, index) => ({
+          targetKind: "node" as const,
+          entityKey: node.entityKey,
+          rank: continuationOffset + index + 1,
+          score: null,
+          reason: "context_page_or_budget"
         }));
-        const omissions = uniqueOmissions.slice(0, 10);
-        const aggregateOmissions = [...bounded.aggregateOmissions];
-        if (uniqueOmissions.length > omissions.length) {
-          aggregateOmissions.push({
-            category: "ambiguous_candidates",
-            count: uniqueOmissions.length - omissions.length,
-            reason: "token_budget",
-            continuation: "refine the entity reference with find_symbol",
-            criticalContextPreserved: false
-          });
-        }
+        const aggregateOmissions: AggregateOmission[] =
+          remaining.length > omissions.length
+            ? [{
+                category: "ambiguous_candidates",
+                count: remaining.length - omissions.length,
+                reason: "context_page_or_budget",
+                continuation: String(continuationOffset),
+                criticalContextPreserved: false
+              }]
+            : [];
+        const selection = {
+          ...this.selectionExplanation(
+            [],
+            pageOffset,
+            candidates.length,
+            estimatedResponseTokens,
+            0,
+            candidateRepresentation
+          ),
+          totalCandidateCount: orderedCandidates.length
+        };
         return symbolContextOutputSchema.parse({
           context: this.context(),
-          truncated: omissions.length > 0 || aggregateOmissions.length > 0,
-          nextCursor: null,
+          truncated: remaining.length > 0,
+          nextCursor: remaining.length > 0 ? String(continuationOffset) : null,
           omissions,
           aggregateOmissions,
           status: wasAmbiguous ? "ambiguous" : "not_found",
           anchor: null,
           candidates,
           nodes: [],
+          connectors: [],
           edges: [],
           relationGroups: [],
           linkedTests: [],
           linkedDocuments: [],
           decisionsAvailable: false,
-          bodySuppressedReason: null
+          bodySuppressedReason: null,
+          selection
         });
       };
-      let output = buildAmbiguousOutput();
-      while (estimateTokens(JSON.stringify(output)) > input.tokenBudget && candidates.length > 0) {
-        const omitted = candidates.pop()!;
-        allOmissions.push({
-          targetKind: "node",
-          entityKey: omitted.entityKey,
-          rank: 1,
-          score: null,
-          reason: "token_budget"
-        });
-        output = buildAmbiguousOutput();
+      let output = this.stableSymbolContextEstimate(buildAmbiguousOutput);
+      if (
+        estimateTokens(JSON.stringify(output)) > input.tokenBudget &&
+        candidateRepresentation === "signature"
+      ) {
+        candidateRepresentation = "name";
+        pageCandidates = pageCandidateNodes.map((node) => this.node(node, "name"));
+        candidates.splice(0, candidates.length, ...pageCandidates);
+        output = this.stableSymbolContextEstimate(buildAmbiguousOutput);
+      }
+      if (estimateTokens(JSON.stringify(output)) > input.tokenBudget) {
+        let lowest = 0;
+        let highest = candidates.length - 1;
+        let bestCount = -1;
+        let bestOutput: SymbolContextOutput | null = null;
+        while (lowest <= highest) {
+          const candidateCount = Math.floor((lowest + highest) / 2);
+          candidates.splice(
+            0,
+            candidates.length,
+            ...pageCandidates.slice(0, candidateCount)
+          );
+          const candidateOutput = this.stableSymbolContextEstimate(buildAmbiguousOutput);
+          if (estimateTokens(JSON.stringify(candidateOutput)) <= input.tokenBudget) {
+            bestCount = candidateCount;
+            bestOutput = candidateOutput;
+            lowest = candidateCount + 1;
+          } else {
+            highest = candidateCount - 1;
+          }
+        }
+        if (bestOutput !== null) {
+          candidates.splice(0, candidates.length, ...pageCandidates.slice(0, bestCount));
+          output = bestOutput;
+        }
+      }
+      if (orderedCandidates.length > pageOffset && candidates.length === 0) {
+        throw new RangeError(
+          `tokenBudget ${input.tokenBudget} cannot fit one ambiguous candidate; increase the budget`
+        );
       }
       if (estimateTokens(JSON.stringify(output)) > input.tokenBudget) {
         throw new RangeError(
@@ -629,17 +790,92 @@ export class TadoriTools {
       return output;
     }
 
-    const anchorBody = this.node(resolved.node, "body", Math.floor(input.tokenBudget / 2));
-    const bodySuppressedReason =
+    const anchor = resolved.node;
+    const anchorBody = this.node(anchor, "body", Math.floor(input.tokenBudget / 2));
+    const initialBodySuppressedReason =
       anchorBody.representation === "body"
         ? null
         : anchorBody.stale
           ? "source is stale or unavailable"
           : "body exceeds the response budget or has no source span";
+    const anchorAdjacentEdges = uniqueEdges([
+      ...(this.service.outEdges.get(anchor.entityKey) ?? []),
+      ...(this.service.inEdges.get(anchor.entityKey) ?? [])
+    ]);
+    const hardByKey = new Map<
+      string,
+      { requirements: Set<HardRequirement>; priority: 0 | 1 | 2 }
+    >();
+    const addHardRequirement = (
+      node: GraphNode,
+      requirement: HardRequirement,
+      priority: 1 | 2
+    ): void => {
+      const existing = hardByKey.get(node.entityKey);
+      if (existing === undefined) {
+        hardByKey.set(node.entityKey, {
+          requirements: new Set([requirement]),
+          priority
+        });
+        return;
+      }
+      existing.requirements.add(requirement);
+      existing.priority = Math.max(existing.priority, priority) as 1 | 2;
+    };
+    const hardAdjacentEdges: GraphEdge[] = [];
+    for (const edge of anchorAdjacentEdges) {
+      const otherKey =
+        edge.srcEntityKey === anchor.entityKey
+          ? edge.dstEntityKey
+          : edge.srcEntityKey;
+      const other = this.service.nodesByKey.get(otherKey);
+      if (other === undefined) {
+        continue;
+      }
+      if (edge.relation === "calls") {
+        const compilerCertain =
+          edge.origin === "compiler" &&
+          edge.confidence === "certain" &&
+          edge.resolution === "resolved";
+        addHardRequirement(
+          other,
+          "direct_caller_or_callee",
+          compilerCertain ? 2 : 1
+        );
+        hardAdjacentEdges.push(edge);
+      }
+      if (
+        edge.relation === "tests" &&
+        edge.confidence === "certain" &&
+        other.kind === "test"
+      ) {
+        addHardRequirement(other, "certain_linked_test", 2);
+        hardAdjacentEdges.push(edge);
+      }
+    }
+    const signatureTypes = this.service.graph.nodes.filter((node) =>
+      signatureReferencesType(anchor.signature, node)
+    );
+    for (const node of signatureTypes) {
+      addHardRequirement(node, "signature_type_definition", 2);
+    }
+
     const allowed = new Set(input.relations);
-    const distance = new Map<string, number>([[resolved.node.entityKey, 0]]);
-    const queue = [resolved.node.entityKey];
-    const traversed: GraphEdge[] = [];
+    const distance = new Map<string, number>([[anchor.entityKey, 0]]);
+    const parentByKey = new Map<string, { parentKey: string; edge: GraphEdge }>();
+    const queue = [anchor.entityKey];
+    const traversed: GraphEdge[] = [...hardAdjacentEdges];
+    for (const edge of uniqueEdges(hardAdjacentEdges)) {
+      const otherKey =
+        edge.srcEntityKey === anchor.entityKey
+          ? edge.dstEntityKey
+          : edge.srcEntityKey;
+      if (!distance.has(otherKey)) {
+        distance.set(otherKey, 1);
+        parentByKey.set(otherKey, { parentKey: anchor.entityKey, edge });
+        queue.push(otherKey);
+      }
+    }
     while (queue.length > 0) {
       const current = queue.shift()!;
       const depth = distance.get(current)!;
@@ -657,148 +893,355 @@ export class TadoriTools {
         const other = edge.srcEntityKey === current ? edge.dstEntityKey : edge.srcEntityKey;
         if (!distance.has(other)) {
           distance.set(other, depth + 1);
+          parentByKey.set(other, { parentKey: current, edge });
           queue.push(other);
         }
       }
     }
+    const detachedHardKeys = new Set<string>();
+    for (const node of signatureTypes) {
+      if (!distance.has(node.entityKey)) {
+        distance.set(node.entityKey, 1);
+        detachedHardKeys.add(node.entityKey);
+      }
+    }
+    const traversedEdges = uniqueEdges(traversed);
     const candidateNodes = uniqueNodes(
       [...distance.keys()]
-        .filter((key) => key !== resolved.node!.entityKey)
+        .filter((key) => key !== anchor.entityKey)
         .map((key) => this.service.nodesByKey.get(key))
         .filter((node): node is GraphNode => node !== undefined)
     );
-    const selected: GraphNode[] = [];
-    const allOmissions: Omission[] = [];
-    let usedTokens = estimateTokens(JSON.stringify(anchorBody)) + 700;
-    for (const [index, node] of candidateNodes.entries()) {
-      const view = this.node(node);
-      const cost = estimateTokens(JSON.stringify(view));
-      if (usedTokens + cost <= input.tokenBudget) {
-        selected.push(node);
-        usedTokens += cost;
-      } else {
-        allOmissions.push({
-          targetKind: "node",
-          entityKey: node.entityKey,
-          rank: index + 1,
-          score: null,
-          reason: "token_budget"
+    const anchorPackage = this.packageName(anchor);
+    const ranked = rankCandidates(
+      candidateNodes.map((node) => {
+        const nodeDistance = distance.get(node.entityKey)!;
+        const connectingEdges = traversedEdges.filter((edge) => {
+          const incident =
+            edge.srcEntityKey === node.entityKey || edge.dstEntityKey === node.entityKey;
+          if (!incident) {
+            return false;
+          }
+          const otherKey =
+            edge.srcEntityKey === node.entityKey
+              ? edge.dstEntityKey
+              : edge.srcEntityKey;
+          return distance.get(otherKey) === nodeDistance - 1;
         });
-      }
+        const candidatePackage = this.packageName(node);
+        const hard = hardByKey.get(node.entityKey);
+        return {
+          node,
+          distance: nodeDistance,
+          connectingEdges,
+          fanIn: this.service.fanIn(node.entityKey),
+          samePackage:
+            anchorPackage === null || candidatePackage === null
+              ? null
+              : candidatePackage === anchorPackage,
+          linkedTestToAnchor: anchorAdjacentEdges.some(
+            (edge) =>
+              edge.relation === "tests" &&
+              (edge.srcEntityKey === node.entityKey || edge.dstEntityKey === node.entityKey)
+          ),
+          hardRequirements:
+            hard === undefined ? [] : [...hard.requirements].sort(),
+          hardPriority: hard?.priority ?? 0
+        };
+      })
+    );
+    const pageOffset = parseOffset(input.cursor);
+    if (pageOffset > ranked.length) {
+      throw new RangeError("cursor is beyond the ranked context candidate set");
     }
-    const visibleKeys = new Set([resolved.node.entityKey, ...selected.map((node) => node.entityKey)]);
-    const selectedEdges: GraphEdge[] = [];
-    for (const [index, edge] of uniqueEdges(traversed).entries()) {
-      if (!visibleKeys.has(edge.srcEntityKey) || !visibleKeys.has(edge.dstEntityKey)) {
-        allOmissions.push({
-          targetKind: "edge",
-          entityKey: edge.entityKey,
-          rank: index + 1,
-          score: null,
-          reason: "endpoint_omitted"
-        });
-        continue;
-      }
-      const view = this.edge(edge);
-      const cost = estimateTokens(JSON.stringify(view));
-      if (usedTokens + cost <= input.tokenBudget) {
-        selectedEdges.push(edge);
-        usedTokens += cost;
-      } else {
-        allOmissions.push({
-          targetKind: "edge",
-          entityKey: edge.entityKey,
-          rank: index + 1,
-          score: null,
-          reason: "token_budget"
-        });
-      }
-    }
+    const pageEnd = Math.min(ranked.length, pageOffset + CONTEXT_PAGE_SIZE);
+    const pageCandidates = ranked.slice(pageOffset, pageEnd);
+    const selected = [...pageCandidates];
     let anchorView = anchorBody;
-    let suppressionReason = bodySuppressedReason;
-    const buildOutput = (): SymbolContextOutput => {
-      const rankByKind = { node: 0, edge: 0 };
-      const rankedOmissions = allOmissions.map((omission) => ({
-        ...omission,
-        rank: (rankByKind[omission.targetKind] += 1)
-      }));
-      const omissions = rankedOmissions.slice(0, 10);
-      const aggregateOmissions: AggregateOmission[] =
-        rankedOmissions.length > omissions.length
-          ? [{
-              category: "context_entities",
-              count: rankedOmissions.length - omissions.length,
-              reason: "token_budget",
-              continuation: null,
-              criticalContextPreserved: true
-            }]
-          : [];
-      const nodeViews = selected.map((node) => this.node(node));
-      const edgeViews = selectedEdges.map((edge) => this.edge(edge));
-      const linkedTests = nodeViews.filter((node) => node.kind === "test");
-      const linkedDocuments = nodeViews.filter(
-        (node) => node.kind === "adr" || node.kind === "doc_section"
+    let suppressionReason = initialBodySuppressedReason;
+    let omittedExplanationLimit = 10;
+    let omissionDetailLimit = 10;
+    let candidateRepresentation: "signature" | "name" = pageCandidates.some(
+      (entry) => entry.node.signature !== null
+    )
+      ? "signature"
+      : "name";
+    const buildOutput = (estimatedResponseTokens: number): SymbolContextOutput => {
+      const selectedNodes = selected.map((entry) => entry.node);
+      const selectedKeys = new Set(selectedNodes.map((node) => node.entityKey));
+      const connectorNodes = new Map<string, GraphNode>();
+      const requiredPathEdges = new Map<string, GraphEdge>();
+      for (const node of selectedNodes) {
+        let current = node.entityKey;
+        while (current !== anchor.entityKey) {
+          const parent = parentByKey.get(current);
+          if (parent === undefined) {
+            if (detachedHardKeys.has(current)) {
+              break;
+            }
+            throw new Error(`missing traversal parent for ${current}`);
+          }
+          requiredPathEdges.set(parent.edge.entityKey, parent.edge);
+          if (parent.parentKey !== anchor.entityKey && !selectedKeys.has(parent.parentKey)) {
+            const connector = this.service.nodesByKey.get(parent.parentKey);
+            if (connector === undefined) {
+              throw new Error(`missing connector node ${parent.parentKey}`);
+            }
+            connectorNodes.set(connector.entityKey, connector);
+          }
+          current = parent.parentKey;
+        }
+      }
+      const connectors = [...connectorNodes.values()].sort((left, right) =>
+        left.entityKey.localeCompare(right.entityKey)
       );
-      const relationGroups = input.relations.map((relation) => {
+      const visibleKeys = new Set([
+        anchor.entityKey,
+        ...selectedKeys,
+        ...connectors.map((node) => node.entityKey)
+      ]);
+      const optionalVisibleEdges = traversedEdges.filter(
+        (edge) =>
+          visibleKeys.has(edge.srcEntityKey) &&
+          visibleKeys.has(edge.dstEntityKey) &&
+          !requiredPathEdges.has(edge.entityKey)
+      );
+      const eligibleEdges = [
+        ...[...requiredPathEdges.values()].sort((left, right) =>
+          left.entityKey.localeCompare(right.entityKey)
+        ),
+        ...optionalVisibleEdges
+      ];
+      const selectedEdges = eligibleEdges.slice(0, EDGE_RESULT_LIMIT);
+      const selectedEdgeKeys = new Set(selectedEdges.map((edge) => edge.entityKey));
+      const remainingRanked = ranked.slice(pageOffset + selected.length);
+      const unreturnedRemaining = remainingRanked.filter(
+        (entry) => !connectorNodes.has(entry.node.entityKey)
+      );
+      const nextCursor =
+        unreturnedRemaining.length > 0 ? String(pageOffset + selected.length) : null;
+      const nodeOmissions = unreturnedRemaining
+        .map((entry) => {
+          const globalIndex = ranked.indexOf(entry);
+          return {
+            omission: {
+              targetKind: "node" as const,
+              entityKey: entry.node.entityKey,
+              rank: globalIndex + 1,
+              score: entry.score,
+              reason:
+                globalIndex < pageEnd ? "token_budget" : "context_page_limit"
+            },
+            critical: entry.hardRequirements.length > 0
+          };
+        });
+      const edgeOmissions = traversedEdges
+        .filter((edge) => !selectedEdgeKeys.has(edge.entityKey))
+        .map((edge, index) => ({
+          omission: {
+            targetKind: "edge" as const,
+            entityKey: edge.entityKey,
+            rank: index + 1,
+            score: null,
+            reason:
+              visibleKeys.has(edge.srcEntityKey) && visibleKeys.has(edge.dstEntityKey)
+                ? "context_edge_limit"
+                : "endpoint_not_on_page"
+          },
+          critical: false
+        }));
+      const allOmissions = [...nodeOmissions, ...edgeOmissions];
+      const omissions = allOmissions
+        .slice(0, omissionDetailLimit)
+        .map((item) => item.omission);
+      const aggregateGroups = new Map<
+        string,
+        { targetKind: "node" | "edge"; reason: string; count: number; critical: boolean }
+      >();
+      for (const item of allOmissions.slice(omissions.length)) {
+        const key = `${item.omission.targetKind}\0${item.omission.reason}`;
+        const existing = aggregateGroups.get(key);
+        aggregateGroups.set(key, {
+          targetKind: item.omission.targetKind,
+          reason: item.omission.reason,
+          count: (existing?.count ?? 0) + 1,
+          critical: (existing?.critical ?? false) || item.critical
+        });
+      }
+      const aggregateOmissions = coalesceAggregateOmissions(
+        [...aggregateGroups.values()].map((group) => ({
+          category: group.targetKind === "node" ? "context_nodes" : "context_edges",
+          count: group.count,
+          reason: group.reason,
+          continuation: group.targetKind === "node" ? nextCursor : null,
+          criticalContextPreserved: !group.critical
+        }))
+      );
+      const nodeViews = selectedNodes.map((node) =>
+        this.node(node, candidateRepresentation)
+      );
+      const connectorViews = connectors.map((node) =>
+        this.node(node, candidateRepresentation)
+      );
+      const edgeViews = selectedEdges.map((edge) => this.edge(edge));
+      const allNodeViews = [...nodeViews, ...connectorViews];
+      const linkedTests = allNodeViews
+        .filter((node) => node.kind === "test")
+        .map((node) => node.entityKey);
+      const linkedDocuments = allNodeViews
+        .filter((node) => node.kind === "adr" || node.kind === "doc_section")
+        .map((node) => node.entityKey);
+      const relationGroups = [
+        ...input.relations,
+        ...[...new Set(edgeViews.map((edge) => edge.relation))]
+          .filter((relation) => !allowed.has(relation))
+          .sort()
+      ].flatMap((relation) => {
         const groupEdges = edgeViews.filter((edge) => edge.relation === relation);
+        if (groupEdges.length === 0) {
+          return [];
+        }
         const keys = new Set(
           groupEdges.flatMap((edge) => [edge.srcEntityKey, edge.dstEntityKey])
         );
         keys.delete(resolved.node!.entityKey);
-        return {
+        return [{
           relation,
-          nodes: nodeViews.filter((node) => keys.has(node.entityKey)),
-          edges: groupEdges
-        };
+          nodeEntityKeys: allNodeViews
+            .filter((node) => keys.has(node.entityKey))
+            .map((node) => node.entityKey),
+          edgeEntityKeys: groupEdges.map((edge) => edge.entityKey)
+        }];
       });
       return symbolContextOutputSchema.parse({
         context: this.context(),
         truncated: allOmissions.length > 0,
-        nextCursor: null,
+        nextCursor,
         omissions,
         aggregateOmissions,
         status: "ok",
         anchor: anchorView,
         candidates: [],
         nodes: nodeViews,
+        connectors: connectorViews,
         edges: edgeViews,
         relationGroups,
         linkedTests,
         linkedDocuments,
         decisionsAvailable: false,
-        bodySuppressedReason: suppressionReason
+        bodySuppressedReason: suppressionReason,
+        selection: this.selectionExplanation(
+          ranked,
+          pageOffset,
+          selected.length,
+          estimatedResponseTokens,
+          omittedExplanationLimit,
+          candidateRepresentation,
+          new Set(connectors.map((node) => node.entityKey))
+        )
       });
     };
-    let output = buildOutput();
-    if (estimateTokens(JSON.stringify(output)) > input.tokenBudget && anchorView.body !== null) {
-      anchorView = this.node(resolved.node, "signature");
-      suppressionReason = "body removed to satisfy the response token budget";
-      output = buildOutput();
-    }
-    while (
+    let output = this.stableSymbolContextEstimate(buildOutput);
+    if (
       estimateTokens(JSON.stringify(output)) > input.tokenBudget &&
-      (selectedEdges.length > 0 || selected.length > 0)
+      omittedExplanationLimit > 0
     ) {
-      const edge = selectedEdges.pop();
-      if (edge) {
-        allOmissions.push({
-          targetKind: "edge",
-          entityKey: edge.entityKey,
-          rank: allOmissions.filter((item) => item.targetKind === "edge").length + 1,
-          score: null,
-          reason: "token_budget"
-        });
-      } else {
-        const node = selected.pop()!;
-        allOmissions.push({
-          targetKind: "node",
-          entityKey: node.entityKey,
-          rank: allOmissions.filter((item) => item.targetKind === "node").length + 1,
-          score: null,
-          reason: "token_budget"
-        });
+      omittedExplanationLimit = 0;
+      output = this.stableSymbolContextEstimate(buildOutput);
+    }
+    if (estimateTokens(JSON.stringify(output)) > input.tokenBudget && anchorView.body !== null) {
+      anchorView = this.node(anchor, "signature");
+      suppressionReason = "body removed to satisfy the response token budget";
+      output = this.stableSymbolContextEstimate(buildOutput);
+    }
+    if (
+      estimateTokens(JSON.stringify(output)) > input.tokenBudget &&
+      candidateRepresentation === "signature"
+    ) {
+      candidateRepresentation = "name";
+      anchorView = this.node(anchor, "name");
+      suppressionReason = "bodies and signatures reduced to names to satisfy the response token budget";
+      output = this.stableSymbolContextEstimate(buildOutput);
+    }
+    if (
+      estimateTokens(JSON.stringify(output)) > input.tokenBudget &&
+      omissionDetailLimit > 0
+    ) {
+      omissionDetailLimit = 0;
+      output = this.stableSymbolContextEstimate(buildOutput);
+    }
+    if (estimateTokens(JSON.stringify(output)) > input.tokenBudget) {
+      let lowest = 0;
+      let highest = selected.length - 1;
+      let bestCount = -1;
+      let bestOutput: SymbolContextOutput | null = null;
+      while (lowest <= highest) {
+        const candidateCount = Math.floor((lowest + highest) / 2);
+        selected.splice(0, selected.length, ...pageCandidates.slice(0, candidateCount));
+        const candidateOutput = this.stableSymbolContextEstimate(buildOutput);
+        if (estimateTokens(JSON.stringify(candidateOutput)) <= input.tokenBudget) {
+          bestCount = candidateCount;
+          bestOutput = candidateOutput;
+          lowest = candidateCount + 1;
+        } else {
+          highest = candidateCount - 1;
+        }
       }
-      output = buildOutput();
+      if (bestOutput !== null) {
+        selected.splice(0, selected.length, ...pageCandidates.slice(0, bestCount));
+        output = bestOutput;
+      }
+    }
+    if (ranked.length > pageOffset && selected.length === 0) {
+      throw new RangeError(
+        `tokenBudget ${input.tokenBudget} cannot fit one ranked context candidate; increase the budget`
+      );
+    }
+    if (
+      estimateTokens(JSON.stringify(output)) <= input.tokenBudget &&
+      omissionDetailLimit === 0
+    ) {
+      let lowest = 1;
+      let highest = 10;
+      let bestLimit = 0;
+      let bestOutput = output;
+      while (lowest <= highest) {
+        const detailLimit = Math.floor((lowest + highest) / 2);
+        omissionDetailLimit = detailLimit;
+        const candidateOutput = this.stableSymbolContextEstimate(buildOutput);
+        if (estimateTokens(JSON.stringify(candidateOutput)) <= input.tokenBudget) {
+          bestLimit = detailLimit;
+          bestOutput = candidateOutput;
+          lowest = detailLimit + 1;
+        } else {
+          highest = detailLimit - 1;
+        }
+      }
+      omissionDetailLimit = bestLimit;
+      output = bestOutput;
+    }
+    if (
+      estimateTokens(JSON.stringify(output)) <= input.tokenBudget &&
+      omittedExplanationLimit === 0
+    ) {
+      let lowest = 1;
+      let highest = 10;
+      let bestLimit = 0;
+      let bestOutput = output;
+      while (lowest <= highest) {
+        const explanationLimit = Math.floor((lowest + highest) / 2);
+        omittedExplanationLimit = explanationLimit;
+        const candidateOutput = this.stableSymbolContextEstimate(buildOutput);
+        if (estimateTokens(JSON.stringify(candidateOutput)) <= input.tokenBudget) {
+          bestLimit = explanationLimit;
+          bestOutput = candidateOutput;
+          lowest = explanationLimit + 1;
+        } else {
+          highest = explanationLimit - 1;
+        }
+      }
+      omittedExplanationLimit = bestLimit;
+      output = bestOutput;
     }
     if (estimateTokens(JSON.stringify(output)) > input.tokenBudget) {
       throw new RangeError(

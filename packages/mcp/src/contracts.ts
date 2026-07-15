@@ -209,9 +209,16 @@ export const findSymbolOutputSchema = z
 export const symbolContextInputSchema = z
   .object({
     anchor: z.string().trim().min(1).max(1000),
-    relations: z.array(relationSchema).min(1).max(11),
+    relations: z
+      .array(relationSchema)
+      .min(1)
+      .max(11)
+      .refine((relations) => new Set(relations).size === relations.length, {
+        message: "relations must be unique"
+      }),
     depth: z.number().int().min(1).max(2).default(1),
-    tokenBudget: z.number().int().min(1_024).max(50_000)
+    tokenBudget: z.number().int().min(1_024).max(50_000),
+    cursor: cursorSchema.optional()
   })
   .strict();
 export const symbolContextOutputSchema = z
@@ -221,20 +228,85 @@ export const symbolContextOutputSchema = z
     anchor: toolNodeSchema.nullable(),
     candidates: z.array(toolNodeSchema),
     nodes: z.array(toolNodeSchema),
+    connectors: z.array(toolNodeSchema),
     edges: z.array(toolEdgeSchema),
     relationGroups: z.array(
       z
         .object({
           relation: relationSchema,
-          nodes: z.array(toolNodeSchema),
-          edges: z.array(toolEdgeSchema)
+          nodeEntityKeys: z.array(hex64Schema),
+          edgeEntityKeys: z.array(hex64Schema)
         })
         .strict()
     ),
-    linkedTests: z.array(toolNodeSchema),
-    linkedDocuments: z.array(toolNodeSchema),
+    linkedTests: z.array(hex64Schema),
+    linkedDocuments: z.array(hex64Schema),
     decisionsAvailable: z.boolean(),
-    bodySuppressedReason: z.string().nullable()
+    bodySuppressedReason: z.string().nullable(),
+    selection: z
+      .object({
+        policyVersion: z.string().min(1),
+        taskTextStatus: z.literal("unavailable"),
+        unavailableSignals: z.array(
+          z.enum([
+            "bm25_task_text",
+            "churn_90d",
+            "linked_decisions",
+            "declared_boundaries",
+            "same_package"
+          ])
+        ),
+        weights: z
+          .object({
+            bm25: z.number(),
+            proximity: z.number(),
+            fanIn: z.number(),
+            churn: z.number(),
+            linkedTest: z.number(),
+            linkedDecision: z.number(),
+            samePackage: z.number()
+          })
+          .strict(),
+        pageOffset: z.number().int().min(0),
+        returnedCandidateCount: z.number().int().min(0),
+        returnedConnectorCount: z.number().int().min(0),
+        totalCandidateCount: z.number().int().min(0),
+        criticalRequiredOmittedCount: z.number().int().min(0),
+        candidateRepresentation: z.enum(["signature", "name"]),
+        hardRequiredContextRemaining: z.boolean(),
+        estimatedResponseTokens: z.number().int().min(0),
+        ranking: z.array(
+          z
+            .object({
+              entityKey: hex64Schema,
+              rank: z.number().int().positive(),
+              score: z.number(),
+              confidence: confidenceSchema.nullable(),
+              hardPriority: z.number().int().min(0).max(2),
+              hardRequirements: z.array(
+                z.enum([
+                  "direct_caller_or_callee",
+                  "signature_type_definition",
+                  "certain_linked_test",
+                  "declared_boundary_neighbor"
+                ])
+              ),
+              components: z
+                .object({
+                  bm25: z.number().nullable(),
+                  proximity: z.number().nullable(),
+                  fanIn: z.number().nullable(),
+                  churn: z.number().nullable(),
+                  linkedTest: z.number().nullable(),
+                  linkedDecision: z.number().nullable(),
+                  samePackage: z.number().nullable()
+                })
+                .strict()
+            })
+            .strict()
+        )
+      })
+      .strict()
   })
   .strict();
 
@@ -315,7 +387,14 @@ export const pathInputSchema = z
   .object({
     from: z.string().trim().min(1).max(1000),
     to: z.string().trim().min(1).max(1000),
-    relations: z.array(relationSchema).min(1).max(11).default(["calls", "imports"]),
+    relations: z
+      .array(relationSchema)
+      .min(1)
+      .max(11)
+      .refine((relations) => new Set(relations).size === relations.length, {
+        message: "relations must be unique"
+      })
+      .default(["calls", "imports"]),
     k: z.number().int().min(1).max(10).default(3)
   })
   .strict();
