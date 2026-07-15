@@ -172,7 +172,7 @@ All applicable completion gates pass; see "Validation results" below.
 ## Completed capabilities
 
 - pnpm monorepo (`packages/core`, `packages/store`, `packages/indexer`,
-  `packages/harness`) with strict TypeScript, ESLint (flat config,
+  `packages/harness`, `packages/mcp`) with strict TypeScript, ESLint (flat config,
   `no-explicit-any` as error), and Vitest.
 - `@tadori/core`: frozen enums (node kinds, relations, origins, confidences,
   resolutions, repository-state kinds, evidence kinds), Zod schemas for graph
@@ -209,6 +209,22 @@ All applicable completion gates pass; see "Validation results" below.
   a strata guard that fails if a declared relation is neither tested nor
   explicitly deferred. CLIs: `fixtures:validate` (TS port of
   `validate_fixtures.py`), `fixtures:index`, `fixtures:typecheck`.
+- `@tadori/mcp`: the frozen six-tool interface (`repo_overview`,
+  `find_symbol`, `symbol_context`, `find_tests`, `impact`, `path`) registered
+  through the official MCP SDK with strict Zod input/output contracts and no
+  seventh tool. The snapshot query service selects one valid active snapshot
+  consistently, preserves ambiguity, confines source reads by real path,
+  suppresses stale bodies, hashes indexed plus compiler/package support files,
+  and exposes item-level evidence/provenance/freshness. FTS5 search is
+  snapshot-scoped, exact-boosted, paginated, repairable, and pruned with its
+  snapshot. Context and impact results are bounded with entity and aggregate
+  omission manifests; impact maps unified-diff hunks by source span, carries
+  page connectors, linked tests, beyond-depth package counts, and unresolved
+  targets. Test linkage distinguishes compiler, heuristic, git, and other
+  evidence without claiming runtime coverage. Retrieval and observation events
+  validate snapshot membership and write atomically; active MCP tasks prevent
+  snapshot pruning. The stdio transport emits protocol only on stdout, survives
+  malformed lines, restarts cleanly, and closes tasks on normal EOF/shutdown.
 
 ## Validation results (all executed and observed on this machine)
 
@@ -217,7 +233,7 @@ All applicable completion gates pass; see "Validation results" below.
 | `pnpm install` | clean |
 | `pnpm typecheck` (strict, `noUncheckedIndexedAccess`) | pass |
 | `pnpm lint` | pass |
-| `pnpm test` | 75/75 tests, 9 files, all pass |
+| `pnpm test` | 122/122 tests, 16 files, all pass |
 | `python validate_fixtures.py` | pass |
 | `pnpm fixtures:validate` | pass |
 | `pnpm fixtures:typecheck` (all 5 fixture repos, `tsc --noEmit`) | pass |
@@ -227,6 +243,8 @@ All applicable completion gates pass; see "Validation results" below.
 | Commit + working-tree snapshots coexist | verified (store + indexer tests) |
 | Canonical SHA-256 identities vs. fixture values | exact match (core tests) |
 | Deterministic repeated indexing | verified (identical keys, hashes, workspace hash) |
+| MCP contract | exactly 6 tools; strict valid/invalid calls; structured output; logging; stale/budget/omission coverage |
+| MCP stdio | protocol-only stdout; malformed-line recovery; two clean restarts; clean EOF shutdown |
 
 ## Fixture relations currently supported (compared against golden truth)
 
@@ -285,6 +303,17 @@ after 17/37.
 4. **`getUser`/`app` style exported variables** produce diagnostics rather than
    nodes/edges, per the fixture contract ("variable declarations are not
    nodes"); the exclusions are reported in harness output, never silent.
+5. **MCP schema and logging boundary.** The frozen documents define tool names,
+   arguments, semantics, and common response requirements, but not a complete
+   property-by-property JSON response schema. The strict response objects in
+   `@tadori/mcp` are therefore versioned implementation contracts, not claimed
+   as additional frozen specification. A retrieval event is written for every
+   schema-valid tool invocation, including not-found/ambiguous results. A
+   request rejected by MCP input validation never reaches a tool handler and is
+   not recorded as a returned retrieval result; protocol tests enforce this
+   distinction. `symbol_context` rejects budgets below 1,024 estimated tokens
+   because its required repository/snapshot/evidence envelope cannot honestly
+   fit below that floor.
 
 ## Discovered defects
 
@@ -301,14 +330,20 @@ after 17/37.
   later milestone (fixtures are single-project).
 - Only top-level declarations become symbol nodes (matches the fixture
   contract; nested function extraction is not required by any fixture).
+- A forcibly terminated process cannot finalize its active task. Normal MCP
+  client EOF and handled Ctrl+C/SIGTERM paths finalize it; uncatchable process
+  termination can leave an `active` task with partial observation coverage for
+  later recovery/lease work.
 - (Resolved 2026-07-14) The repository is now a git repository (`main`, with
   `origin`); the "inspect the current Git diff" validation step runs normally.
 
-## Immediate next task (Week 4)
+## Current roadmap phase
 
-Build the MCP server package around exactly six tools (`repo_overview`,
-`find_symbol`, `symbol_context`, `find_tests`, `impact`, `path`) with strict
-input/output schemas, stdio transport whose stdout carries only protocol
-output, retrieval-event logging into the frozen migration-003 tables, and
-contract tests (six tools exactly, schema validation failures, truncation,
-stale-state signaling, clean shutdown).
+Week 4 / Phase C is complete and validated. The next task is Week 5 / Phase D:
+extract deterministic ranking and context selection into explicit policy,
+enforce hard-required structural neighbors before heuristic scoring, add query
+explanations and confidence-aware ordering, and extend exact-boundary,
+high-degree, ambiguity, and pagination-continuity tests. Existing Week 4
+response caps, pagination, token budgets, stale labels, and omission manifests
+are the safe foundation; they do not pre-claim the complete Week 5 ranking
+gate.

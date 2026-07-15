@@ -13,6 +13,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
+    "mcp:stdio": "tsx packages/mcp/src/cli.ts",
     "fixtures:validate": "tsx packages/harness/src/cli-validate.ts",
     "fixtures:index": "tsx packages/harness/src/cli-index.ts",
     "fixtures:typecheck": "tsx packages/harness/src/cli-typecheck-fixtures.ts"

@@ -299,6 +299,10 @@ export function insertSnapshotGraph(
     const insertNodeEvidence = db.prepare(
       "INSERT INTO node_evidence (snapshot_id, node_id, evidence_id) VALUES (?, ?, ?)"
     );
+    const insertNodeFts = db.prepare(
+      `INSERT INTO node_fts (snapshot_id, node_id, display_name, qualified_name, signature, path)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    );
     for (const node of graph.nodes) {
       const nodeId = ensureNodeEntity(db, repoId, node.canonicalIdentity, node.kind, node.qualifiedName);
       nodeIdByEntityKey.set(node.entityKey, nodeId);
@@ -325,6 +329,14 @@ export function insertSnapshotGraph(
       for (const evidence of node.evidence) {
         insertNodeEvidence.run(snapshotId, nodeId, insertEvidenceItem(evidence));
       }
+      insertNodeFts.run(
+        snapshotId,
+        nodeId,
+        node.displayName,
+        node.qualifiedName,
+        node.signature ?? "",
+        node.file ?? ""
+      );
     }
 
     const insertSnapshotEdge = db.prepare(

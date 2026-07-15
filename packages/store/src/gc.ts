@@ -95,20 +95,29 @@ WHERE NOT EXISTS (SELECT 1 FROM snapshot_decisions WHERE snapshot_decisions.deci
  * `collectOrphanEntities` afterwards.
  */
 export function pruneSnapshot(db: Database, snapshotId: number): void {
-  const snapshot = getSnapshot(db, snapshotId);
-  if (!snapshot) {
-    throw new Error(`No snapshot with id ${snapshotId}`);
-  }
-  if (snapshot.pinned === 1) {
-    throw new Error(`Snapshot ${snapshotId} is pinned and cannot be pruned`);
-  }
   const run = db.transaction(() => {
+    const snapshot = getSnapshot(db, snapshotId);
+    if (!snapshot) {
+      throw new Error(`No snapshot with id ${snapshotId}`);
+    }
+    if (snapshot.pinned === 1) {
+      throw new Error(`Snapshot ${snapshotId} is pinned and cannot be pruned`);
+    }
+    const activeTask = db
+      .prepare("SELECT id FROM tasks WHERE base_snapshot_id = ? AND status = 'active' LIMIT 1")
+      .get(snapshotId) as { id: number } | undefined;
+    if (activeTask) {
+      throw new Error(
+        `Snapshot ${snapshotId} backs active task ${activeTask.id} and cannot be pruned`
+      );
+    }
     // Membership deletion order respects the composite foreign keys:
     // edges and nodes first, then files (which cascades evidence_items).
     db.prepare("DELETE FROM snapshot_edges WHERE snapshot_id = ?").run(snapshotId);
     db.prepare("DELETE FROM snapshot_nodes WHERE snapshot_id = ?").run(snapshotId);
     db.prepare("DELETE FROM snapshot_files WHERE snapshot_id = ?").run(snapshotId);
+    db.prepare("DELETE FROM node_fts WHERE snapshot_id = ?").run(snapshotId);
     db.prepare("UPDATE repository_snapshots SET status = 'pruned' WHERE id = ?").run(snapshotId);
   });
-  run();
+  run.immediate();
 }
