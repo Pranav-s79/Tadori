@@ -2,4 +2,8 @@ export * from "./version.js";
 export * from "./scan.js";
 export * from "./project.js";
 export * from "./extract.js";
+export * from "./merge.js";
 export * from "./indexRepository.js";
+export * from "./watcher.js";
+export * from "./incremental.js";
+export * from "./diffWorkingTree.js";

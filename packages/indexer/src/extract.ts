@@ -7,7 +7,8 @@ import type {
   GraphFile,
   GraphNode,
   NodeKind,
-  Relation
+  Relation,
+  SnapshotGraph
 } from "@tadori/core";
 import {
   edgeCanonicalIdentity,
@@ -46,6 +47,25 @@ export interface ExtractedGraph {
   nodes: GraphNode[];
   edges: GraphEdge[];
   diagnostics: IndexDiagnostic[];
+}
+
+export interface ExtractGraphOptions {
+  /**
+   * Existing indexed files to re-extract. When omitted, extraction is full.
+   * A regional extraction must be seeded by the previous complete snapshot so
+   * compiler-resolved edges can still target unaffected graph entities.
+   */
+  fileRegion?: readonly string[];
+  seedGraph?: SnapshotGraph;
+  /** Immutable bytes captured for this repository generation. */
+  fileContents?: ReadonlyMap<string, Buffer>;
+}
+
+export class UnsafeRegionExtractionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnsafeRegionExtractionError";
+  }
 }
 
 /**
@@ -172,18 +192,111 @@ interface SymbolRegistration {
 export function extractGraph(
   root: string,
   scan: ScanResult,
-  services: ProjectServices
+  services: ProjectServices,
+  options: ExtractGraphOptions = {}
 ): ExtractedGraph {
   const { program, checker, compilerOptions } = services;
   const diagnostics: IndexDiagnostic[] = [];
+  const readScannedFile = (file: ScannedFile): Buffer =>
+    options.fileContents?.get(file.normalizedPath) ?? readFileSync(file.absolutePath);
+  const packageNameFor = (normalizedPath: string, absolutePath: string): string | null => {
+    if (!options.fileContents) {
+      return detectPackageName(root, absolutePath);
+    }
+    let directory = path.posix.dirname(normalizedPath);
+    for (;;) {
+      const manifestPath = directory === "." ? "package.json" : `${directory}/package.json`;
+      const contents = options.fileContents.get(manifestPath);
+      if (contents) {
+        try {
+          const parsed = JSON.parse(contents.toString("utf8")) as { name?: unknown };
+          if (typeof parsed.name === "string" && parsed.name.length > 0) {
+            return parsed.name;
+          }
+        } catch {
+          // Malformed captured manifest: continue toward the repository root.
+        }
+      }
+      if (directory === ".") {
+        return null;
+      }
+      directory = path.posix.dirname(directory);
+    }
+  };
+
+  const requestedRegion = options.fileRegion;
+  if ((requestedRegion === undefined) !== (options.seedGraph === undefined)) {
+    throw new UnsafeRegionExtractionError(
+      "Regional extraction requires both fileRegion and a previous complete seedGraph"
+    );
+  }
+
+  const normalizedRoot = path.resolve(root).split(path.sep).join("/");
+  if (options.seedGraph && options.seedGraph.repoRootPath !== normalizedRoot) {
+    throw new UnsafeRegionExtractionError(
+      `Seed graph root ${JSON.stringify(options.seedGraph.repoRootPath)} does not match ${JSON.stringify(normalizedRoot)}`
+    );
+  }
+
+  const indexedByPath = new Map(scan.indexedFiles.map((file) => [file.normalizedPath, file]));
+  const selectedPaths = new Set(
+    requestedRegion ?? scan.indexedFiles.map((file) => file.normalizedPath)
+  );
+  if (requestedRegion !== undefined && selectedPaths.size !== requestedRegion.length) {
+    throw new UnsafeRegionExtractionError("fileRegion contains duplicate normalized paths");
+  }
+  for (const selected of selectedPaths) {
+    if (!indexedByPath.has(selected)) {
+      throw new UnsafeRegionExtractionError(
+        `Regional extraction path ${JSON.stringify(selected)} is not an existing indexed file`
+      );
+    }
+  }
+
+  const seedFilesByPath = new Map(
+    (options.seedGraph?.files ?? []).map((file) => [file.normalizedPath, file])
+  );
+  if (options.seedGraph) {
+    for (const scanned of scan.indexedFiles) {
+      const previous = seedFilesByPath.get(scanned.normalizedPath);
+      if (!previous) {
+        throw new UnsafeRegionExtractionError(
+          `Indexed file ${JSON.stringify(scanned.normalizedPath)} is absent from the seed graph; use full extraction for file additions`
+        );
+      }
+      if (!selectedPaths.has(scanned.normalizedPath)) {
+        const currentHash = sha256HexBytes(readScannedFile(scanned));
+        if (currentHash !== previous.contentHash) {
+          throw new UnsafeRegionExtractionError(
+            `File ${JSON.stringify(scanned.normalizedPath)} changed outside fileRegion; expand invalidation or use full extraction`
+          );
+        }
+      }
+    }
+    for (const previous of options.seedGraph.files) {
+      if (!indexedByPath.has(previous.normalizedPath)) {
+        throw new UnsafeRegionExtractionError(
+          `Seed file ${JSON.stringify(previous.normalizedPath)} no longer exists; use full extraction for file deletion or move`
+        );
+      }
+    }
+  }
+  const activeFiles = scan.indexedFiles.filter((file) => selectedPaths.has(file.normalizedPath));
 
   // ---- files and file nodes -------------------------------------------------
   const files: GraphFile[] = [];
   const fileNodes = new Map<string, GraphNode>();
+  const outputFileNodes = new Map<string, GraphNode>();
   const fileTexts = new Map<string, string>();
 
-  for (const scanned of scan.indexedFiles) {
-    const bytes = readFileSync(scanned.absolutePath);
+  for (const node of options.seedGraph?.nodes ?? []) {
+    if (node.kind === "file" && node.file !== null && !selectedPaths.has(node.file)) {
+      fileNodes.set(node.file, node);
+    }
+  }
+
+  for (const scanned of activeFiles) {
+    const bytes = readScannedFile(scanned);
     const text = bytes.toString("utf8");
     fileTexts.set(scanned.normalizedPath, text);
     files.push({
@@ -191,7 +304,7 @@ export function extractGraph(
       normalizedPath: scanned.normalizedPath,
       originIdentity: fileCanonicalIdentity(scanned.normalizedPath),
       fileKey: entityKey(fileCanonicalIdentity(scanned.normalizedPath)),
-      packageName: detectPackageName(root, scanned.absolutePath),
+      packageName: packageNameFor(scanned.normalizedPath, scanned.absolutePath),
       language: scanned.language,
       contentHash: sha256HexBytes(bytes),
       sizeBytes: bytes.length,
@@ -199,9 +312,7 @@ export function extractGraph(
       isBinary: false
     });
     const lineCount = lineCountOf(text);
-    fileNodes.set(
-      scanned.normalizedPath,
-      buildNode({
+    const fileNode = buildNode({
         kind: "file",
         qualifiedName: scanned.normalizedPath,
         displayName: path.posix.basename(scanned.normalizedPath),
@@ -215,12 +326,13 @@ export function extractGraph(
         evidence: [
           { file: scanned.normalizedPath, kind: "source", lineStart: 1, lineEnd: lineCount }
         ]
-      })
-    );
+      });
+    fileNodes.set(scanned.normalizedPath, fileNode);
+    outputFileNodes.set(scanned.normalizedPath, fileNode);
   }
 
   // ---- package node ----------------------------------------------------------
-  const rootPackageName = detectPackageName(root, path.join(root, "package.json"));
+  const rootPackageName = packageNameFor("package.json", path.join(root, "package.json"));
   const packageName = rootPackageName ?? path.basename(root);
   if (rootPackageName === null) {
     diagnostics.push({
@@ -235,9 +347,15 @@ export function extractGraph(
     file: null,
     exported: false
   });
+  const seededPackage = options.seedGraph?.nodes.find((node) => node.kind === "package");
+  if (seededPackage && seededPackage.entityKey !== packageNode.entityKey) {
+    throw new UnsafeRegionExtractionError(
+      "The repository package identity changed; use full extraction"
+    );
+  }
 
   const edges = new EdgeCollector();
-  for (const [normalizedPath, fileNode] of fileNodes) {
+  for (const [normalizedPath, fileNode] of outputFileNodes) {
     edges.add(packageNode, "contains", fileNode, [
       { file: normalizedPath, kind: "source", lineStart: 1, lineEnd: 1 }
     ]);
@@ -248,6 +366,40 @@ export function extractGraph(
   const externalNodes = new Map<string, GraphNode>();
   /** `${normalizedPath}|${topLevelName}` or `${path}|${Class}.${member}` -> registration */
   const registry = new Map<string, SymbolRegistration>();
+
+  const registryKeyForSeedNode = (node: GraphNode): string | null => {
+    if (node.file === null) {
+      return null;
+    }
+    if (
+      node.kind === "function" ||
+      node.kind === "class" ||
+      node.kind === "interface" ||
+      node.kind === "type"
+    ) {
+      return `${node.file}|${node.displayName}`;
+    }
+    if (node.kind === "method") {
+      const prefix = `${node.file}.`;
+      if (!node.qualifiedName.startsWith(prefix)) {
+        throw new UnsafeRegionExtractionError(
+          `Seed method ${JSON.stringify(node.qualifiedName)} is not rooted in ${JSON.stringify(node.file)}`
+        );
+      }
+      return `${node.file}|${node.qualifiedName.slice(prefix.length)}`;
+    }
+    return null;
+  };
+
+  for (const node of options.seedGraph?.nodes ?? []) {
+    if (node.file === null || selectedPaths.has(node.file)) {
+      continue;
+    }
+    const key = registryKeyForSeedNode(node);
+    if (key !== null) {
+      registry.set(key, { node, declarations: [] });
+    }
+  }
 
   const sourceFileFor = (scanned: ScannedFile): ts.SourceFile | undefined =>
     program.getSourceFile(path.resolve(scanned.absolutePath).replace(/\\/g, "/")) ??
@@ -378,7 +530,7 @@ export function extractGraph(
 
   const processedFunctionSymbols = new Set<ts.Symbol>();
 
-  for (const scanned of scan.indexedFiles) {
+  for (const scanned of activeFiles) {
     if (scanned.language === "markdown") {
       continue;
     }
@@ -548,7 +700,7 @@ export function extractGraph(
       specifier,
       containingAbsolute,
       compilerOptions,
-      ts.sys
+      services.moduleResolutionHost
     ).resolvedModule;
     if (!resolved) {
       return null;
@@ -642,7 +794,7 @@ export function extractGraph(
     return null;
   };
 
-  for (const scanned of scan.indexedFiles) {
+  for (const scanned of activeFiles) {
     if (scanned.language === "markdown") {
       continue;
     }
@@ -783,9 +935,11 @@ export function extractGraph(
   };
 
   const symbolsByDisplayName = new Map<string, GraphNode[]>();
-  for (const node of symbolNodes) {
+  for (const { node } of registry.values()) {
     const list = symbolsByDisplayName.get(node.displayName) ?? [];
-    list.push(node);
+    if (!list.some((candidate) => candidate.entityKey === node.entityKey)) {
+      list.push(node);
+    }
     symbolsByDisplayName.set(node.displayName, list);
   }
 
@@ -797,6 +951,9 @@ export function extractGraph(
 
   // ---- pass 3: heritage (implements / extends) ---------------------------------
   for (const { node, declarations } of registry.values()) {
+    if (node.file === null || !selectedPaths.has(node.file)) {
+      continue;
+    }
     if (node.kind !== "class" && node.kind !== "interface") {
       continue;
     }
@@ -827,7 +984,7 @@ export function extractGraph(
 
   // ---- pass 4: ADR nodes and documents links ------------------------------------
   const adrNodes: GraphNode[] = [];
-  for (const scanned of scan.indexedFiles) {
+  for (const scanned of activeFiles) {
     if (scanned.language !== "markdown") {
       continue;
     }
@@ -922,7 +1079,7 @@ export function extractGraph(
   const testNodes: GraphNode[] = [];
   const testIntervalsByFile = new Map<string, Array<{ start: number; end: number }>>();
   const registeredTests = new Set<string>();
-  for (const scanned of scan.indexedFiles) {
+  for (const scanned of activeFiles) {
     if (scanned.language === "markdown") {
       continue;
     }
@@ -1035,7 +1192,7 @@ export function extractGraph(
   /** Call-site arity must fit some declaration of the candidate. */
   const arityAccepts = (candidate: GraphNode, argCount: number): boolean => {
     const registration = registrationByEntityKey.get(candidate.entityKey);
-    if (!registration) {
+    if (!registration || registration.declarations.length === 0) {
       return true; // No signature information: do not over-filter.
     }
     return registration.declarations.some((decl) => {
@@ -1104,7 +1261,7 @@ export function extractGraph(
     return routeNode;
   };
 
-  for (const scanned of scan.indexedFiles) {
+  for (const scanned of activeFiles) {
     if (scanned.language === "markdown") {
       continue;
     }
@@ -1288,7 +1445,7 @@ export function extractGraph(
   }
 
   // ---- pass 7: Next.js file-convention routes ------------------------------------
-  for (const scanned of scan.indexedFiles) {
+  for (const scanned of activeFiles) {
     if (scanned.language === "markdown") {
       continue;
     }
@@ -1363,7 +1520,7 @@ export function extractGraph(
 
   const nodes = [
     packageNode,
-    ...fileNodes.values(),
+    ...outputFileNodes.values(),
     ...symbolNodes,
     ...externalNodes.values(),
     ...adrNodes,

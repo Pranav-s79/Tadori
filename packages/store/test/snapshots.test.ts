@@ -6,11 +6,13 @@ import {
   findDanglingEndpoints,
   foreignKeyCheck,
   getActiveSnapshot,
+  getSnapshotHead,
   insertSnapshotGraph,
   listSnapshots,
   loadSnapshotGraph,
   openDatabase,
   runMigrations,
+  SnapshotActivationConflictError,
   type Database
 } from "@tadori/store";
 import { makeEdge, makeFile, makeGraph, makeNode } from "./helpers.js";
@@ -132,6 +134,57 @@ describe("snapshot insertion", () => {
 
     const active = getActiveSnapshot(db, valid.repoId);
     expect(active?.id).toBe(valid.snapshotId);
+  });
+
+  it("reactivates an existing A snapshot after A -> B -> A without violating uniqueness", () => {
+    const graphA = { ...smallGraph("working_tree"), workspaceHash: sha256Hex("workspace-a") };
+    const graphB = { ...smallGraph("working_tree"), workspaceHash: sha256Hex("workspace-b") };
+    const firstA = insertSnapshotGraph(db, graphA);
+    const b = insertSnapshotGraph(db, graphB, {
+      expectedActivationId: firstA.activationId
+    });
+    const secondA = insertSnapshotGraph(db, graphA, {
+      expectedActivationId: b.activationId
+    });
+
+    expect(secondA).toMatchObject({ snapshotId: firstA.snapshotId, reused: true });
+    expect(secondA.activationId).not.toBe(firstA.activationId);
+    expect(getSnapshotHead(db, firstA.repoId, "working_tree")).toMatchObject({
+      activationId: secondA.activationId,
+      snapshot: { id: firstA.snapshotId }
+    });
+    expect(listSnapshots(db, firstA.repoId)).toHaveLength(2);
+  });
+
+  it("uses activation generations to reject a stale writer even after an ABA cycle", () => {
+    const graphA = { ...smallGraph("working_tree"), workspaceHash: sha256Hex("workspace-a") };
+    const graphB = { ...smallGraph("working_tree"), workspaceHash: sha256Hex("workspace-b") };
+    const graphC = { ...smallGraph("working_tree"), workspaceHash: sha256Hex("workspace-c") };
+    const firstA = insertSnapshotGraph(db, graphA);
+    const b = insertSnapshotGraph(db, graphB, { expectedActivationId: firstA.activationId });
+    insertSnapshotGraph(db, graphA, { expectedActivationId: b.activationId });
+
+    expect(() =>
+      insertSnapshotGraph(db, graphC, { expectedActivationId: firstA.activationId })
+    ).toThrow(SnapshotActivationConflictError);
+    expect(getActiveSnapshot(db, firstA.repoId, "working_tree")?.id).toBe(firstA.snapshotId);
+    expect(listSnapshots(db, firstA.repoId)).toHaveLength(2);
+  });
+
+  it("refuses to reuse a workspace hash when the immutable graph differs", () => {
+    const firstGraph = {
+      ...smallGraph("working_tree", sha256Hex("body-a")),
+      workspaceHash: sha256Hex("same-workspace")
+    };
+    const conflictingGraph = {
+      ...smallGraph("working_tree", sha256Hex("body-b")),
+      workspaceHash: firstGraph.workspaceHash
+    };
+    const first = insertSnapshotGraph(db, firstGraph);
+
+    expect(() => insertSnapshotGraph(db, conflictingGraph)).toThrow(/membership graph differs/);
+    expect(getActiveSnapshot(db, first.repoId, "working_tree")?.id).toBe(first.snapshotId);
+    expect(listSnapshots(db, first.repoId)).toHaveLength(1);
   });
 });
 

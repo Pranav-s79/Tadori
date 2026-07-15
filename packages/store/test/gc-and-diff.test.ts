@@ -96,6 +96,10 @@ describe("three-way snapshot edge diff", () => {
 describe("pruning and orphan-entity garbage collection", () => {
   it("prunes an unpinned snapshot and collects only truly orphaned entities", () => {
     const base = insertSnapshotGraph(db, graphVariant("commit", "base"));
+    insertSnapshotGraph(db, {
+      ...graphVariant("commit", "head"),
+      workspaceHash: sha256Hex("newer-commit-head")
+    });
     const head = insertSnapshotGraph(db, graphVariant("working_tree", "head"));
 
     pruneSnapshot(db, base.snapshotId);
@@ -115,21 +119,25 @@ describe("pruning and orphan-entity garbage collection", () => {
     expect(foreignKeyCheck(db)).toEqual([]);
   });
 
-  it("collects nodes, files, and their edges once no snapshot references them", () => {
+  it("retains entities still referenced by the replacement head after pruning", () => {
     const only = insertSnapshotGraph(db, graphVariant("commit", "base"));
+    insertSnapshotGraph(db, {
+      ...graphVariant("commit", "head"),
+      workspaceHash: sha256Hex("newer-commit-head")
+    });
     pruneSnapshot(db, only.snapshotId);
 
     const result = collectOrphanEntities(db);
-    expect(result.deletedEdgeEntities).toBe(6);
-    expect(result.deletedNodeEntities).toBe(5);
-    expect(result.deletedFileEntities).toBe(2);
+    expect(result.deletedEdgeEntities).toBe(1);
+    expect(result.deletedNodeEntities).toBe(0);
+    expect(result.deletedFileEntities).toBe(0);
 
     const remaining = db
       .prepare(
         "SELECT (SELECT COUNT(*) FROM node_entities) AS n, (SELECT COUNT(*) FROM edge_entities) AS e, (SELECT COUNT(*) FROM file_entities) AS f"
       )
       .get() as { n: number; e: number; f: number };
-    expect(remaining).toEqual({ n: 0, e: 0, f: 0 });
+    expect(remaining).toEqual({ n: 5, e: 6, f: 2 });
     expect(foreignKeyCheck(db)).toEqual([]);
   });
 
@@ -137,5 +145,11 @@ describe("pruning and orphan-entity garbage collection", () => {
     const pinned = insertSnapshotGraph(db, graphVariant("commit", "base"), { pinned: true });
     expect(() => pruneSnapshot(db, pinned.snapshotId)).toThrow(/pinned/);
     expect(loadSnapshotGraph(db, pinned.snapshotId).edges).toHaveLength(6);
+  });
+
+  it("refuses to prune the current repository-state head", () => {
+    const current = insertSnapshotGraph(db, graphVariant("working_tree", "base"));
+    expect(() => pruneSnapshot(db, current.snapshotId)).toThrow(/current working_tree head/);
+    expect(loadSnapshotGraph(db, current.snapshotId).edges).toHaveLength(6);
   });
 });

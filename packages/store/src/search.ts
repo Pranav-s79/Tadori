@@ -98,7 +98,6 @@ export function searchNodeFts(
   if (ftsQuery === null) {
     return { matches: [], total: 0 };
   }
-  ensureSnapshotFts(db, snapshotId);
   const params = {
     ftsQuery,
     snapshotId,

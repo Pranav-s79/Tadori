@@ -85,6 +85,67 @@ describe("GraphService snapshot safety", () => {
     expect(service.snapshotFreshness()).toMatchObject({ status: "stale", stale: true });
   });
 
+  it("marks unchanged dependency paths stale while a refresh is pending", () => {
+    const dirty = new Set<string>();
+    let staleSnapshot = false;
+    const overlay = {
+      isPathStaleForSnapshot: (_snapshotId: number, normalizedPath: string) =>
+        dirty.has(normalizedPath),
+      isSnapshotStale: () => staleSnapshot
+    };
+    const opened = openTwoFileService();
+    const service = GraphService.open(db, tempRoot, overlay);
+    dirty.add("src/a.ts");
+    staleSnapshot = true;
+
+    expect(service.nodeFreshness(opened.alpha)).toMatchObject({
+      status: "stale",
+      stale: true,
+      reason: "refresh_pending"
+    });
+    expect(service.readBody(opened.alpha)).toMatchObject({
+      body: null,
+      reason: "refresh_pending"
+    });
+    expect(service.snapshotFreshness()).toMatchObject({
+      stale: true,
+      reason: "refresh_pending"
+    });
+  });
+
+  it("prefers the working-tree head over newer staged or patch snapshots", () => {
+    const source = "export function live() {}\n";
+    mkdirSync(path.join(tempRoot, "src"), { recursive: true });
+    writeFileSync(path.join(tempRoot, "src", "live.ts"), source);
+    const file = makeFile("src/live.ts", source);
+    const live = makeNode("function", "src/live.ts.live", file.normalizedPath);
+    const working = insertSnapshotGraph(
+      db,
+      makeGraph(tempRoot, [file], [live], [], "working_tree")
+    );
+    const staged = makeGraph(tempRoot, [file], [live], [], "staged");
+    insertSnapshotGraph(db, { ...staged, workspaceHash: "f".repeat(64) });
+
+    expect(GraphService.open(db, tempRoot, undefined, "working_tree").snapshot.id).toBe(
+      working.snapshotId
+    );
+  });
+
+  it("repairs missing legacy FTS rows before serving search requests", () => {
+    const source = "export function searchable() {}\n";
+    mkdirSync(path.join(tempRoot, "src"), { recursive: true });
+    writeFileSync(path.join(tempRoot, "src", "searchable.ts"), source);
+    const file = makeFile("src/searchable.ts", source);
+    const node = makeNode("function", "src/searchable.ts.searchable", file.normalizedPath);
+    const inserted = insertSnapshotGraph(db, makeGraph(tempRoot, [file], [node], []));
+    db.prepare("DELETE FROM node_fts WHERE snapshot_id = ?").run(inserted.snapshotId);
+
+    const service = GraphService.open(db, tempRoot);
+
+    expect(service.searchNodes("searchable", 10).matches.map((match) => match.entity_key))
+      .toEqual([node.entityKey]);
+  });
+
   it("preserves ambiguity for identical qualified names across node kinds", () => {
     const source = "export interface Shared {}\n";
     mkdirSync(path.join(tempRoot, "src"), { recursive: true });

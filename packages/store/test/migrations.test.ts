@@ -3,6 +3,7 @@ import {
   MIGRATIONS,
   foreignKeyCheck,
   forceRunMigration,
+  getActiveSnapshot,
   openDatabase,
   runMigrations,
   type Database
@@ -18,15 +19,16 @@ afterEach(() => {
   db.close();
 });
 
-describe("frozen migrations", () => {
-  it("applies all five migrations in order on an empty database", () => {
+describe("database migrations", () => {
+  it("keeps the five frozen migrations first and applies additive migrations in order", () => {
+    expect(MIGRATIONS.slice(0, 5).map((migration) => migration.version)).toEqual([1, 2, 3, 4, 5]);
     const ran = runMigrations(db);
-    expect(ran).toEqual([1, 2, 3, 4, 5]);
+    expect(ran).toEqual([1, 2, 3, 4, 5, 6]);
 
     const versions = db
       .prepare("SELECT version FROM schema_migrations ORDER BY version")
       .all() as Array<{ version: number }>;
-    expect(versions.map((v) => v.version)).toEqual([1, 2, 3, 4, 5]);
+    expect(versions.map((v) => v.version)).toEqual([1, 2, 3, 4, 5, 6]);
 
     const tables = new Set(
       (
@@ -65,7 +67,8 @@ describe("frozen migrations", () => {
       "test_run_cases",
       "layout_positions",
       "summaries",
-      "node_fts"
+      "node_fts",
+      "snapshot_activations"
     ]) {
       expect(tables, `missing table ${expected}`).toContain(expected);
     }
@@ -77,7 +80,7 @@ describe("frozen migrations", () => {
   });
 
   it("skips already-applied migrations on a second run", () => {
-    expect(runMigrations(db)).toEqual([1, 2, 3, 4, 5]);
+    expect(runMigrations(db)).toEqual([1, 2, 3, 4, 5, 6]);
     expect(runMigrations(db)).toEqual([]);
   });
 
@@ -95,5 +98,55 @@ describe("frozen migrations", () => {
     runMigrations(db);
     const fk = db.pragma("foreign_keys", { simple: true });
     expect(fk).toBe(1);
+  });
+
+  it("keeps active-snapshot reads compatible with a migration-1-to-5 database", () => {
+    const legacy = openDatabase(":memory:");
+    try {
+      for (const migration of MIGRATIONS.slice(0, 5)) {
+        legacy.exec(migration.sql);
+      }
+      const repoId = Number(
+        legacy.prepare("INSERT INTO repositories(root_path) VALUES ('C:/legacy')").run()
+          .lastInsertRowid
+      );
+      const snapshotId = Number(
+        legacy
+          .prepare(
+            `INSERT INTO repository_snapshots(repo_id, kind, workspace_hash)
+             VALUES (?, 'working_tree', ?)`
+          )
+          .run(repoId, "a".repeat(64)).lastInsertRowid
+      );
+      expect(getActiveSnapshot(legacy, repoId, "working_tree")?.id).toBe(snapshotId);
+    } finally {
+      legacy.close();
+    }
+  });
+
+  it("rejects activation rows whose repository or kind disagrees with the snapshot", () => {
+    runMigrations(db);
+    const firstRepo = Number(
+      db.prepare("INSERT INTO repositories(root_path) VALUES ('C:/first')").run().lastInsertRowid
+    );
+    const secondRepo = Number(
+      db.prepare("INSERT INTO repositories(root_path) VALUES ('C:/second')").run().lastInsertRowid
+    );
+    const snapshotId = Number(
+      db
+        .prepare(
+          `INSERT INTO repository_snapshots(repo_id, kind, workspace_hash)
+           VALUES (?, 'commit', ?)`
+        )
+        .run(firstRepo, "b".repeat(64)).lastInsertRowid
+    );
+    expect(() =>
+      db
+        .prepare(
+          `INSERT INTO snapshot_activations(repo_id, kind, snapshot_id)
+           VALUES (?, 'working_tree', ?)`
+        )
+        .run(secondRepo, snapshotId)
+    ).toThrow(/repo\/kind mismatch/);
   });
 });

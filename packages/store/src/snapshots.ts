@@ -13,6 +13,7 @@ import type {
   SnapshotGraph
 } from "@tadori/core";
 import { entityKey } from "@tadori/core";
+import { isDeepStrictEqual } from "node:util";
 import type { Database } from "./database.js";
 
 export interface SnapshotRow {
@@ -26,6 +27,34 @@ export interface SnapshotRow {
   created_at: string;
   pinned: number;
   status: "active" | "pruned";
+}
+
+export interface SnapshotHead {
+  activationId: number;
+  snapshot: SnapshotRow;
+}
+
+function hasSnapshotActivations(db: Database): boolean {
+  return (
+    db
+      .prepare(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'snapshot_activations'"
+      )
+      .get() !== undefined
+  );
+}
+
+export class SnapshotActivationConflictError extends Error {
+  constructor(
+    public readonly expectedActivationId: number | null,
+    public readonly actualActivationId: number | null
+  ) {
+    super(
+      `Snapshot activation conflict: expected activation ${expectedActivationId ?? "none"}, ` +
+        `found ${actualActivationId ?? "none"}`
+    );
+    this.name = "SnapshotActivationConflictError";
+  }
 }
 
 export interface DanglingEndpointRow {
@@ -193,6 +222,13 @@ export interface InsertSnapshotOptions {
   parentSnapshotId?: number | null;
   pinned?: boolean;
   /**
+   * Compare-and-swap guard for refresh publication. Use the activation id,
+   * rather than a snapshot id, so A -> B -> A cannot create an ABA race.
+   */
+  expectedActivationId?: number | null;
+  /** A cancelled build is rejected before it can publish. */
+  signal?: AbortSignal;
+  /**
    * Test-only escape hatch: persists the snapshot without endpoint validation
    * so serving-side rejection can be exercised. Never use in production paths.
    */
@@ -202,6 +238,110 @@ export interface InsertSnapshotOptions {
 export interface InsertSnapshotResult {
   repoId: number;
   snapshotId: number;
+  activationId: number | null;
+  reused: boolean;
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    throw signal.reason instanceof Error ? signal.reason : new Error("Snapshot insertion aborted");
+  }
+}
+
+function normalizedMembershipGraph(graph: Pick<SnapshotGraph, "files" | "nodes" | "edges">) {
+  const evidence = (items: readonly Evidence[]): Evidence[] =>
+    [...items].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  return {
+    files: [...graph.files].sort((left, right) =>
+      left.normalizedPath.localeCompare(right.normalizedPath)
+    ),
+    nodes: graph.nodes
+      .map((node) => ({ ...node, evidence: evidence(node.evidence) }))
+      .sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity)),
+    edges: graph.edges
+      .map((edge) => ({ ...edge, evidence: evidence(edge.evidence) }))
+      .sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity))
+  };
+}
+
+/** Returns the latest validated activation for one repository state kind. */
+export function getSnapshotHead(
+  db: Database,
+  repoId: number,
+  kind: RepoStateKind
+): SnapshotHead | undefined {
+  if (!hasSnapshotActivations(db)) {
+    return undefined;
+  }
+  const rows = db
+    .prepare(
+      `SELECT sa.id AS activation_id, rs.*
+       FROM snapshot_activations AS sa
+       JOIN repository_snapshots AS rs
+         ON rs.id = sa.snapshot_id AND rs.repo_id = sa.repo_id AND rs.kind = sa.kind
+       WHERE sa.repo_id = ? AND sa.kind = ? AND rs.status = 'active'
+       ORDER BY sa.id DESC`
+    )
+    .all(repoId, kind) as Array<SnapshotRow & { activation_id: number }>;
+  for (const row of rows) {
+    if (findDanglingEndpoints(db, row.id).length === 0) {
+      const { activation_id: activationId, ...snapshot } = row;
+      return { activationId, snapshot };
+    }
+  }
+  return undefined;
+}
+
+function activateSnapshotWithinTransaction(
+  db: Database,
+  snapshot: SnapshotRow,
+  expectedActivationId: number | null | undefined
+): number {
+  if (snapshot.status !== "active") {
+    throw new Error(`Cannot activate pruned snapshot ${snapshot.id}`);
+  }
+  const dangling = findDanglingEndpoints(db, snapshot.id);
+  if (dangling.length > 0) {
+    throw new DanglingEndpointError(snapshot.id, dangling);
+  }
+  const current = getSnapshotHead(db, snapshot.repo_id, snapshot.kind);
+  if (
+    expectedActivationId !== undefined &&
+    (current?.activationId ?? null) !== expectedActivationId
+  ) {
+    throw new SnapshotActivationConflictError(
+      expectedActivationId,
+      current?.activationId ?? null
+    );
+  }
+  if (current?.snapshot.id === snapshot.id) {
+    return current.activationId;
+  }
+  const result = db
+    .prepare(
+      `INSERT INTO snapshot_activations
+         (repo_id, kind, snapshot_id, previous_snapshot_id)
+       VALUES (?, ?, ?, ?)`
+    )
+    .run(snapshot.repo_id, snapshot.kind, snapshot.id, current?.snapshot.id ?? null);
+  return Number(result.lastInsertRowid);
+}
+
+/** Atomically makes a previously validated immutable snapshot current. */
+export function activateSnapshot(
+  db: Database,
+  snapshotId: number,
+  expectedActivationId?: number | null
+): SnapshotHead {
+  const run = db.transaction((): SnapshotHead => {
+    const snapshot = getSnapshot(db, snapshotId);
+    if (!snapshot) {
+      throw new Error(`No snapshot with id ${snapshotId}`);
+    }
+    const activationId = activateSnapshotWithinTransaction(db, snapshot, expectedActivationId);
+    return { activationId, snapshot };
+  });
+  return run.immediate();
 }
 
 /**
@@ -216,7 +356,66 @@ export function insertSnapshotGraph(
   options: InsertSnapshotOptions = {}
 ): InsertSnapshotResult {
   const run = db.transaction((): InsertSnapshotResult => {
+    throwIfAborted(options.signal);
     const repoId = ensureRepository(db, graph.repoRootPath);
+
+    const existing = db
+      .prepare(
+        `SELECT * FROM repository_snapshots
+         WHERE repo_id = ? AND kind = ? AND workspace_hash = ?`
+      )
+      .get(repoId, graph.kind, graph.workspaceHash) as SnapshotRow | undefined;
+    if (existing) {
+      if (existing.status !== "active") {
+        throw new Error(
+          `Workspace ${graph.workspaceHash} already exists as pruned snapshot ${existing.id}; ` +
+            "safe rehydration requires a future schema correction"
+        );
+      }
+      if (existing.label !== graph.label || existing.base_commit_sha !== graph.baseCommitSha) {
+        throw new Error(
+          `Workspace ${graph.workspaceHash} already exists with different immutable metadata`
+        );
+      }
+      const counts = db
+        .prepare(
+          `SELECT
+             (SELECT COUNT(*) FROM snapshot_files WHERE snapshot_id = @snapshotId) AS files,
+             (SELECT COUNT(*) FROM snapshot_nodes WHERE snapshot_id = @snapshotId) AS nodes,
+             (SELECT COUNT(*) FROM snapshot_edges WHERE snapshot_id = @snapshotId) AS edges,
+             (SELECT COUNT(DISTINCT analyzer_version) FROM snapshot_nodes
+                WHERE snapshot_id = @snapshotId AND analyzer_version = @analyzerVersion) AS analyzer_versions`
+        )
+        .get({ snapshotId: existing.id, analyzerVersion: graph.analyzerVersion }) as {
+        files: number;
+        nodes: number;
+        edges: number;
+        analyzer_versions: number;
+      };
+      if (
+        counts.files !== graph.files.length ||
+        counts.nodes !== graph.nodes.length ||
+        counts.edges !== graph.edges.length ||
+        (counts.nodes > 0 && counts.analyzer_versions !== 1)
+      ) {
+        throw new Error(
+          `Workspace ${graph.workspaceHash} matches snapshot ${existing.id}, but its graph shape ` +
+            "or analyzer version differs; refusing unsafe snapshot reuse"
+        );
+      }
+      const stored = loadSnapshotGraph(db, existing.id);
+      if (!isDeepStrictEqual(normalizedMembershipGraph(stored), normalizedMembershipGraph(graph))) {
+        throw new Error(
+          `Workspace ${graph.workspaceHash} matches snapshot ${existing.id}, but its immutable ` +
+            "membership graph differs; refusing unsafe snapshot reuse"
+        );
+      }
+      throwIfAborted(options.signal);
+      const activationId = options.dangerouslySkipValidation
+        ? null
+        : activateSnapshotWithinTransaction(db, existing, options.expectedActivationId);
+      return { repoId, snapshotId: existing.id, activationId, reused: true };
+    }
 
     const snapshotResult = db
       .prepare(
@@ -394,10 +593,18 @@ export function insertSnapshotGraph(
         throw new DanglingEndpointError(snapshotId, dangling);
       }
     }
+    throwIfAborted(options.signal);
+    const snapshot = getSnapshot(db, snapshotId);
+    if (!snapshot) {
+      throw new Error(`Snapshot ${snapshotId} disappeared before activation`);
+    }
+    const activationId = options.dangerouslySkipValidation
+      ? null
+      : activateSnapshotWithinTransaction(db, snapshot, options.expectedActivationId);
 
-    return { repoId, snapshotId };
+    return { repoId, snapshotId, activationId, reused: false };
   });
-  return run();
+  return run.immediate();
 }
 
 export function getSnapshot(db: Database, snapshotId: number): SnapshotRow | undefined {
@@ -421,6 +628,23 @@ export function getActiveSnapshot(
   repoId: number,
   kind?: RepoStateKind
 ): SnapshotRow | undefined {
+  const activatedRows = hasSnapshotActivations(db) ? db
+    .prepare(
+      `SELECT sa.id AS activation_id, rs.*
+       FROM snapshot_activations AS sa
+       JOIN repository_snapshots AS rs
+         ON rs.id = sa.snapshot_id AND rs.repo_id = sa.repo_id AND rs.kind = sa.kind
+       WHERE sa.repo_id = ? AND rs.status = 'active' AND (@kind IS NULL OR sa.kind = @kind)
+       ORDER BY sa.id DESC`
+    )
+    .all(repoId, { kind: kind ?? null }) as Array<SnapshotRow & { activation_id: number }> : [];
+  for (const row of activatedRows) {
+    if (findDanglingEndpoints(db, row.id).length === 0) {
+      const { activation_id: _activationId, ...snapshot } = row;
+      return snapshot;
+    }
+  }
+  // Controlled compatibility path for databases created before migration 6.
   const rows = db
     .prepare(
       `SELECT * FROM repository_snapshots
@@ -438,6 +662,7 @@ export function getActiveSnapshot(
 
 export interface StoredSnapshotGraph {
   snapshot: SnapshotRow;
+  analyzerVersion: string;
   files: GraphFile[];
   nodes: GraphNode[];
   edges: GraphEdge[];
@@ -473,6 +698,16 @@ export function loadSnapshotGraph(db: Database, snapshotId: number): StoredSnaps
   if (!snapshot) {
     throw new Error(`No snapshot with id ${snapshotId}`);
   }
+  const analyzerRows = db
+    .prepare(
+      `SELECT analyzer_version FROM snapshot_nodes WHERE snapshot_id = ?
+       UNION SELECT analyzer_version FROM snapshot_edges WHERE snapshot_id = ?`
+    )
+    .all(snapshotId, snapshotId) as Array<{ analyzer_version: string }>;
+  if (analyzerRows.length > 1) {
+    throw new Error(`Snapshot ${snapshotId} contains mixed analyzer versions`);
+  }
+  const analyzerVersion = analyzerRows[0]?.analyzer_version ?? "unknown";
 
   const files = (
     db
@@ -613,5 +848,5 @@ export function loadSnapshotGraph(db: Database, snapshotId: number): StoredSnaps
     })
   );
 
-  return { snapshot, files, nodes, edges };
+  return { snapshot, analyzerVersion, files, nodes, edges };
 }

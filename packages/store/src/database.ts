@@ -20,6 +20,9 @@ export function openDatabase(path: string): Database {
   db.pragma("foreign_keys = ON");
   db.pragma("journal_mode = WAL");
   db.pragma("synchronous = NORMAL");
+  // Bound writer contention: refresh publication either acquires the lock
+  // within five seconds or fails loudly and keeps the previous valid head.
+  db.pragma("busy_timeout = 5000");
   return db;
 }
 

@@ -35,8 +35,14 @@ export function parseCliOptions(argv: readonly string[]): CliOptions {
 async function main(): Promise<void> {
   const options = parseCliOptions(process.argv.slice(2));
   const db = openDatabase(options.dbPath);
-  runMigrations(db);
-  const runtime = await startStdioServer({ db, repoRoot: options.repoRoot });
+  let runtime: Awaited<ReturnType<typeof startStdioServer>>;
+  try {
+    runMigrations(db);
+    runtime = await startStdioServer({ db, repoRoot: options.repoRoot });
+  } catch (error) {
+    db.close();
+    throw error;
+  }
   let shuttingDown = false;
   const shutdown = async (status: "completed" | "aborted"): Promise<void> => {
     if (shuttingDown) {

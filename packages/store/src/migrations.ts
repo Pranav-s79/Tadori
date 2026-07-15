@@ -1,7 +1,8 @@
 /**
- * Frozen Tadori v2.1 migrations. The SQL text below is copied verbatim from
+ * Tadori database migrations. Versions 1-5 are copied verbatim from
  * "Tadori v2.1 - Frozen Implementation Corrections", section 9. Do not edit
- * without a new defect report against the frozen specification.
+ * those migrations. Later additive migrations must cite a proven defect in
+ * the implementation status document.
  */
 
 export interface Migration {
@@ -494,10 +495,79 @@ COMMIT;
 `
 };
 
+/**
+ * Defect correction: UNIQUE(repo_id, kind, workspace_hash) means a working
+ * tree that changes A -> B -> A cannot publish A again by inserting another
+ * snapshot. Immutable activation events make publication explicit and let an
+ * already validated snapshot become current again without mutating it.
+ */
+const migration006: Migration = {
+  version: 6,
+  name: "atomic immutable snapshot activation events",
+  sql: `
+PRAGMA foreign_keys = ON;
+BEGIN IMMEDIATE;
+
+CREATE TABLE snapshot_activations (
+    id INTEGER PRIMARY KEY,
+    repo_id INTEGER NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('commit','working_tree','staged','patch')),
+    snapshot_id INTEGER NOT NULL REFERENCES repository_snapshots(id) ON DELETE RESTRICT,
+    previous_snapshot_id INTEGER REFERENCES repository_snapshots(id) ON DELETE RESTRICT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_snapshot_activations_current
+    ON snapshot_activations(repo_id, kind, id DESC);
+CREATE INDEX idx_snapshot_activations_snapshot
+    ON snapshot_activations(snapshot_id);
+
+CREATE TRIGGER snapshot_activations_validate_insert
+BEFORE INSERT ON snapshot_activations
+WHEN NOT EXISTS (
+    SELECT 1 FROM repository_snapshots
+    WHERE id = NEW.snapshot_id AND repo_id = NEW.repo_id AND kind = NEW.kind
+)
+BEGIN
+    SELECT RAISE(ABORT, 'snapshot activation repo/kind mismatch');
+END;
+
+CREATE TRIGGER snapshot_activations_validate_update
+BEFORE UPDATE ON snapshot_activations
+WHEN NOT EXISTS (
+    SELECT 1 FROM repository_snapshots
+    WHERE id = NEW.snapshot_id AND repo_id = NEW.repo_id AND kind = NEW.kind
+)
+BEGIN
+    SELECT RAISE(ABORT, 'snapshot activation repo/kind mismatch');
+END;
+
+INSERT INTO snapshot_activations(repo_id, kind, snapshot_id, previous_snapshot_id)
+SELECT current.repo_id,
+       current.kind,
+       current.id,
+       (
+         SELECT MAX(previous.id)
+         FROM repository_snapshots AS previous
+         WHERE previous.repo_id = current.repo_id
+           AND previous.kind = current.kind
+           AND previous.status = 'active'
+           AND previous.id < current.id
+       )
+FROM repository_snapshots AS current
+WHERE current.status = 'active'
+ORDER BY current.id;
+
+INSERT INTO schema_migrations(version) VALUES (6);
+COMMIT;
+`
+};
+
 export const MIGRATIONS: readonly Migration[] = [
   migration001,
   migration002,
   migration003,
   migration004,
-  migration005
+  migration005,
+  migration006
 ];

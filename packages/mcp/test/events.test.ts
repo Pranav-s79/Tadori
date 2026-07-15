@@ -111,6 +111,15 @@ describe("EventLog", () => {
     const { service, log } = setupEventLog();
     expect(() => pruneSnapshot(db, service.snapshot.id)).toThrow(/active task/);
     log.endTask();
+    expect(() => pruneSnapshot(db, service.snapshot.id)).toThrow(/current working_tree head/);
+
+    const successor = makeGraph(
+      tempRoot,
+      service.graph.files,
+      service.graph.nodes,
+      service.graph.edges
+    );
+    insertSnapshotGraph(db, { ...successor, workspaceHash: "f".repeat(64) });
     expect(() => pruneSnapshot(db, service.snapshot.id)).not.toThrow();
   });
 

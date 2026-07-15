@@ -16,7 +16,9 @@
     "mcp:stdio": "tsx packages/mcp/src/cli.ts",
     "fixtures:validate": "tsx packages/harness/src/cli-validate.ts",
     "fixtures:index": "tsx packages/harness/src/cli-index.ts",
-    "fixtures:typecheck": "tsx packages/harness/src/cli-typecheck-fixtures.ts"
+    "fixtures:typecheck": "tsx packages/harness/src/cli-typecheck-fixtures.ts",
+    "benchmark:incremental": "tsx scripts/benchmark-incremental.mts",
+    "tadori": "tsx scripts/tadori.mts"
   },
   "devDependencies": {
     "@eslint/js": "^9.7.0",

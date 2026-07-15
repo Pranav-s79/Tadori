@@ -103,6 +103,7 @@ describe("snapshot FTS", () => {
 
   it("escapes FTS syntax, validates limits, and removes rows when pruning", () => {
     const snapshot = insertSnapshotGraph(db, searchableGraph());
+    insertSnapshotGraph(db, { ...searchableGraph(), workspaceHash: "0".repeat(64) });
     expect(toFtsQuery('Alpha" OR *')).toBe('"Alpha"* "OR"*');
     expect(() => searchNodeFts(db, snapshot.snapshotId, 'Alpha" OR *', 10)).not.toThrow();
     expect(() => searchNodeFts(db, snapshot.snapshotId, "Alpha", 0)).toThrow(/1 to 100/);

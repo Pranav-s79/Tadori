@@ -14,7 +14,7 @@ import {
   nodeCanonicalIdentity,
   sha256Hex
 } from "@tadori/core";
-import { computeWorkspaceHash } from "@tadori/indexer";
+import { ANALYZER_VERSION, computeWorkspaceHash } from "@tadori/indexer";
 
 export function makeFile(normalizedPath: string, content: string): GraphFile {
   const canonical = fileCanonicalIdentity(normalizedPath);
@@ -94,7 +94,7 @@ export function makeGraph(
         contentHash: file.contentHash
       }))
     ),
-    analyzerVersion: "tadori-mcp-test/0.1.0",
+    analyzerVersion: ANALYZER_VERSION,
     files,
     nodes,
     edges
