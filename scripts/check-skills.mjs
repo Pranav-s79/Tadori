@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { frontmatterProblems } from './skill-frontmatter.mjs';
+
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const skillNames = [
   'tadori-spec-guardian',
@@ -18,6 +20,9 @@ for (const name of skillNames) {
   let canonical;
   try { canonical = await readFile(join(root, 'agent-skills', name, 'SKILL.md')); }
   catch { console.error(`Missing canonical source: agent-skills/${name}/SKILL.md`); failed = true; continue; }
+  for (const problem of frontmatterProblems(name, canonical)) {
+    console.error(`Invalid canonical skill: ${problem}`); failed = true;
+  }
   for (const target of targets) {
     const display = `${target}/${name}/SKILL.md`;
     try {

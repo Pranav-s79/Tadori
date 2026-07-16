@@ -1,16 +1,178 @@
 # Tadori Implementation Status
 
-Last updated: 2026-07-13 (Weeks 1–2 complete)
+Last updated: 2026-07-14 (Week 3 semantic extraction complete)
 
 ## Current milestone
 
-**Weeks 1–2 — Store + core extraction** (frozen v2.1 gates §14). All applicable
-completion gates pass; see "Validation results" below.
+**Week 3 — Semantic extraction** (frozen v2.1 gates §14). All five golden
+fixture snapshots pass exact comparison over the full Week 3 relation set.
+
+## Week 3 — Semantic extraction (complete, 2026-07-14)
+
+Implemented in `@tadori/indexer` (`extract.ts` passes 3–7 plus the pure
+helpers in `semantics.ts`):
+
+- **references** — compiler-resolved type-annotation references
+  (`TypeReferenceNode`) and `new X()` class uses, attributed to the innermost
+  enclosing registered symbol via span containment (constructor parameter
+  properties attribute to the class, since constructors are not nodes).
+  Import/export specifiers, call callees, heritage names, and top-level code
+  never emit references. Duplicate stable edges merge evidence (e.g. return
+  type + new-expression in one factory function).
+- **calls** — checker-resolved callees (identifier and property-access,
+  alias-safe through barrels and `import { x as y }`), overload groups
+  collapsing to the one logical node, recursive self-calls, and interface
+  dispatch resolving to the interface method only (never invented concrete
+  implementations). Constructor invocations emit references, not calls.
+  Calls with no enclosing symbol (top-level) are not emitted.
+- **heuristic calls** — a property call the checker cannot resolve (e.g. an
+  `any` receiver) with exactly one repo-wide function/method name candidate
+  emits `heuristic/likely/partial`; ambiguous names emit a diagnostic and no
+  edge (verified by unit test and fixture 04 before-graph).
+- **unresolved dynamic dispatch** — `obj[k]()` produces a deterministic
+  synthetic `unresolved` node (`<path>::<unresolved obj[k]>`, parens and
+  type assertions stripped from the label) plus a
+  `heuristic/inferred/unresolved` calls edge; no concrete destination is
+  invented.
+- **implements / extends** — heritage clauses on classes and interfaces,
+  alias-safe, with evidence at the heritage type expression. Interface
+  multi-extends covered by unit test (no fixture declares extends).
+- **Express routes** — `router.<verb>(path, handler)` where the receiver's
+  type is declared by the `express` module (d.ts shim or node_modules).
+  Literal paths → `compiler/certain/resolved` routes_to; computed paths →
+  `<computed:expr>` label with `heuristic/likely/partial`. `app.use` mounts
+  are not routes. Unresolvable handlers keep the route node but emit a
+  diagnostic instead of a fabricated edge.
+- **Next.js routes** — file-convention detection: `app/**/route.ts` exported
+  HTTP-verb functions, `app/**/page.tsx` default exports (`PAGE <path>`),
+  `pages/api/**` default exports (`ANY <path>`), `pages/**.tsx` pages;
+  `_`-prefixed pages excluded; `/index` collapses to `/`.
+- **tests** — `test("title", cb)` / `it(...)` top-level calls become test
+  nodes (`<path>::<title>`); calls inside the callback emit
+  `compiler/certain/resolved` tests edges, bare accesses emit
+  `compiler/likely/resolved`; targets are function/method nodes only. Test
+  spans are excluded from the calls/references passes. Static linkage is
+  never presented as runtime coverage.
+- **ADR / documents** — markdown files whose first H1 carries `ADR-<n>`
+  become adr nodes (`<path>::ADR-<n>`); backtick path terms resolving to
+  indexed files emit `doc/certain/resolved`; unique symbol terms emit
+  `doc/likely/resolved`; ambiguous terms, missing paths, and generic HTTP
+  verb names are excluded with diagnostics.
+- **Harness** — Week 3 relations and node kinds (route, test, adr,
+  unresolved) moved from deferred to supported; `changed_with` and
+  `doc_section` remain explicitly deferred (Week 9 / later). The strata
+  guard, unexpected-emission failure, and evidence policy are unchanged.
+- **Metrics** — one summary diagnostic per snapshot reports resolved,
+  heuristic, dynamic-unresolved, and non-graph callee counts (Week 3 gate:
+  unresolved call rate reported).
+
+### Week 3 validation (executed 2026-07-14)
+
+| Check | Result |
+|---|---|
+| `pnpm typecheck` / `pnpm lint` | pass |
+| `pnpm test` | **85/85** tests, 10 files |
+| `pnpm fixtures:index` | **PASS ×5** — core-symbols 32/72, express-routes 33/79, next-routes 30/68, diff before 17/36, diff after 17/37 (full expected counts) |
+| `python validate_fixtures.py` / `pnpm fixtures:validate` | pass |
+| `pnpm fixtures:typecheck` | pass ×5 |
+| Dangling endpoints / foreign_key_check | zero on every snapshot |
+| Synthetic 150k LOC (1,500 files, 19,501 nodes, 50,997 edges incl. semantic relations) | **9.8 s** total, 0 dangling, 0 FK rows |
+| Deterministic repeated indexing incl. Week 3 kinds | verified (unit test) |
+
+### Week 3 documented interpretations (evidence-backed, fixtures authoritative)
+
+1. **Doc links: one edge per markdown line.** Fixture 01 line 7 mentions both
+   `` `Runner` `` and `` `Strategy` `` (both unique) but expects only the
+   Runner edge; the first resolving backtick term anchors its line. HTTP verb
+   names (fixture 03's unique `GET`) are additionally excluded as generic.
+2. **Tests-edge confidence.** A call inside a test body is `compiler/certain`
+   (fixture 01 `factorial(4)`); a bare property access is `compiler/likely`
+   (fixture 02 `void controller.getUser`). Targets are function/method nodes
+   only — classes instantiated as setup (`new UserController(...)`) are not
+   linked, matching fixture 02's expected set.
+3. **Heuristic call trigger.** Only when the checker resolves *no* symbol for
+   a property callee (fixture 04's `resolver: any`) and exactly one
+   function/method shares the name; a checker-resolved non-graph callee
+   (express shim `res.json`) is skipped silently rather than guessed.
+4. **Next dynamic segments** (`[id]`) stay verbatim in route URL paths; no
+   fixture fixes a translation.
+5. **`test.each` / `describe` blocks** are not test nodes in v1 (fixtures use
+   bare `test()`/`it()` only); nested and property-access test callees are
+   later work.
+
+### Week 3 adversarial review outcome (2026-07-14)
+
+A read-only review subagent hunted for false positives on real-world code the
+fixtures cannot exercise. Fixed before commit (each with a regression test):
+
+- **Decorator fabrication (blocker):** `@Log() doWork(){}` emitted
+  `doWork -calls[compiler/certain]-> Log` because the method span includes
+  its decorators. The calls/references pass now prunes `Decorator` subtrees.
+- **Test-body over-linking:** bare identifier mentions (`void other;`) inside
+  test callbacks emitted `tests` edges to imported-but-unexercised functions.
+  Removed; only calls (certain) and property accesses (likely) link.
+- **Heuristic arity gate:** the unique-name heuristic call now also requires
+  call-site arity to fit some declaration of the candidate.
+
+Kept, documented: default-parameter initializer calls
+(`run(x = makeDefault())`) remain attributed to the enclosing function —
+the call genuinely executes in that function's activation. `describe`-nested
+tests remain a documented coverage gap (honest under-reporting).
+
+Reviewer environment note: invoking vitest under the machine-global Node 25
+hits a better-sqlite3 ABI mismatch and skips DB-backed suites; always run
+through `pnpm test`, which uses the `.npmrc`-pinned Node 22.
+
+## Weeks 1–2 milestone (complete)
+
+All applicable completion gates pass; see "Validation results" below.
+
+## Dual-agent configuration (Phase A — complete, 2026-07-14)
+
+- Canonical skills in `agent-skills/` sync byte-identically into
+  `.claude/skills` and `.agents/skills` (`pnpm skills:sync` / `skills:check`).
+- Added the missing `.agents/README.md` (Codex counterpart of
+  `.claude/README.md`) and `docs/CLI_CONTRACT.md` (frozen `tadori serve .`
+  contract: resolve repo → load config → reuse/refresh valid snapshot →
+  validate → local API on 127.0.0.1 → visualization → open browser → print
+  facts → clean Ctrl+C; frozen flags; 2d default). No CLI implementation yet.
+- Added frontmatter validation (`scripts/skill-frontmatter.mjs`): sync refuses
+  to run and check fails when a canonical SKILL.md has missing/unterminated
+  frontmatter, a wrong `name:`, or an empty `description:` (verified by
+  breaking a skill and observing exit 1 from both commands).
+- Fixed a stale-copy defect: sync overwrote `.tadori-generated.json` *before*
+  the removal pass read it, so a skill dropped from the canonical list was
+  never cleaned up (dead code). Sync now snapshots the previous manifest first;
+  verified a manifest-listed `tadori-retired` directory is removed while an
+  unrelated `third-party-example` skill is preserved.
+- Gates executed 2026-07-14: sync passes; check passes; second sync produces
+  no git diff (idempotent); unrelated skills preserved; stale generated copies
+  removed; malformed frontmatter fails; project skills tracked by git while
+  `.claude/settings.local.json`/credentials/cache/sessions stay ignored.
+
+## Repository environment (2026-07-14)
+
+- The repository moved machines and now lives at `C:\SideProjects\Tadori`
+  (previously `D:\Electrical\Side_Projects\Tadori`, then briefly nested at
+  `C:\SideProjects\Tadori\Tadori`). The nested checkout was flattened into the
+  outer folder; the outer folder's pre-existing `.claude/settings.json` /
+  `.claude/settings.local.json` (Claude Code plugin state) were preserved and
+  merged with the repo-tracked `.claude/README.md` + skills. Git history and
+  `origin` remote are intact.
+- The machine's global Node is 25.x with no C++ toolchain, which cannot build
+  `better-sqlite3`. `.npmrc` pins `use-node-version=22.14.0` so pnpm runs
+  everything under Node 22 LTS, where better-sqlite3 prebuilt binaries exist.
+- The machine's global `core.autocrlf=true` checked fixtures out with CRLF,
+  breaking every frozen file-node `bodyHash` (SHA-256 over exact LF bytes) —
+  observed as 12/13/11/6/6 node field mismatches across the five snapshots.
+  `.gitattributes` now forces `* text=auto eol=lf`, and the working tree was
+  byte-normalized back to LF. Fixture *expectations were not touched*; only
+  checkout behavior was fixed.
 
 ## Completed capabilities
 
 - pnpm monorepo (`packages/core`, `packages/store`, `packages/indexer`,
-  `packages/harness`) with strict TypeScript, ESLint (flat config,
+  `packages/harness`, `packages/mcp`) with strict TypeScript, ESLint (flat config,
   `no-explicit-any` as error), and Vitest.
 - `@tadori/core`: frozen enums (node kinds, relations, origins, confidences,
   resolutions, repository-state kinds, evidence kinds), Zod schemas for graph
@@ -47,6 +209,22 @@ completion gates pass; see "Validation results" below.
   a strata guard that fails if a declared relation is neither tested nor
   explicitly deferred. CLIs: `fixtures:validate` (TS port of
   `validate_fixtures.py`), `fixtures:index`, `fixtures:typecheck`.
+- `@tadori/mcp`: the frozen six-tool interface (`repo_overview`,
+  `find_symbol`, `symbol_context`, `find_tests`, `impact`, `path`) registered
+  through the official MCP SDK with strict Zod input/output contracts and no
+  seventh tool. The snapshot query service selects one valid active snapshot
+  consistently, preserves ambiguity, confines source reads by real path,
+  suppresses stale bodies, hashes indexed plus compiler/package support files,
+  and exposes item-level evidence/provenance/freshness. FTS5 search is
+  snapshot-scoped, exact-boosted, paginated, repairable, and pruned with its
+  snapshot. Context and impact results are bounded with entity and aggregate
+  omission manifests; impact maps unified-diff hunks by source span, carries
+  page connectors, linked tests, beyond-depth package counts, and unresolved
+  targets. Test linkage distinguishes compiler, heuristic, git, and other
+  evidence without claiming runtime coverage. Retrieval and observation events
+  validate snapshot membership and write atomically; active MCP tasks prevent
+  snapshot pruning. The stdio transport emits protocol only on stdout, survives
+  malformed lines, restarts cleanly, and closes tasks on normal EOF/shutdown.
 
 ## Validation results (all executed and observed on this machine)
 
@@ -55,7 +233,7 @@ completion gates pass; see "Validation results" below.
 | `pnpm install` | clean |
 | `pnpm typecheck` (strict, `noUncheckedIndexedAccess`) | pass |
 | `pnpm lint` | pass |
-| `pnpm test` | 75/75 tests, 9 files, all pass |
+| `pnpm test` | 122/122 tests, 16 files, all pass |
 | `python validate_fixtures.py` | pass |
 | `pnpm fixtures:validate` | pass |
 | `pnpm fixtures:typecheck` (all 5 fixture repos, `tsc --noEmit`) | pass |
@@ -65,22 +243,23 @@ completion gates pass; see "Validation results" below.
 | Commit + working-tree snapshots coexist | verified (store + indexer tests) |
 | Canonical SHA-256 identities vs. fixture values | exact match (core tests) |
 | Deterministic repeated indexing | verified (identical keys, hashes, workspace hash) |
+| MCP contract | exactly 6 tools; strict valid/invalid calls; structured output; logging; stale/budget/omission coverage |
+| MCP stdio | protocol-only stdout; malformed-line recovery; two clean restarts; clean EOF shutdown |
 
 ## Fixture relations currently supported (compared against golden truth)
 
-- `contains` (package→file, file→symbol, class→method, interface→method)
-- `imports` (file→file, file→external_dep; aliased, type-only, re-export imports)
-- `exports` (direct, re-export, barrel; excluded for variables)
+- `contains`, `imports`, `exports` (Weeks 1–2 scope, unchanged)
+- `references`, `calls`, `implements`, `extends`, `tests`, `routes_to`,
+  `documents` plus node kinds `route`, `test`, `adr`, `unresolved` (Week 3)
 
-Compared per snapshot: core-symbols 27 nodes/54 edges, express-routes 27/56,
-next-routes 22/42, diff-coalescing before 17/30, after 17/30.
+Compared per snapshot (full expected sets): core-symbols 32 nodes/72 edges,
+express-routes 33/79, next-routes 30/68, diff-coalescing before 17/36,
+after 17/37.
 
 ## Relations intentionally deferred (reported by the harness, never dropped)
 
-- Relations: `references`, `calls`, `implements`, `extends`, `tests`,
-  `routes_to`, `documents`, `changed_with`.
-- Node kinds: `route`, `test`, `adr`, `doc_section`, `unresolved` (and the
-  `contains` edges that target them).
+- Relation: `changed_with` (Week 9 review mode).
+- Node kind: `doc_section` (no fixture covers it yet).
 - Checks: seeded boundary violations, non-variable excluded candidates,
   raw/coalesced diff artifacts of fixture 04 (Week 9).
 
@@ -124,6 +303,17 @@ next-routes 22/42, diff-coalescing before 17/30, after 17/30.
 4. **`getUser`/`app` style exported variables** produce diagnostics rather than
    nodes/edges, per the fixture contract ("variable declarations are not
    nodes"); the exclusions are reported in harness output, never silent.
+5. **MCP schema and logging boundary.** The frozen documents define tool names,
+   arguments, semantics, and common response requirements, but not a complete
+   property-by-property JSON response schema. The strict response objects in
+   `@tadori/mcp` are therefore versioned implementation contracts, not claimed
+   as additional frozen specification. A retrieval event is written for every
+   schema-valid tool invocation, including not-found/ambiguous results. A
+   request rejected by MCP input validation never reaches a tool handler and is
+   not recorded as a returned retrieval result; protocol tests enforce this
+   distinction. `symbol_context` rejects budgets below 1,024 estimated tokens
+   because its required repository/snapshot/evidence envelope cannot honestly
+   fit below that floor.
 
 ## Discovered defects
 
@@ -140,15 +330,20 @@ next-routes 22/42, diff-coalescing before 17/30, after 17/30.
   later milestone (fixtures are single-project).
 - Only top-level declarations become symbol nodes (matches the fixture
   contract; nested function extraction is not required by any fixture).
-- The repository is not a git repository, so the "inspect the current Git
-  diff" step of the validation loop was performed by re-reading changed files;
-  recommend `git init` + an initial commit before Week 3.
+- A forcibly terminated process cannot finalize its active task. Normal MCP
+  client EOF and handled Ctrl+C/SIGTERM paths finalize it; uncatchable process
+  termination can leave an `active` task with partial observation coverage for
+  later recovery/lease work.
+- (Resolved 2026-07-14) The repository is now a git repository (`main`, with
+  `origin`); the "inspect the current Git diff" validation step runs normally.
 
-## Immediate next task (Week 3 — do not start without instruction)
+## Current roadmap phase
 
-Implement resolved `calls` edges with enclosing-symbol attribution via span
-containment (compiler/certain/resolved), plus the synthetic `unresolved` call
-target nodes (`<path>::<unresolved expr>`) for dynamic `obj[k]()` dispatch —
-fixture 01's `handlers[key]()` and fixture 02's `controller[action]()` — then
-widen the harness milestone filter to include `calls`/`references` and the
-`unresolved` node kind.
+Week 4 / Phase C is complete and validated. The next task is Week 5 / Phase D:
+extract deterministic ranking and context selection into explicit policy,
+enforce hard-required structural neighbors before heuristic scoring, add query
+explanations and confidence-aware ordering, and extend exact-boundary,
+high-degree, ambiguity, and pagination-continuity tests. Existing Week 4
+response caps, pagination, token budgets, stale labels, and omission manifests
+are the safe foundation; they do not pre-claim the complete Week 5 ranking
+gate.

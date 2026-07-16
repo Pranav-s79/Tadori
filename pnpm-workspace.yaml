@@ -3,3 +3,4 @@ packages:
   - "packages/store"
   - "packages/indexer"
   - "packages/harness"
+  - "packages/mcp"

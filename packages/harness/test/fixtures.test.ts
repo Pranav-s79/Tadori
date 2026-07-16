@@ -37,7 +37,7 @@ describe("expected-graph schema validation", () => {
   });
 });
 
-describe("golden fixture comparison (Weeks 1-2 milestone)", () => {
+describe("golden fixture comparison (Week 3 milestone)", () => {
   const targets = fixtureSnapshotTargets(repoRoot);
   const comparisons = new Map<string, FixtureComparison>();
 
@@ -84,14 +84,14 @@ describe("golden fixture comparison (Weeks 1-2 milestone)", () => {
     }
   );
 
-  it("explicitly reports every deferred relation instead of dropping it", () => {
+  it("compares every Week 3 relation instead of deferring it", () => {
     const core = comparisonFor(targets[0]!);
-    const deferredNames = core.deferredRelations.map((d) => d.name);
-    for (const relation of ["references", "calls", "implements", "tests", "documents"]) {
-      expect(deferredNames.join(",")).toContain(relation);
-    }
-    // Deferred node kinds are reported too.
-    expect(core.deferredNodeKinds.map((d) => d.name).sort()).toEqual(["adr", "test", "unresolved"]);
+    // Fixture 01 declares no changed_with edges, so nothing is deferred now.
+    expect(core.deferredRelations).toEqual([]);
+    expect(core.deferredNodeKinds).toEqual([]);
+    // The milestone still names its explicit deferrals (Week 9 material).
+    expect(core.deferredChecks.join("; ")).toContain("changed_with");
+    expect(core.deferredChecks.join("; ")).toContain("doc_section");
   });
 
   it("compares a meaningful number of nodes and edges per fixture", () => {

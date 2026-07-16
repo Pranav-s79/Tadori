@@ -20,7 +20,8 @@
       "@tadori/core": ["packages/core/src/index.ts"],
       "@tadori/store": ["packages/store/src/index.ts"],
       "@tadori/indexer": ["packages/indexer/src/index.ts"],
-      "@tadori/harness": ["packages/harness/src/index.ts"]
+      "@tadori/harness": ["packages/harness/src/index.ts"],
+      "@tadori/mcp": ["packages/mcp/src/index.ts"]
     }
   }
 }

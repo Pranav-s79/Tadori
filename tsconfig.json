@@ -9,6 +9,8 @@
     "packages/indexer/test/**/*.ts",
     "packages/harness/src/**/*.ts",
     "packages/harness/test/**/*.ts",
+    "packages/mcp/src/**/*.ts",
+    "packages/mcp/test/**/*.ts",
     "vitest.config.ts",
     "eslint.config.js"
   ],
