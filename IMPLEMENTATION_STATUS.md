@@ -529,3 +529,14 @@ only to `127.0.0.1`, optional browser launch, truthful startup state, and clean
 Ctrl+C teardown. The current graph, snapshot, evidence, identity, ranking, and
 MCP contracts are covered by 170 repository tests and the exact five-fixture
 harness.
+
+## Repository hygiene (2026-07-17)
+
+- Root README replaced with a product overview; the golden-fixture guide moved
+  byte-identically to `packages/fixtures/README.md`.
+- Planning vault committed: `BACKLOG.md` and `blueprints/` (remaining-roadmap
+  backlog and per-item blueprints; item 00-01 re-scoped 2026-07-17 after
+  `origin/main` adopted GitHub PR-merge topology via PR #1/#2).
+- All four sprint branches pushed (`Sprint7-core-visualization` created on
+  origin); local `main` fast-forwarded to `origin/main` (`6e89fc1`). `main`
+  advances only via owner-merged PRs; no tags or releases.
