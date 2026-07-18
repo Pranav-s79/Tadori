@@ -41,7 +41,7 @@ repository.
 
 Verified current (2026-07-17):
 
-- Defect site: `packages/indexer/src/scan.ts` — `classifyFile` returns
+- Defect site: `packages/indexer/src/scan.ts` — `classify` returns
   `{ indexed: true, language: "javascript" }` unconditionally for
   `JS_EXTENSIONS` (lines ~114-116). `scanRepository(root)` (line 127) never
   reads any tsconfig.
@@ -150,7 +150,7 @@ None. First item of implementation Wave 0.
 
 - `packages/indexer/src/scan.ts` — modify. Import the exported options
   resolver from `./project.js`; compute `allowJs` once in `scanRepository`;
-  pass it to `classifyFile`. Exports unchanged (`scanRepository`,
+  pass it to `classify`. Exports unchanged (`scanRepository`,
   `ScanResult`, `ScannedFile`).
 - `packages/indexer/src/project.ts` — modify (additive export only):
   `export function resolveRootCompilerOptions(root: string):
@@ -178,9 +178,8 @@ None. First item of implementation Wave 0.
 export function resolveRootCompilerOptions(root: string): ts.CompilerOptions;
 
 // scan.ts (internal change; public types unchanged)
-function classifyFile(
-  root: string,
-  absolutePath: string,
+function classify(
+  normalizedPath: string,
   allowJs: boolean
 ): { indexed: boolean; language: ScannedFile["language"] };
 // JS_EXTENSIONS → { indexed: allowJs, language: "javascript" }
@@ -333,6 +332,13 @@ statement whether 00-01 is now unblocked.
   test (a) include-glob requirement; test (b)/(b2) extension coverage;
   §8 files-array note; §14 exact test accounting. Final review status:
   PASS conditions met → **ready**.
+- 2026-07-17 Implementation coordinator correction (evidence-backed): §4/§9/
+  §10 named the scan classifier `classifyFile(root, absolutePath, …)`; the
+  actual internal helper is `classify(normalizedPath)` (scan.ts:104), and
+  classification is purely extension-based. Contract corrected to
+  `classify(normalizedPath, allowJs)` — no `root`/`absolutePath` parameters
+  are added. Semantics unchanged; verified against live source by the Stage 1
+  read-only investigation.
 
 ## IF SOMETHING IS UNCLEAR
 
