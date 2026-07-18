@@ -45,6 +45,15 @@ quick-start commands verified on `06d951f` (install clean; test 178/178;
 to 178/25; `git tag` empty; five branches on origin with
 `autonomous-roadmap` untouched. Next dependency-ready task: 00-02 (CI).
 
+2026-07-17 (autonomous run, later still): 00-02 completed — `ci` workflow
+live on both OSes (PR #7, squash-merged by the owner as `7876837`). First
+run red with two real cross-OS findings (runner Python lacked jsonschema;
+watcher test hardcoded a Windows path separator), both fixed narrowly;
+green run 29628448665 with exact 178/178 vitest parity across
+ubuntu/windows/local; first main push run 29628564682 green. Phase 0 is
+fully validated. Next: Phase 7 — 07-01 blueprint review, starting with the
+`task_start` observation-contract contradiction.
+
 Frozen constraints (never reopened by any item): six MCP tools only; stable 2D
 default (Sigma.js/WebGL, seeded frozen layout, semantic zoom packages → files →
 exported symbols); provenance edge legend fixed; evidence/origin/confidence/
@@ -87,7 +96,7 @@ with gates in `IMPLEMENTATION_STATUS.md`. Do not rebuild; later phases reuse.
 |---|---|---|---|---|
 | 00-01 | Repo sync & README correction | Hygiene commits on Sprint7; push sprint branches only (main via owner PRs — re-scoped 2026-07-17); relocate fixture README to `packages/fixtures/README.md`; new product root README; commit planning vault | 00-01A | validated (2026-07-17; PR #4 landed hygiene commits, README commands verified post-00-01A, README counts refreshed, statuses reconciled) |
 | 00-01A | allowJs scanner contract & regression | Fix `scan.ts` unconditional JS classification: gate `.js/.jsx/.mjs/.cjs` indexing on effective `allowJs`/`checkJs` from the extends-resolved root tsconfig; JS reclassifies to support (captured, hashed) when gated off; regression tests both directions; unblocks `pnpm tadori diff .` on Tadori itself | — | validated (2026-07-17, commit `8be4741`; full gate 178/178; `tadori diff .` exit 0 on Tadori) |
-| 00-02 | CI pipeline | GitHub Actions: Linux + Windows; typecheck, lint, test, fixtures:validate/index/typecheck, skills:check; Node 22 pin; better-sqlite3 prebuilds | 00-01 | pending |
+| 00-02 | CI pipeline | GitHub Actions: Linux + Windows; typecheck, lint, test, fixtures:validate/index/typecheck, skills:check; Node 22 pin; better-sqlite3 prebuilds | 00-01 | validated (2026-07-17; PR #7 `7876837`; both OS green + main run green; first-run red caught two real cross-OS findings, both fixed) |
 
 ## Phase 7 — Local serving & API foundation
 

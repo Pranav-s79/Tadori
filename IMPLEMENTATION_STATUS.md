@@ -11,7 +11,7 @@ atomically publishes validated working-tree snapshots. MCP sessions remain
 pinned while new sessions adopt the latest head. The next roadmap task is
 Phase F visualization and serving.
 
-## 00-02 — CI pipeline, Linux + Windows (built, 2026-07-17; run evidence pending)
+## 00-02 — CI pipeline, Linux + Windows (complete, 2026-07-17; runs 2026-07-18Z)
 
 - Added `.github/workflows/ci.yml`: one `ci` workflow, matrix
   `ubuntu-latest` + `windows-latest`, triggered on push (`main`, `Sprint*`)
@@ -24,8 +24,29 @@ Phase F visualization and serving.
   that 00-01A landed first), `git diff --check`, and the exact tree-mutation
   guard (`git add -A` + `git diff --cached --exit-code`).
 - README Development section carries the CI badge.
-- First green run IDs per OS: recorded after the 00-02 PR's runs complete
-  (this subsection is updated in the same PR before merge).
+- Run evidence (PR #7, squash-merged as `7876837` by the repository owner
+  2026-07-18T03:17:38Z):
+  - First run (commit `9b789a5`), both OSes red with two REAL findings —
+    windows: `validate_fixtures.py` exit 1, runner Python lacked
+    `jsonschema` (fixed `cb50d03`, workflow pip-install step); ubuntu:
+    `watcher.test.ts` fed a hardcoded backslash path that only normalizes
+    on Windows (fixed `a6f6a52`, test now uses platform-native separators —
+    production watcher unchanged; on POSIX a backslash is a legal filename
+    character). Run: actions/runs/29627577053. This organic red run is the
+    recorded gates-bite evidence.
+  - Green run (commit `a6f6a52`): actions/runs/29628448665 — ubuntu job
+    88037408805 (1 m 23 s), windows job 88037408807 (2 m 41 s). Verbatim
+    vitest parity on the same commit: ubuntu `Tests  178 passed (178)`,
+    windows `Tests  178 passed (178)`, local `Tests  178 passed (178)`.
+  - First `main` push run after merge: actions/runs/29628564682, green.
+- Documented deviation from blueprint §14: the synthetic deliberate-failure
+  probe (`fc074a1`, a `no-explicit-any` lint violation) was pushed but never
+  received a run — the owner merged/closed PR #7 before the synchronize
+  event was processed, so the probe was discarded unmerged and its branch
+  deleted. The "a broken commit fails CI" criterion is satisfied in
+  substance by the organic first-run failure above (two distinct gates
+  failing on two OSes); a literal synthetic probe can be repeated on any
+  future PR if desired.
 
 ## 00-01 — Repository sync & README correction (complete, 2026-07-17)
 
