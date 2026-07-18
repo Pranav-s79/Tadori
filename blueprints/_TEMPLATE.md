@@ -1,115 +1,150 @@
-# BLUEPRINT [ID]: [Short name]
+# BLUEPRINT [ID]: [Title]
 
-BUILDER: [Claude Sonnet | Claude Haiku | Codex], working alone, cold start, cannot ask questions.
+## 1. Header
 
-MODEL CHOICE
-One sentence explaining why this builder is appropriate.
+- ID / Title / Phase:
+- Status: (pending | drafting | review | ready | built | validated | blocked)
+- Primary builder: (Claude Sonnet | Claude Opus | Codex | Claude Haiku) + one-line model rationale
+- Reviewer roles:
+- Complexity: S / M / L (one focused builder session)
+- Depends on / Unlocks: (blueprint IDs)
+- Estimated sessions:
+- Related frozen-spec sections:
 
-## GOAL
+## 2. Objective
 
-One or two sentences stating the completed observable result.
+What becomes true when this blueprint is complete (one or two sentences,
+observable).
 
-## CURRENT REPOSITORY STATE
+## 3. Why this matters
 
-- Current phase:
-- Relevant completed capabilities:
-- Existing implementation that must be reused:
-- Existing tests and fixtures:
-- Known limitations:
-- Dependencies on earlier blueprints:
+User value; system value; downstream dependency value.
 
-## CONTEXT THE BUILDER NEEDS
+## 4. Current repository evidence
 
-### Files to read first
+Exact existing files, packages, exports, schemas, commands, tests, fixtures,
+migrations, docs, constraints — with paths (and line refs for code). Separate
+**verified current** from **PROPOSED** items. List files to read first and
+gotchas.
 
-### Existing APIs and types
+## 5. Scope
 
-### Real examples
+All included behaviors.
 
-### Gotchas
+## 6. Non-goals
 
-## SCOPE
+Explicitly excluded adjacent work.
 
-### Files and directories allowed to change
+## 7. Dependencies and prerequisites
 
-### New files expected
+Blueprint IDs plus the exact contracts they must have delivered.
 
-### Must not change
+## 8. Architectural decisions
 
-## ARCHITECTURAL DECISIONS
+Resolved before implementation: package ownership; data flow; state
+ownership; persistence; lifecycle; concurrency; APIs; compatibility;
+security; privacy; performance; accessibility; failure semantics. Chosen
+approach + rejected alternatives + reasons. No open choices left to the
+builder.
 
-Chosen approach; rejected alternatives; reason; compatibility constraints;
-persistence behavior; failure behavior; determinism requirements;
-provenance/confidence requirements; security constraints. No open choices.
+## 9. Exact file plan
 
-## DATA AND API CONTRACTS
+Per file: full path; create/modify/move/delete; responsibility; key exports;
+key imports; integration points; relevant tests.
 
-Exact TypeScript interfaces, command syntax, event shapes, database changes,
-API requests/responses, error types, configuration fields, pagination,
-state transitions.
+## 10. Exact contracts
 
-## STEP-BY-STEP IMPLEMENTATION PLAN
+Concrete proposed TypeScript interfaces/types/classes/functions; CLI syntax;
+HTTP endpoints; WebSocket messages; config keys; DB tables/migrations;
+events; React state; graph payloads; error codes; status enums. Code-shaped
+examples where useful.
 
-Numbered; each step names exact file, exact symbol, exact behavior,
-dependencies on earlier steps, tests added with that step.
+## 11. Ordered implementation procedure
 
-## TEST PLAN
+Strict numbered steps. Each step: exact files; exact behavior; reason; test
+added immediately; expected intermediate result.
 
-### Unit tests
-### Integration tests
-### Fixture or golden validation
-### Adversarial tests
-### Performance tests
-### Browser tests
+## 12. Data and lifecycle flows
 
-## VALIDATION COMMANDS
+Startup, operation, refresh, failure, retry, shutdown. Text sequence
+diagrams where useful.
 
-pnpm skills:check
-pnpm typecheck
-pnpm lint
-pnpm test
-python validate_fixtures.py
-pnpm fixtures:validate
-pnpm fixtures:index
-pnpm fixtures:typecheck
-git diff --check
-git status --short
+## 13. Test plan
 
-## DEFINITION OF DONE
+Applicable: unit / integration / fixture / migration / API / WebSocket / CLI
+/ browser / accessibility / performance / cross-platform / adversarial /
+regression. Name proposed test files and exact assertions.
 
-- [ ] Objectively pass/fail checkboxes only.
+## 14. Acceptance criteria
 
-## REVIEW SUBAGENTS
+Binary and verifiable only. No "polished / robust / works correctly /
+user friendly / production ready".
 
-- Specification guardian:
-- Implementation reviewer:
-- Test adversary:
-- Performance reviewer (if applicable):
-- Security/privacy reviewer (if applicable):
-- UX/browser reviewer (if applicable):
+## 15. Validation commands
 
-## HANDOFF OUTPUT
+Preserve all applicable repository gates (pnpm install or frozen-lockfile,
+skills:sync, skills:check, typecheck, lint, test, python
+validate_fixtures.py, fixtures:validate, fixtures:index, fixtures:typecheck,
+applicable benchmarks, browser/a11y tests, git diff --check) plus
+blueprint-specific commands.
 
-Files changed; architecture implemented; commands run; test counts; fixture
-results; performance results; remaining limitations; assumptions; commit SHA;
-exact next blueprint.
+## 16. Performance budgets
+
+Measurable latency / memory / graph-size / rendering / response limits where
+relevant.
+
+## 17. Failure and recovery behavior
+
+Malformed input; stale data; interrupted operations; invalid snapshots;
+corrupt storage; browser disconnection; watcher failure; port collision;
+partial event streams; unsupported repositories; retry and cleanup.
+
+## 18. Security and privacy
+
+Localhost binding; path confinement; sensitive content; redaction;
+retention; purge; safe deep links; untrusted event payloads.
+
+## 19. Accessibility
+
+(Human-facing work.) Keyboard behavior; focus order; screen-reader text;
+reduced motion; contrast; non-canvas fallback; textual process
+representation.
+
+## 20. Documentation updates
+
+Exact documentation files to modify.
+
+## 21. Builder final report
+
+Require: summary; files changed; contracts implemented; tests added;
+validation results; benchmark evidence; screenshots where applicable; commit
+SHA; known limitations; follow-on risks; `ASSUMPTION:` lines.
+
+## 22. Independent review result
+
+Reviewer role; blocker findings; high-severity findings; corrections made;
+final review status. A blueprint is `ready` only after blockers and
+high-severity findings are resolved.
 
 ## IF SOMETHING IS UNCLEAR
 
-Make the smallest safe assumption, write `ASSUMPTION: ...` in the
-implementation report, continue, do not expand scope. If the uncertainty could
-violate a frozen contract, stop that item and report it as blocked.
+Make the smallest safe assumption, record `ASSUMPTION: ...` in the report,
+continue without expanding scope. If the uncertainty could violate a frozen
+contract, stop that item and report blocked.
 
 ## TADORI NON-NEGOTIABLES (every blueprint)
 
 Frozen v2.1; TS/JS only; ATLAS separate; exactly six MCP tools; stable 2D
-default; 2.5D optional; 3D experimental; no city metaphor; no default
-hairball; progressive disclosure package → file → task-region symbols; Guided
-Explore clearer than free exploration; every visible relation keeps evidence,
-origin, confidence, resolution; unresolved stays visibly unresolved; static
-test linkage is not runtime coverage; agent observation is not complete
-knowledge ("not observed inspected"); invalid snapshots never served;
-`tadori serve .` is the normal command; localhost default; no cloud
-dependency; Graphify is ignored reference only — never import/copy/ship; never
-weaken golden fixtures; no seventh tool; no runtime tracing; no inferred
-design rationale as fact.
+default; 2.5D optional; 3D experimental only; no city metaphor; no default
+hairball; no generic admin dashboard or permanent dual sidebars; progressive
+disclosure package → file → task-region symbols; deterministic positions;
+every visible relation keeps evidence, origin, confidence, resolution;
+unresolved stays visibly unresolved; static test linkage is not runtime
+coverage; agent observation honesty ("not observed inspected"; coverage
+complete_for_registered_sources | partial | unknown); design rationale only
+from ADRs/docs/instructions/explicit human input, otherwise "No documented
+design decision found"; hooks remain an evidence receiver, never an
+orchestrator/runtime; invalid snapshots never served; `tadori serve .` is the
+normal command; localhost default; no cloud dependency; Graphify is ignored
+reference only — never import/copy/ship; never weaken golden fixtures; no
+seventh tool; no runtime tracing.

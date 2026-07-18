@@ -16,6 +16,21 @@ Sprint7 on origin); local `main` fast-forwards to `origin/main`; `main`
 advances only via owner-merged PRs (Sprint6, later Sprint7). Never
 force-push.
 
+2026-07-17 (later): 00-01 execution built commits `7891a99` (gitignore),
+`1f97ee1` (planning vault), `a4ab158` (README replacement + fixture-guide
+relocation), all local on `Sprint7-core-visualization`. Full gate green
+(170/170 tests, 5/5 fixtures exact, zero dangling endpoints / FK rows).
+The blueprint's adversarial README-command check then exposed a real defect:
+`pnpm tadori diff .` crashes on Tadori's own repository — `scan.ts` (~L114)
+classifies `.js` files as indexed unconditionally while `project.ts` correctly
+gates program roots on `allowJs` (unset here), so the reject pass queries the
+language service for `eslint.config.js`, which is not in the program. Item
+00-01A (corrective, Phase 0) owns the fix; 00-01 is blocked on it plus the
+deferred push/main-sync step. MCP-stdio and benchmark README command
+verification also remain outstanding under 00-01. A full-project planning
+run (all phases through 12) started 2026-07-17: planning only — no production
+code, no pushes, no merges, no tags.
+
 Frozen constraints (never reopened by any item): six MCP tools only; stable 2D
 default (Sigma.js/WebGL, seeded frozen layout, semantic zoom packages → files →
 exported symbols); provenance edge legend fixed; evidence/origin/confidence/
@@ -56,7 +71,8 @@ with gates in `IMPLEMENTATION_STATUS.md`. Do not rebuild; later phases reuse.
 
 | ID | Item | Scope | Depends | Status |
 |---|---|---|---|---|
-| 00-01 | Repo sync & README correction | Hygiene commits on Sprint7; push sprint branches only (main via owner PRs — re-scoped 2026-07-17); relocate fixture README to `packages/fixtures/README.md`; new product root README; commit planning vault | — | blueprinted |
+| 00-01 | Repo sync & README correction | Hygiene commits on Sprint7; push sprint branches only (main via owner PRs — re-scoped 2026-07-17); relocate fixture README to `packages/fixtures/README.md`; new product root README; commit planning vault | 00-01A | blocked (commits `7891a99`/`1f97ee1`/`a4ab158` built locally; gates green except README `tadori diff .` claim — defect 00-01A; push deferred) |
+| 00-01A | allowJs scanner contract & regression | Fix `scan.ts` unconditional JS classification: gate `.js/.jsx/.mjs/.cjs` indexing on effective `allowJs`/`checkJs` from the extends-resolved root tsconfig; JS reclassifies to support (captured, hashed) when gated off; regression tests both directions; unblocks `pnpm tadori diff .` on Tadori itself | — | drafting |
 | 00-02 | CI pipeline | GitHub Actions: Linux + Windows; typecheck, lint, test, fixtures:validate/index/typecheck, skills:check; Node 22 pin; better-sqlite3 prebuilds | 00-01 | pending |
 
 ## Phase 7 — Local serving & API foundation
@@ -71,7 +87,7 @@ with gates in `IMPLEMENTATION_STATUS.md`. Do not rebuild; later phases reuse.
 
 | ID | Item | Scope | Depends | Status |
 |---|---|---|---|---|
-| 08-01 | Layout engine + persistence | graphology seeded force-directed run once; additive migration 007 `layout` table; frozen positions; new-node package-centroid placement w/ local relaxation; byte-identical reload | 07-01 | pending |
+| 08-01 | Layout engine + persistence | graphology seeded force-directed run once; persist into the existing frozen migration-004 `layout_positions` table (no new migration — ARCHITECTURE.md C-1); frozen positions; new-node package-centroid placement w/ local relaxation; byte-identical reload | 07-01 | pending |
 | 08-02 | `apps/viz` scaffold + package map | React+Vite+Sigma.js, fully offline bundle; package-level base map, convex hulls + labels; provenance edge legend (solid/dashed/dotted, muted doc/git) | 08-01 | pending |
 | 08-03 | Semantic zoom: file expansion | Package → files level; deterministic; no global movement | 08-02 | pending |
 | 08-04 | Task-region symbol expansion | File → exported symbols level (third and final zoom level) | 08-03 | pending |
