@@ -5,31 +5,34 @@ Updated by the coordinator at every stage transition. No raw logs.
 
 ## Current state
 
-- Timestamp: 2026-07-17 (night, local)
-- Current branch: `bp/00-01-repo-sync` (off `main` = `06d951f`)
-- Current task: 00-01 — remainder executed (README verification record,
-  README count refresh, status reconciliation); PR pending
-- Completed this run:
-  - Baseline PR #4 MERGED (merge commit `a79a29e`: Week 6 + planning vault
-    + README + checkpoint onto main)
-  - 00-01A PR #5 SQUASH-MERGED (`06d951f`; impl commit `8be4741`;
-    full gate ALL PASS incl. test 178/178, `tadori diff .` exit 0,
-    benchmark p95 737.9 ms; adversarial review PASS 0 blocker/high)
-- 00-01 evidence: all four README quick-start commands executed successfully
-  on `06d951f`; `git tag` empty; five branches + untouched
-  `autonomous-roadmap` on origin
-- Remaining failures: none
-- CI: none configured yet (00-02 next) — local gate is the merge gate
-- Next task: 00-02 (CI pipeline), then Phase 7 (07-01 blueprint review must
-  first resolve the `task_start` observation-contract contradiction vs
-  ARCHITECTURE.md / 08-08 / EventLog)
+- Timestamp: 2026-07-17 (late night local; CI runs timestamped 2026-07-18Z)
+- Current branch: `bp/00-02-evidence-close` (off `main` = `7876837`)
+- Current task: closing 00-02 evidence records; next task = Phase 7, 07-01
+- Completed this run (all merged to main):
+  - PR #4 baseline (merge `a79a29e`): Week 6 + planning vault
+  - PR #5 [00-01A] allowJs scanner fix (squash `06d951f`; full gate ALL
+    PASS; adversarial review PASS)
+  - PR #6 [00-01] repo sync/README verification (squash `6f17779`)
+  - PR #7 [00-02] CI workflow (squash `7876837` — **merged by the owner**,
+    not the agent, 2026-07-18T03:17:38Z)
+- 00-02 evidence: first run red (2 real cross-OS findings, fixed:
+  `cb50d03` jsonschema install, `a6f6a52` watcher-test separators); green
+  run 29628448665 both OSes, 178/178 vitest parity ubuntu/windows/local;
+  main push run 29628564682 green. Synthetic §14 probe `fc074a1` never ran
+  (owner merged first); discarded unmerged, branch deleted; deviation
+  documented in IMPLEMENTATION_STATUS.
+- Phase 0 (00-01A, 00-01, 00-02): fully validated.
+- CI: LIVE on both OSes for main + PRs — future PRs merge only on green.
+- Next task: 07-01 `packages/server` graph API — status `review`, so a
+  Blueprint Review Agent runs first and MUST resolve the `task_start`
+  observation-contract contradiction (ARCHITECTURE.md §7 vs 07-01 vs 08-08
+  vs existing `EventLog` semantics) before implementation.
 
 ## Repository topology
 
-- `origin/main` = local `main` = `06d951f` ([00-01A] squash, PR #5) on top
-  of `a79a29e` (PR #4 merge).
+- `origin/main` = local `main` = `7876837` ([00-02] squash, PR #7).
 - Sprint4/5/6/7 branches remain on origin (merged content; not deleted);
-  `bp/00-01A-allowjs-scanner` deleted on merge (content on main via squash).
+  all `bp/*` task branches deleted after merge.
 
 ## Stashes (do not drop)
 
