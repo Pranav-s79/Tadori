@@ -1,15 +1,45 @@
 # Tadori Implementation Status
 
-Last updated: 2026-07-17 (00-01A allowJs scanner defect fixed and validated)
+Last updated: 2026-07-18 (07-01 packages/server graph API built; full local
+gate ALL PASS; CI + merge pending)
 
 ## Current milestone
 
-**Week 6 — Incremental indexing and hardening** (frozen v2.1 Phase E). Tadori
-now watches repositories, captures immutable generations, reuses one persistent
-TypeScript language service, invalidates deterministic affected regions, and
-atomically publishes validated working-tree snapshots. MCP sessions remain
-pinned while new sessions adopt the latest head. The next roadmap task is
-Phase F visualization and serving.
+**Phase 7 — Local serving** (frozen v2.1 Phase F). 07-01 adds
+`@tadori/server`: a localhost-only Fastify HTTP+WS surface over the
+already-tested `GraphService` query seam. Weeks 1–6 (indexing, identity,
+evidence, MCP, context selection, incremental indexing) remain complete and
+frozen; Phase 0 hygiene (00-01A/00-01/00-02) is validated with live
+two-OS CI.
+
+## 07-01 — `packages/server` graph API (built, 2026-07-18; CI + merge pending)
+
+- New workspace package `@tadori/server` (`fastify@5.10.0`,
+  `@fastify/websocket@11.3.0`): `createServerApp(options)` factory,
+  `GraphState` snapshot rotation (rotated `GraphService` drives
+  `snapshot_replaced` with the new snapshot identity; failed rotation is
+  retryable and records a truthful error; `watcher_error` emits on the
+  null→non-null transition), and the full blueprint §10 route table —
+  snapshot/pin, nodes/edges/evidence, source (repo-root-confined, 403
+  `outside_repository`), search, path, refresh, observations (ambiguous
+  symbol → 409; per-item truthful rejection reasons), derived displays
+  (tests/routes/docs/overview/tour/progress), review diff, layout, `/ws`
+  change-signal channel. Localhost-only bind enforced by test.
+- Tests: 15 files, 51 tests, 51/51 green; full suite 40 files, 229/229.
+- Full gate 2026-07-18 (all exit 0): install, skills:sync, skills:check,
+  typecheck, lint, test, `python validate_fixtures.py`,
+  fixtures:validate/index/typecheck, benchmark:incremental,
+  `git diff --check`.
+- Performance (§16 proxy floor): 25k-LOC synthetic corpus = 1/10 of the
+  benchmark corpus, budget scaled by measured ratio, median/p95 logged at
+  runtime by `performance.test.ts`.
+- Independent validation (cold-start Testing Agent): PASS — all 8
+  prior review-correction points verified with file:line evidence.
+  Deferred non-blocking findings recorded in blueprint §22 (untested
+  mid-rotation throw path and `watcher_error` emission; WS at-least-one
+  frame assertions; vitest alias-map inconsistency).
+- Wiring: `pnpm-workspace.yaml`, `tsconfig.json`, `tsconfig.base.json`,
+  `pnpm-lock.yaml` (fastify/pino ecosystem additions only).
 
 ## 00-02 — CI pipeline, Linux + Windows (complete, 2026-07-17; runs 2026-07-18Z)
 

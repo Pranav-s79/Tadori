@@ -3,7 +3,8 @@
 ## 1. Header
 
 - ID / Title / Phase: 07-01 — `packages/server` graph API (Fastify) — Phase 7
-- Status: review
+- Status: built (2026-07-18; implementation complete, local full gate ALL
+  PASS, independent validation PASS; CI + merge pending)
 - Primary builder: Claude Sonnet — new package with a well-bounded read-mostly
   HTTP surface over an already-tested query seam (`GraphService`); no novel
   concurrency design (that is 07-03).
@@ -419,6 +420,9 @@ export interface SnapshotRowDto {
   id: number; kind: string; label: string | null; baseCommitSha: string | null;
   workspaceHash: string; pinned: boolean; status: string; createdAt: string;
 }
+// `pinned` MUST be converted at the DTO boundary with `Boolean(row.pinned)` —
+// the store's SnapshotRow.pinned is a SQLite integer 0/1 (snapshots.ts:28);
+// serializing the raw number violates the wire contract.
 
 export type ObservationEventType =
   | "plan_mentioned" | "file_read_observed" | "modified"
@@ -660,6 +664,9 @@ tear them down independently of `GraphState`.
 - [ ] 5/5 golden fixtures still PASS (`pnpm fixtures:validate`,
       `pnpm fixtures:index`) — this blueprint touches no fixture/indexer
       code, so this is a regression guard, not new coverage.
+- [ ] An observation POSTed during the narrow post-rotation window (snapshot
+      replaced, replacement EventLog not yet constructed — simulated via test
+      double) returns 409 no_active_task and is not recorded.
 
 ## 15. Validation commands
 
@@ -682,9 +689,11 @@ end.)
   (it currently writes to `mkdtempSync` and is wired as a standalone script,
   not an importable test helper), the builder may build a smaller synthetic
   fixture (documented row/node/edge counts) and scale the budget
-  proportionally, but must record the actual corpus size used and the
-  scaling justification in §21 — never silently test against a
-  trivially small graph and claim the 250k-LOC budget was met.
+  proportionally, but the synthetic fixture must be no smaller than 20k LOC
+  and no less than 1/10 of the benchmark corpus, and must record the actual
+  corpus size used and the scaling justification — stating the measured
+  ratio — in §21; never silently test against a trivially small graph and
+  claim the 250k-LOC budget was met.
 - WS broadcast fan-out: not benchmarked in this blueprint (single-client
   tests only); 08-10 owns large-repo/many-client performance validation.
 - Server startup (`GraphService.open` + `ConcurrentRefreshController.start`)
@@ -770,6 +779,50 @@ evidence (actual corpus size used, p95 numbers, scaling justification if a
 proxy corpus was used per §16); commit SHA; `ASSUMPTION:` lines; explicit
 statement of whether the split recommendation in §1 was needed.
 
+### Final report (2026-07-18)
+
+- Summary: `@tadori/server` implemented per §9–§10 — Fastify app factory
+  (`createServerApp`), `GraphState` snapshot rotation with truthful
+  failure/retry, WS change-signal channel, full route table. The §1 split
+  was NOT needed; all routes landed in one implementation session.
+- Resolved versions: `fastify@5.10.0`, `@fastify/websocket@11.3.0`.
+- Files changed: `packages/server/package.json`;
+  `src/{app,errors,graphState,index,types,ws}.ts`;
+  `src/routes/{derived,graph,layout,observations,path,refresh,review,
+  search,snapshots,source}.ts`; 15 test files +
+  `test/fixtures/buildTestDb.ts`; wiring: `pnpm-workspace.yaml`,
+  `tsconfig.json`, `tsconfig.base.json`, `pnpm-lock.yaml`.
+- Route table (every row implemented and passing; owning test file):
+  `/snapshot`, `/snapshots`, `POST /snapshots/:id/pin` →
+  `snapshots.test.ts`; `/nodes`, `/edges`, `/nodes/:entityKey`,
+  `/nodes/:entityKey/evidence` → `graph.test.ts`; `/source` →
+  `source.test.ts`; `/search` → `search.test.ts`; `/path` →
+  `path.test.ts`; `/refresh` → `refresh.test.ts`; `POST /observations` →
+  `observations.test.ts`; `/tests`, `/routes`, `/docs`, `/overview`,
+  `/tour`, `GET+PUT /tour/progress` → `derived.test.ts`; `/review/diff` →
+  `review.test.ts`; `/layout` → `layout.test.ts`; `GET /ws` →
+  `ws.test.ts`; localhost-only bind → `localhost-bind.test.ts`; rotation
+  lifecycle → `graphState.test.ts`.
+- Tests added: 15 files, 51 tests, 51/51 passing (also green inside the
+  229/229 full-suite run).
+- Validation (§15, run 2026-07-18, every command exit 0): `pnpm install`;
+  `pnpm skills:sync`; `pnpm skills:check`; `pnpm typecheck`; `pnpm lint`;
+  `pnpm test` (40 files, 229/229); `python validate_fixtures.py`;
+  `pnpm fixtures:validate`; `pnpm fixtures:index`;
+  `pnpm fixtures:typecheck`; `pnpm benchmark:incremental`;
+  `git diff --check`.
+- Performance evidence (§16 proxy floor): synthetic corpus of 25k LOC =
+  exactly the permitted 1/10 of the 250k-LOC benchmark corpus; budget
+  scaled by the measured ratio via `SCALING_RATIO`/`SCALED_BUDGET_MS`
+  constants in `performance.test.ts`, which logs actual median/p95 at
+  runtime; test passes within the scaled budget.
+- ASSUMPTION: none beyond blueprint. Environment note: `.npmrc` pins
+  `use-node-version=22.14.0`, so every `pnpm` gate runs under Node 22
+  regardless of the machine-global Node 25; running vitest directly via
+  `npx` bypasses that pin and hits the better-sqlite3 ABI mismatch — use
+  `pnpm test` (or a Node 22 in PATH) for any direct vitest invocation.
+- Commit SHA: recorded in INDEX.md `Impl commit` column at merge.
+
 ## 22. Independent review result
 
 - Status: review. §22 content: **Pending Wave 1 adversarial review.**
@@ -780,6 +833,30 @@ statement of whether the split recommendation in §1 was needed.
   real code; the reviewer should confirm whether ARCHITECTURE.md itself
   needs a follow-up correction pass (out of scope for this blueprint's
   builder to make unilaterally).
+- 2026-07-17 Blueprint Review Agent (implementation-phase): PASS after
+  corrections. Confirmed this blueprint's task_start resolution against live
+  events.ts/migration 003; the same review found blueprint 08-08's DECISION
+  08-08-B and §9-§11/§14 still specified the abandoned client-triggered
+  task_start path — corrected in 08-08 and ARCHITECTURE AD-011 in the same
+  pass so 08-08's builder inherits the server-lifetime task model.
+- 2026-07-18 implementation validation (independent Testing Agent,
+  cold-start diff inspection + focused tests): **PASS**. All 8
+  review-correction points verified with file:line evidence — rotated
+  GraphService drives `snapshot_replaced` identity; `watcher_error` on the
+  null→non-null transition; failed rotation retryable with truthful error;
+  `/source` confinement anchored to `service.repoRoot`; ambiguous symbol →
+  409 via `resolveEntity`; observation failures keep truthful reasons
+  (`no_active_task` reserved for the exact store message, other failures
+  reported per-item); explicit scaled performance budget; mutually
+  exclusive refresh-phase branches prevent duplicate events. Deferred
+  findings (documented, non-blocking): no test forces a mid-rotation
+  `GraphService.open` throw or a `watcher_error` emission; WS tests assert
+  at-least-one rather than exactly-one frame; root `vitest.config.ts`
+  alias map omits `@tadori/store`/`@tadori/server` (workspace resolution
+  is used); no workspace package defines a `test` script (repo-wide
+  convention — the root `pnpm test` gate is authoritative, so
+  `pnpm --filter @tadori/server test` is a silent no-op for every
+  package, not only this one).
 
 ## IF SOMETHING IS UNCLEAR
 

@@ -199,26 +199,18 @@ hooks decision, `docs/CLI_CONTRACT.md` (server lifecycle hooks bind to).
   write surface and duplicates `EventLog`'s honesty invariants. Rejected:
   direct `better-sqlite3` writer in `packages/hooks` (rejected by
   ARCHITECTURE.md AD-001 already; not reopened here).
-- **DECISION 08-08-B — task-start is a distinct call, not an `AgentEventType`
-  member.** Because `task_start` has no home in `AgentEventType` or the
-  `agent_events` CHECK constraint, the hooks package's task-start script
-  calls a **separate** server route that constructs an `EventLog` (i.e.
-  triggers the `tasks` INSERT), not `POST /api/v1/observations`. This
-  blueprint proposes the client-side event `type: "task_start"` be sent to
-  the **same** `/api/v1/observations` endpoint but handled by the server as a
-  request to open/reuse a task (server allocates or reuses a `taskId` and
-  returns it), rather than forwarding `"task_start"` into
-  `recordAgentEvent`'s `type` parameter, which would violate the CHECK
-  constraint. This is a **contract note for 07-01**, not a schema change:
-  the endpoint's request/response shape must branch on `type === "task_start"`
-  before calling `recordAgentEvent`. Rejected: silently renaming
-  `"task_start"` to one of the six existing `AgentEventType` values (would
-  misrecord task-open as, e.g., a file-read observation — a honesty
-  violation, not a clean mapping). Rejected: adding `task_start` to the
-  `AgentEventType` CHECK constraint (a migration-003 schema edit; migration
-  003 is frozen per the file's own header comment in
-  `packages/store/src/migrations.ts:1-6` — out of scope for a hooks
-  blueprint, and not requested).
+- **DECISION 08-08-B (corrected 2026-07-17 per 07-01 resolution + ARCHITECTURE
+  AD-011) — no task-start call exists.** The server (07-01) owns one
+  `EventLog`/task per server-process lifetime, created at server startup and
+  rotated on `snapshot_replaced`; hooks attach observations to the server's
+  already-running task. The hooks package therefore ships NO task-start
+  script and never requests task creation. Rejected: the previous proposal
+  (client sends type `"task_start"` to `/observations` and the server
+  branches it to task creation/reuse) — unconstructible against frozen
+  migration 003 and `EventLog`'s one-task-per-instance design, and it
+  contradicted 07-01's server-lifetime task model. Rejected (unchanged):
+  renaming `task_start` to an existing `AgentEventType` (honesty violation);
+  editing the frozen migration-003 CHECK.
 - **DECISION 08-08-C — no edge targets from hooks.** Hook-observed events
   (file reads, modifications, test selection/execution, plan mentions) are
   always file- or node-scoped from the hook's vantage point (a file path, or
@@ -274,9 +266,6 @@ hooks decision, `docs/CLI_CONTRACT.md` (server lifecycle hooks bind to).
 - `packages/hooks/src/types.ts` — create. `ObservationEvent`,
   `ObservationEventType`, `ObservationTarget` — mirrors §10 exactly, corrected
   per §8-B/§8-C.
-- `packages/hooks/src/scripts/task-start.ts` — create. Reads Claude Code
-  session-start hook JSON from stdin (or CLI args, whichever Claude Code's
-  hook input contract provides — see §11), emits `type: "task_start"`.
 - `packages/hooks/src/scripts/plan.ts` — create. Maps a plan-related hook
   invocation (e.g. `PreToolUse` on a planning-tool call, or `ExitPlanMode`) to
   `type: "plan_mentioned"`.
@@ -314,10 +303,6 @@ blueprint sends to `POST /api/v1/observations`, cross-referenced against
 ```ts
 // packages/hooks/src/types.ts
 export type ObservationEventType =
-  | "task_start"           // NOT an AgentEventType member — server branches
-                           // this to task creation/reuse, never to
-                           // recordAgentEvent(type=...). See ARCHITECTURE.md
-                           // finding, §4/§8-B of this blueprint.
   | "plan_mentioned"       // == AgentEventType "plan_mentioned"
   | "file_read_observed"   // == AgentEventType "file_read_observed"
   | "modified"             // == AgentEventType "modified"
@@ -334,7 +319,7 @@ export interface ObservationEvent {
   type: ObservationEventType;
   source: "claude_hook";   // the only AgentEventSource value this package emits
   at: string;              // ISO timestamp, client-supplied, server re-stamps created_at
-  taskId?: number;         // present on every event except the task_start that creates it
+  taskId?: number;         // optional; when omitted the server attaches the event to its current server-lifetime task
   targets?: ObservationTarget[];
   detail?: string;         // e.g. tool name, test command (redacted per 12-01 policy), never a correctness claim
 }
@@ -349,23 +334,21 @@ export function postObservation(event: ObservationEvent): Promise<PostObservatio
 ```
 
 **Server-side mapping this blueprint assumes 07-01 implements** (documented
-here as the contract this package's `task_start` event depends on; not
-implemented by this blueprint):
+here as the contract this package's events depend on; not implemented by
+this blueprint — this is the contract 07-01 implements, not this blueprint):
 
 ```
 POST /api/v1/observations
   body: ObservationEvent[]
-  if any event.type === "task_start":
-    -> server constructs/reuses an EventLog for the active snapshot + agent
-       ("claude_hook"), returns the resulting taskId in the response so
-       subsequent events from the same hook session can attach it
-  else:
-    -> server resolves event.targets via GraphService.nodeEntityId/fileEntityId,
-       calls EventLog.recordAgentEvent(event.type, "claude_hook", detail, targets)
-       for the given taskId
-  response: { accepted: number; taskId?: number }
-  errors: 400 schema (malformed/oversized/unknown type), 409 no_active_task
-    (non-task_start event with no resolvable taskId)
+  -> for every event: server resolves event.targets via
+     GraphService.nodeEntityId/fileEntityId, calls
+     EventLog.recordAgentEvent(event.type, "claude_hook", detail, targets)
+     against the server's current server-lifetime task
+  response: { accepted: number }
+  errors: 400 schema (malformed/oversized/unknown type — including any
+    "task_start" payload, which is now simply an unknown type), 409
+    no_active_task (event arriving in the narrow post-rotation window before
+    the replacement EventLog exists)
 ```
 
 **Test-selected vs test-executed heuristic (client-side, coarse, declared
@@ -389,8 +372,7 @@ only the exit code and matched pattern — never raw stdout/stderr (redaction,
    (>16 KiB) never reaches the mocked transport.
 3. `packages/hooks/src/log.ts` + a truncation test: append then verify
    rotation past 5 MiB. Reason: bounded local log, no unbounded disk growth.
-4. `packages/hooks/src/scripts/task-start.ts` +
-   `packages/hooks/src/scripts/plan.ts` +
+4. `packages/hooks/src/scripts/plan.ts` +
    `packages/hooks/src/scripts/file-read.ts` +
    `packages/hooks/src/scripts/modification.ts` +
    `packages/hooks/src/scripts/test.ts`, each with a `mapping.test.ts` case
@@ -467,8 +449,8 @@ per hook call; nothing to tear down.
 
 - [ ] `packages/hooks` builds under `pnpm typecheck` with zero errors, as an
       additive workspace member (no existing package's build output changes).
-- [ ] Five scripts exist (task-start, plan, file-read, modification, test),
-      each producing exactly the `ObservationEvent` shape in §10.
+- [ ] Four scripts exist (plan, file-read, modification, test), each
+      producing exactly the `ObservationEvent` shape in §10.
 - [ ] `postObservation` never throws synchronously or via unhandled rejection
       in any of the five branches tested in `client.test.ts`.
 - [ ] A payload exceeding 16 KiB is rejected client-side before any network
@@ -563,7 +545,9 @@ overlays that render this data (08-09) carry the accessibility requirements.
   ```json
   {
     "hooks": {
-      "SessionStart": [{ "hooks": [{ "type": "command", "command": "node packages/hooks/dist/scripts/task-start.js" }] }],
+      // SessionStart needs no hook — the server already owns its task
+      // (created at server startup, rotated on snapshot_replaced; see
+      // ARCHITECTURE.md AD-011 and blueprint 07-01).
       "PostToolUse": [{ "hooks": [{ "type": "command", "command": "node packages/hooks/dist/scripts/file-read.js" }] }]
     }
   }
@@ -597,7 +581,9 @@ uncertainty the template flags as "stop and report blocked" — this blueprint
 resolves it by *not* changing the frozen schema and instead proposing a
 narrow server-side branch (§8-B) as a note for 07-01, which is the smallest
 change that respects both the existing `AgentEventType` union and the
-ARCHITECTURE.md intent.
+ARCHITECTURE.md intent. (superseded by corrected 08-08-B, 2026-07-17: the
+server-side branch proposal was rejected in favor of 07-01's server-lifetime
+task model; no task_start call exists at all.)
 
 ## TADORI NON-NEGOTIABLES
 
