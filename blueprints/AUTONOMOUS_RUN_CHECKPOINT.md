@@ -5,36 +5,38 @@ Updated by the coordinator at every stage transition. No raw logs.
 
 ## Current state
 
-- Timestamp: 2026-07-17 (late night local; CI runs timestamped 2026-07-18Z)
-- Current branch: `bp/00-02-evidence-close` (off `main` = `7876837`)
-- Current task: closing 00-02 evidence records; next task = Phase 7, 07-01
-- Completed this run (all merged to main):
-  - PR #4 baseline (merge `a79a29e`): Week 6 + planning vault
-  - PR #5 [00-01A] allowJs scanner fix (squash `06d951f`; full gate ALL
-    PASS; adversarial review PASS)
-  - PR #6 [00-01] repo sync/README verification (squash `6f17779`)
-  - PR #7 [00-02] CI workflow (squash `7876837` — **merged by the owner**,
-    not the agent, 2026-07-18T03:17:38Z)
-- 00-02 evidence: first run red (2 real cross-OS findings, fixed:
-  `cb50d03` jsonschema install, `a6f6a52` watcher-test separators); green
-  run 29628448665 both OSes, 178/178 vitest parity ubuntu/windows/local;
-  main push run 29628564682 green. Synthetic §14 probe `fc074a1` never ran
-  (owner merged first); discarded unmerged, branch deleted; deviation
-  documented in IMPLEMENTATION_STATUS.
-- Phase 0 (00-01A, 00-01, 00-02): fully validated.
-- CI: LIVE on both OSes for main + PRs — future PRs merge only on green.
-- Current task: 07-01 `packages/server` graph API on branch
-  `bp/07-01-server-graph-api`. Blueprint review: initial FAIL → 6 exact
-  corrections applied (ARCHITECTURE AD-011: no client-triggered task
-  creation, targets file|node only; 08-08 task-start path removed; 07-01
-  pinned-Boolean contract, 409 narrow-race acceptance bullet, §16 proxy
-  floor) → re-review PASS → 07-01 marked ready. task_start contradiction
-  RESOLVED. Next: single Sonnet writer implements packages/server per the
-  blueprint; then independent validation, adversarial review, CI-gated PR.
+- Timestamp: 2026-07-18 (autonomous run, session 2)
+- Current branch: `bp/07-01-server-graph-api` (HEAD `130824f`, 1 commit
+  ahead of main = blueprint-readiness docs)
+- Current task: 07-01 — validation PASS (Testing Agent, 8/8 points,
+  file:line evidence), full gate ALL PASS 2026-07-18 (229/229 tests,
+  fixtures, benchmark, git diff --check all exit 0). Status docs updated
+  (blueprint §1/§21/§22, INDEX row=built, IMPLEMENTATION_STATUS). Stage:
+  commit → push → PR.
+- Environment fact: `.npmrc` pins `use-node-version=22.14.0` (machine Node
+  25 has no better-sqlite3 prebuilds/toolchain). Always run tests via
+  `pnpm`; bare `npx vitest` bypasses the pin and fails on native ABI.
+- Phase 0 (00-01A, 00-01, 00-02): fully validated and merged (PRs #4–#8;
+  see git history for evidence). CI LIVE on both OSes for main + PRs.
+- 07-01 status: blueprint ready (task_start contradiction resolved via
+  AD-011). Implementation on disk: `packages/server/` untracked + 4 wiring
+  files (pnpm-lock.yaml, pnpm-workspace.yaml, tsconfig.base.json,
+  tsconfig.json). Prior session: 51/51 server tests, 229/229 repo tests,
+  6 required + 1 recommended review corrections applied.
+- Pipeline Agent packet (2026-07-18): staging list clean — lockfile adds
+  only fastify@5.10.0 / @fastify/websocket@11.3.0 / workspace links; no
+  unrelated deps. Commit scope = packages/server/** + 4 wiring files +
+  status docs.
+- 07-02 readiness: blueprint implementation-ready, sole hard dependency is
+  07-01 exports (`createServerApp`, `ServerAppOptions`); 00-01A soft dep
+  satisfied. INDEX.md row may still say `review` — reconcile at selection.
+- Pipeline: validation (Testing Agent) → full gate incl.
+  `pnpm benchmark:incremental` → status docs → commit → push → PR → CI →
+  squash-merge → 07-02.
 
 ## Repository topology
 
-- `origin/main` = local `main` = `7876837` ([00-02] squash, PR #7).
+- `origin/main` = local `main` = `fad17c2` (PR #8 docs close of Phase 0).
 - Sprint4/5/6/7 branches remain on origin (merged content; not deleted);
   all `bp/*` task branches deleted after merge.
 

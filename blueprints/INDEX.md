@@ -13,7 +13,7 @@ blueprint IDs. See `BACKLOG.md` for scope detail.
 | 00-01 | Repo sync & README correction | 0 | validated (2026-07-17; hygiene commits on main via PR #4, README commands verified post-00-01A, statuses reconciled via PR #6) | 00-01A | S | S | `blueprints/00-01-repo-sync-and-readme.md` | `a4ab158` + PR #4/#6 |
 | 00-01A | allowJs scanner contract & regression | 0 | validated (2026-07-17; full gate 178/178, `tadori diff .` exit 0 on Tadori, adversarial review PASS) | — | S | S | `blueprints/00-01A-allowjs-scanner-contract.md` | `8be4741` (main: `06d951f`, PR #5) |
 | 00-02 | CI pipeline (Linux+Windows) | 0 | validated (2026-07-17; both OS green, run 29628448665, 178/178 parity; owner-merged PR #7) | 00-01 | H | S | `blueprints/00-02-ci-pipeline.md` | `7876837` (PR #7) |
-| 07-01 | `packages/server` graph API | 7 | ready (blueprint review PASS 2026-07-17 after 6 corrections; task_start contradiction resolved via ARCHITECTURE AD-011) | 00-01 | S | M | `blueprints/07-01-server-graph-api.md` | — |
+| 07-01 | `packages/server` graph API | 7 | built (2026-07-18; local full gate ALL PASS, 229/229 tests incl. 51 server tests; independent validation PASS; CI + merge pending) | 00-01 | S | M | `blueprints/07-01-server-graph-api.md` | — |
 | 07-02 | `packages/cli` `tadori serve .` | 7 | review | 07-01 | S | M | `blueprints/07-02-cli-tadori-serve.md` | — |
 | 07-03 | Serve hardening | 7 | review | 07-02 | S | M | `blueprints/07-03-serve-hardening.md` | — |
 | 08-01 | Layout engine + persistence | 8 | review | 07-01 | S | M | `blueprints/08-01-layout-engine-persistence.md` | — |

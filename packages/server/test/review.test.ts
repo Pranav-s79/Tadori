@@ -1,0 +1,71 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { ConcurrentRefreshController } from "@tadori/mcp";
+import type { FastifyInstance } from "fastify";
+import { createServerApp } from "../src/app.js";
+import type { ReviewDiffDto } from "../src/types.js";
+import { buildTestDb, cleanupTestDb, type TestDb } from "./fixtures/buildTestDb.js";
+
+let testDb: TestDb | null = null;
+let refresh: ConcurrentRefreshController | null = null;
+let app: FastifyInstance | null = null;
+
+afterEach(async () => {
+  if (app) {
+    await app.close();
+    app = null;
+  }
+  if (refresh) {
+    await refresh.stop();
+    refresh = null;
+  }
+  if (testDb) {
+    cleanupTestDb(testDb);
+    testDb = null;
+  }
+});
+
+describe("review diff route", () => {
+  it("diff between the fixture DB's single snapshot and itself returns empty adds/removes/edges", async () => {
+    testDb = buildTestDb();
+    refresh = await ConcurrentRefreshController.start(testDb.db, testDb.repoRoot);
+    app = await createServerApp({ db: testDb.db, repoRoot: testDb.repoRoot, refresh });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/review/diff?${new URLSearchParams({
+        base: String(testDb.snapshotId),
+        head: String(testDb.snapshotId)
+      }).toString()}`
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as ReviewDiffDto;
+    expect(body.nodesAdded).toEqual([]);
+    expect(body.nodesRemoved).toEqual([]);
+    expect(body.edges).toEqual([]);
+    expect(body.presentation).toBe("raw");
+  });
+
+  it("returns 400 bad_snapshot_ref when base/head are missing", async () => {
+    testDb = buildTestDb();
+    refresh = await ConcurrentRefreshController.start(testDb.db, testDb.repoRoot);
+    app = await createServerApp({ db: testDb.db, repoRoot: testDb.repoRoot, refresh });
+    const response = await app.inject({ method: "GET", url: "/api/v1/review/diff" });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe("bad_snapshot_ref");
+  });
+
+  it("returns 404 unknown_snapshot for a nonexistent snapshot id", async () => {
+    testDb = buildTestDb();
+    refresh = await ConcurrentRefreshController.start(testDb.db, testDb.repoRoot);
+    app = await createServerApp({ db: testDb.db, repoRoot: testDb.repoRoot, refresh });
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/review/diff?${new URLSearchParams({
+        base: String(testDb.snapshotId),
+        head: "999999"
+      }).toString()}`
+    });
+    expect(response.statusCode).toBe(404);
+    expect(response.json().code).toBe("unknown_snapshot");
+  });
+});

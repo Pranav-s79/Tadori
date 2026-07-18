@@ -1,0 +1,16 @@
+{
+  "name": "@tadori/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@fastify/websocket": "^11.0.0",
+    "@tadori/core": "workspace:*",
+    "@tadori/indexer": "workspace:*",
+    "@tadori/mcp": "workspace:*",
+    "@tadori/store": "workspace:*",
+    "fastify": "^5.0.0"
+  }
+}

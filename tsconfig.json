@@ -11,6 +11,8 @@
     "packages/harness/test/**/*.ts",
     "packages/mcp/src/**/*.ts",
     "packages/mcp/test/**/*.ts",
+    "packages/server/src/**/*.ts",
+    "packages/server/test/**/*.ts",
     "vitest.config.ts",
     "eslint.config.js"
   ],

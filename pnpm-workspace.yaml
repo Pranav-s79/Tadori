@@ -4,3 +4,4 @@ packages:
   - "packages/indexer"
   - "packages/harness"
   - "packages/mcp"
+  - "packages/server"

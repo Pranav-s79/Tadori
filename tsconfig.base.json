@@ -21,7 +21,8 @@
       "@tadori/store": ["packages/store/src/index.ts"],
       "@tadori/indexer": ["packages/indexer/src/index.ts"],
       "@tadori/harness": ["packages/harness/src/index.ts"],
-      "@tadori/mcp": ["packages/mcp/src/index.ts"]
+      "@tadori/mcp": ["packages/mcp/src/index.ts"],
+      "@tadori/server": ["packages/server/src/index.ts"]
     }
   }
 }
