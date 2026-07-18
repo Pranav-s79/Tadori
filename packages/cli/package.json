@@ -1,0 +1,16 @@
+{
+  "name": "@tadori/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@tadori/core": "workspace:*",
+    "@tadori/store": "workspace:*",
+    "@tadori/indexer": "workspace:*",
+    "@tadori/mcp": "workspace:*",
+    "@tadori/server": "workspace:*",
+    "open": "^10.1.0"
+  }
+}

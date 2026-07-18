@@ -1,7 +1,7 @@
 # Tadori Implementation Status
 
-Last updated: 2026-07-18 (07-01 packages/server graph API built; full local
-gate ALL PASS; CI + merge pending)
+Last updated: 2026-07-18 (07-02 tadori serve CLI built; 07-01 validated and
+merged as `5dee45b` PR #9)
 
 ## Current milestone
 
@@ -12,7 +12,34 @@ evidence, MCP, context selection, incremental indexing) remain complete and
 frozen; Phase 0 hygiene (00-01A/00-01/00-02) is validated with live
 two-OS CI.
 
-## 07-01 — `packages/server` graph API (built, 2026-07-18; CI + merge pending)
+## 07-02 — `packages/cli` `tadori serve .` (built, 2026-07-18; CI + merge pending)
+
+- New workspace package `@tadori/cli`: `tadori serve <path>` implementing
+  all nine frozen `docs/CLI_CONTRACT.md` steps in order and the five
+  frozen flags (`--port`, `--no-open`, `--reindex`, `--mode`,
+  `--snapshot`). `--mode 2.5d|3d-experiment` parses then exits 1 citing
+  10-01/10-02 before any server/indexer work; invalid `--snapshot` fails
+  closed with exit 3 (never served); occupied `--port` exits 4 (automated
+  EADDRINUSE test); unsupported repo exits 2 with distinct
+  not-exist/unsupported messages. Localhost-only bind inherited from
+  `createServerApp`; truthful status page (no dashboard wording; explicit
+  "not yet built"). Teardown `app.close()` → `refresh.stop()` →
+  `db.close()` with idempotency guard, SIGINT/SIGTERM + injectable
+  AbortSignal.
+- `scripts/tadori.mts`: existing `diff` flow wrapped verbatim; additive
+  `serve` dispatcher; `packages/mcp/src/cli.ts` byte-identical.
+- Tests: 5 files, 32/32; full suite 45 files, 261/261. Manual smoke
+  `pnpm tadori serve . --port 0 --no-open` printed truthful startup facts;
+  status page + `/api/v1/snapshot` 200.
+- Full gate 2026-07-18 (all exit 0): install, skills:sync/check,
+  typecheck, lint, test, `python validate_fixtures.py`,
+  fixtures:validate/index/typecheck, benchmark:incremental,
+  `pnpm tadori diff .`, `git diff --check`.
+- Independent validation (cold-start Testing Agent): PASS; one Medium
+  (untested EADDRINUSE path) + one Low (missing vitest alias) closed in a
+  single correction pass.
+
+## 07-01 — `packages/server` graph API (validated, 2026-07-18; merged `5dee45b`, PR #9, CI green both OSes)
 
 - New workspace package `@tadori/server` (`fastify@5.10.0`,
   `@fastify/websocket@11.3.0`): `createServerApp(options)` factory,

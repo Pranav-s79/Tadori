@@ -10,7 +10,9 @@ export default defineConfig({
       "@tadori/store": r("./packages/store/src/index.ts"),
       "@tadori/indexer": r("./packages/indexer/src/index.ts"),
       "@tadori/harness": r("./packages/harness/src/index.ts"),
-      "@tadori/mcp": r("./packages/mcp/src/index.ts")
+      "@tadori/mcp": r("./packages/mcp/src/index.ts"),
+      "@tadori/server": r("./packages/server/src/index.ts"),
+      "@tadori/cli": r("./packages/cli/src/index.ts")
     }
   },
   test: {

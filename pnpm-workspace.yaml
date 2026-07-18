@@ -5,3 +5,4 @@ packages:
   - "packages/harness"
   - "packages/mcp"
   - "packages/server"
+  - "packages/cli"

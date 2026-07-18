@@ -6,13 +6,23 @@ Updated by the coordinator at every stage transition. No raw logs.
 ## Current state
 
 - Timestamp: 2026-07-18 (autonomous run, session 2)
-- Current branch: `bp/07-01-server-graph-api` (HEAD `130824f`, 1 commit
-  ahead of main = blueprint-readiness docs)
-- Current task: 07-01 — validation PASS (Testing Agent, 8/8 points,
-  file:line evidence), full gate ALL PASS 2026-07-18 (229/229 tests,
-  fixtures, benchmark, git diff --check all exit 0). Status docs updated
-  (blueprint §1/§21/§22, INDEX row=built, IMPLEMENTATION_STATUS). Stage:
-  commit → push → PR.
+- Current branch: `bp/07-02-cli-tadori-serve` (off main `5dee45b`)
+- DONE this session: 07-01 VALIDATED — full gate ALL PASS, independent
+  validation PASS (8/8 correction points), CI green both OSes (run
+  29644637101), squash-merged as `5dee45b` (PR #9), branch deleted, INDEX
+  row = validated.
+- Current task: 07-02 `tadori serve .` — blueprint cold-start review PASS
+  2026-07-18 (marked ready; flag-count wording corrected, §22 recorded).
+  Implementation COMPLETE + validation PASS + correction pass closed
+  (EADDRINUSE exit-4 test, @tadori/cli vitest alias): 32/32 focused,
+  full gate ALL PASS 2026-07-18 (261/261 tests, fixtures, benchmark,
+  `pnpm tadori diff .`, git diff --check). Status docs updated
+  (blueprint §1/§21/§22, INDEX=built, IMPLEMENTATION_STATUS). Stage:
+  commit → push → PR → CI (07-03 blueprint review runs during CI).
+- 07-03 packet ready (Pipeline Agent): complete blueprint, needs own
+  cold-start review + §4 line-range re-verification
+  (concurrentRefresh.ts/incremental.ts/snapshots.ts spans) before build;
+  sole dependency = 07-02 merge.
 - Environment fact: `.npmrc` pins `use-node-version=22.14.0` (machine Node
   25 has no better-sqlite3 prebuilds/toolchain). Always run tests via
   `pnpm`; bare `npx vitest` bypasses the pin and fails on native ABI.
