@@ -13,7 +13,7 @@ blueprint IDs. See `BACKLOG.md` for scope detail.
 | 00-01 | Repo sync & README correction | 0 | validated (2026-07-17; hygiene commits on main via PR #4, README commands verified post-00-01A, statuses reconciled via PR #6) | 00-01A | S | S | `blueprints/00-01-repo-sync-and-readme.md` | `a4ab158` + PR #4/#6 |
 | 00-01A | allowJs scanner contract & regression | 0 | validated (2026-07-17; full gate 178/178, `tadori diff .` exit 0 on Tadori, adversarial review PASS) | — | S | S | `blueprints/00-01A-allowjs-scanner-contract.md` | `8be4741` (main: `06d951f`, PR #5) |
 | 00-02 | CI pipeline (Linux+Windows) | 0 | validated (2026-07-17; both OS green, run 29628448665, 178/178 parity; owner-merged PR #7) | 00-01 | H | S | `blueprints/00-02-ci-pipeline.md` | `7876837` (PR #7) |
-| 07-01 | `packages/server` graph API | 7 | review | 00-01 | S | M | `blueprints/07-01-server-graph-api.md` | — |
+| 07-01 | `packages/server` graph API | 7 | ready (blueprint review PASS 2026-07-17 after 6 corrections; task_start contradiction resolved via ARCHITECTURE AD-011) | 00-01 | S | M | `blueprints/07-01-server-graph-api.md` | — |
 | 07-02 | `packages/cli` `tadori serve .` | 7 | review | 07-01 | S | M | `blueprints/07-02-cli-tadori-serve.md` | — |
 | 07-03 | Serve hardening | 7 | review | 07-02 | S | M | `blueprints/07-03-serve-hardening.md` | — |
 | 08-01 | Layout engine + persistence | 8 | review | 07-01 | S | M | `blueprints/08-01-layout-engine-persistence.md` | — |
@@ -23,7 +23,7 @@ blueprint IDs. See `BACKLOG.md` for scope detail.
 | 08-05 | Search & filters | 8 | review | 08-02 | S | M | `blueprints/08-05-search-and-filters.md` | — |
 | 08-06 | Inspection & evidence panels | 8 | review | 08-02 | S | M | `blueprints/08-06-inspection-evidence-panels.md` | — |
 | 08-07 | Path/route/test/doc displays | 8 | review | 08-04, 08-06 | S | M | `blueprints/08-07-path-route-test-doc-displays.md` | — |
-| 08-08 | `packages/hooks` event receiver | 8 | review | 07-01 | S | M | `blueprints/08-08-hooks-event-receiver.md` | — |
+| 08-08 | `packages/hooks` event receiver | 8 | review (corrected 2026-07-17: task-start call path removed per AD-011; own full review still pending) | 07-01 | S | M | `blueprints/08-08-hooks-event-receiver.md` | — |
 | 08-09 | Observation overlays | 8 | review | 08-02, 08-08 | S | M | `blueprints/08-09-observation-overlays.md` | — |
 | 08-10 | Large-repo performance | 8 | review | 08-04 | S | M | `blueprints/08-10-large-repo-performance.md` | — |
 | 08-11 | Browser & accessibility validation | 8 | review | 08-05, 08-06, 08-07 | S | M | `blueprints/08-11-browser-a11y-validation.md` | — |

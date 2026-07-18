@@ -419,6 +419,9 @@ export interface SnapshotRowDto {
   id: number; kind: string; label: string | null; baseCommitSha: string | null;
   workspaceHash: string; pinned: boolean; status: string; createdAt: string;
 }
+// `pinned` MUST be converted at the DTO boundary with `Boolean(row.pinned)` —
+// the store's SnapshotRow.pinned is a SQLite integer 0/1 (snapshots.ts:28);
+// serializing the raw number violates the wire contract.
 
 export type ObservationEventType =
   | "plan_mentioned" | "file_read_observed" | "modified"
@@ -660,6 +663,9 @@ tear them down independently of `GraphState`.
 - [ ] 5/5 golden fixtures still PASS (`pnpm fixtures:validate`,
       `pnpm fixtures:index`) — this blueprint touches no fixture/indexer
       code, so this is a regression guard, not new coverage.
+- [ ] An observation POSTed during the narrow post-rotation window (snapshot
+      replaced, replacement EventLog not yet constructed — simulated via test
+      double) returns 409 no_active_task and is not recorded.
 
 ## 15. Validation commands
 
@@ -682,9 +688,11 @@ end.)
   (it currently writes to `mkdtempSync` and is wired as a standalone script,
   not an importable test helper), the builder may build a smaller synthetic
   fixture (documented row/node/edge counts) and scale the budget
-  proportionally, but must record the actual corpus size used and the
-  scaling justification in §21 — never silently test against a
-  trivially small graph and claim the 250k-LOC budget was met.
+  proportionally, but the synthetic fixture must be no smaller than 20k LOC
+  and no less than 1/10 of the benchmark corpus, and must record the actual
+  corpus size used and the scaling justification — stating the measured
+  ratio — in §21; never silently test against a trivially small graph and
+  claim the 250k-LOC budget was met.
 - WS broadcast fan-out: not benchmarked in this blueprint (single-client
   tests only); 08-10 owns large-repo/many-client performance validation.
 - Server startup (`GraphService.open` + `ConcurrentRefreshController.start`)
@@ -780,6 +788,12 @@ statement of whether the split recommendation in §1 was needed.
   real code; the reviewer should confirm whether ARCHITECTURE.md itself
   needs a follow-up correction pass (out of scope for this blueprint's
   builder to make unilaterally).
+- 2026-07-17 Blueprint Review Agent (implementation-phase): PASS after
+  corrections. Confirmed this blueprint's task_start resolution against live
+  events.ts/migration 003; the same review found blueprint 08-08's DECISION
+  08-08-B and §9-§11/§14 still specified the abandoned client-triggered
+  task_start path — corrected in 08-08 and ARCHITECTURE AD-011 in the same
+  pass so 08-08's builder inherits the server-lifetime task model.
 
 ## IF SOMETHING IS UNCLEAR
 

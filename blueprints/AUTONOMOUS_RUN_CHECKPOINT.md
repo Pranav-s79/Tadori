@@ -23,10 +23,14 @@ Updated by the coordinator at every stage transition. No raw logs.
   documented in IMPLEMENTATION_STATUS.
 - Phase 0 (00-01A, 00-01, 00-02): fully validated.
 - CI: LIVE on both OSes for main + PRs — future PRs merge only on green.
-- Next task: 07-01 `packages/server` graph API — status `review`, so a
-  Blueprint Review Agent runs first and MUST resolve the `task_start`
-  observation-contract contradiction (ARCHITECTURE.md §7 vs 07-01 vs 08-08
-  vs existing `EventLog` semantics) before implementation.
+- Current task: 07-01 `packages/server` graph API on branch
+  `bp/07-01-server-graph-api`. Blueprint review: initial FAIL → 6 exact
+  corrections applied (ARCHITECTURE AD-011: no client-triggered task
+  creation, targets file|node only; 08-08 task-start path removed; 07-01
+  pinned-Boolean contract, 409 narrow-race acceptance bullet, §16 proxy
+  floor) → re-review PASS → 07-01 marked ready. task_start contradiction
+  RESOLVED. Next: single Sonnet writer implements packages/server per the
+  blueprint; then independent validation, adversarial review, CI-gated PR.
 
 ## Repository topology
 

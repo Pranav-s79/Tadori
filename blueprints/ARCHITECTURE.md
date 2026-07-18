@@ -359,15 +359,26 @@ handle.
 Event schema (server-validated; mirrors `events.ts` `AgentEventType` /
 `AgentEventSource`, which already include `claude_hook`):
 
+<!--
+2026-07-17 (AD-011): corrected against live source.
+- `task_start` removed: it is not a member of `AgentEventType` and migration
+  003's `agent_events.event_type` CHECK constraint rejects it.
+- `"edge"` removed from `targets[].kind`: `recordAgentEvent`'s targets
+  parameter has no edge target kind (events.ts:280).
+- Task lifecycle is server-process-lifetime scoped: the server's `EventLog`
+  creates its one task at startup and rotates it only on snapshot_replaced;
+  no client POST creates or reuses a task.
+-->
+
 ```ts
 type ObservationEventType =
-  | "task_start" | "plan_mentioned" | "file_read_observed"
+  | "plan_mentioned" | "file_read_observed"
   | "modified" | "test_selected" | "test_executed" | "capture_interrupted";
 interface ObservationEvent {
   type: ObservationEventType;
   source: "claude_hook";
   at: string;                       // ISO timestamp, producer-supplied, server re-stamps
-  targets?: { kind: "file" | "node" | "edge"; ref: string }[]; // ref = path or entityKey
+  targets?: { kind: "file" | "node"; ref: string }[]; // ref = path or entityKey
   detail?: string;                  // e.g. test name; never a claim of correctness
 }
 ```
@@ -541,4 +552,5 @@ bundle (zero cost to 2D, per 10-02).
 | AD-008 | `/api/v1` prefix; viz item shapes reuse frozen `toolNodeSchema`/`toolEdgeSchema` | 07-01 | Bespoke server node/edge shapes (two wire formats to keep in sync) |
 | AD-009 | Viz is HTTP/WS-only; no `@tadori/*`/fs/sqlite import; offline bundle, no CDN | 08-02 | Viz reads store directly / fetches remote assets (breaks localhost/no-cloud) |
 | AD-010 | WS is a change-signal only; state of record is re-fetched on reconnect | 07-01, 08-09 | Server-side per-client event replay buffers (stateful, fragile) |
+| AD-011 | No client-triggered task creation: task_start removed from the observation wire schema; server EventLog owns one task per server-process lifetime (rotated on snapshot_replaced); observation targets are file\|node only (frozen migration-003 CHECK + events.ts) | 07-01, 08-08 | Client task_start branch creating/reusing tasks over HTTP (unconstructible against frozen migration 003; fragments EventLog's 1:1 GraphService binding) |
 ```
