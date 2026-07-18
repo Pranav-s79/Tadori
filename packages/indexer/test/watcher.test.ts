@@ -37,7 +37,10 @@ describe("batched repository watcher", () => {
     });
     watchers.push(watcher);
 
-    watcher.recordChange("src\\b.ts", "change");
+    // Platform-native separators must normalize to "/". A backslash is only
+    // a separator on Windows; on POSIX it is a legal filename character, so
+    // a hardcoded "src\\b.ts" would (correctly) not normalize on Linux.
+    watcher.recordChange(["src", "b.ts"].join(path.sep), "change");
     watcher.recordChange("src/a.ts", "change");
     watcher.recordChange("src/a.ts", "rename");
     watcher.recordChange(".tadori/index.db", "change");
