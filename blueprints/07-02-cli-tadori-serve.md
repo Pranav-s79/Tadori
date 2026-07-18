@@ -3,7 +3,9 @@
 ## 1. Header
 
 - ID / Title / Phase: 07-02 — `packages/cli` `tadori serve .` — Phase 7
-- Status: review
+- Status: built (2026-07-18; implementation + correction pass complete,
+  full gate ALL PASS 261/261, independent validation PASS; CI + merge
+  pending)
 - Primary builder: Claude Sonnet — sequential lifecycle wiring over
   already-built seams (`GraphService`-backed server from 07-01,
   `IncrementalRepositoryIndexer` from Week 6); flag parsing and step
@@ -33,7 +35,7 @@ reuses/refreshes/rebuilds its graph snapshot, validates it, starts the 07-01
 HTTP+WS server bound to `127.0.0.1`, serves a truthful status page in place
 of the not-yet-built viz UI, opens a browser unless suppressed, prints
 startup facts, and tears down cleanly on Ctrl+C — implementing all nine
-frozen `CLI_CONTRACT.md` steps in order with the seven frozen flags parsed
+frozen `CLI_CONTRACT.md` steps in order with the five frozen flags parsed
 exactly as specified.
 
 ## 3. Why this matters
@@ -747,9 +749,79 @@ connection-drain mechanism chosen for teardown step (1) (§12); commit SHA;
 `ASSUMPTION:` lines; explicit confirmation `packages/mcp/src/cli.ts` is
 untouched.
 
+### Final report (2026-07-18)
+
+- Summary: `@tadori/cli` implemented per §9–§12 — `tadori serve <path>`
+  with the nine frozen CLI_CONTRACT steps in order, five frozen flags,
+  truthful status page, localhost-only bind inherited from
+  `createServerApp`, fail-closed snapshot validation, exit codes 0–4.
+- Files: `packages/cli/package.json`;
+  `src/{index,flags,repoResolve,config,statusPage,serve,cli}.ts`;
+  `test/{flags,repoResolve,config,serve-lifecycle,exit-codes}.test.ts`.
+  Wiring: `pnpm-workspace.yaml` (+`packages/cli`), `tsconfig.json`
+  (+cli src/test globs), `tsconfig.base.json` (+`@tadori/cli` path),
+  `vitest.config.ts` (+`@tadori/server` and `@tadori/cli` aliases),
+  `pnpm-lock.yaml`; `scripts/tadori.mts` dispatcher — existing `diff`
+  flow wrapped verbatim in `if (args[0] === "diff")`, additive
+  `else if (args[0] === "serve")` branch; `packages/mcp/src/cli.ts`
+  byte-identical (empty diff, independently confirmed).
+- Contracts: all 9 steps implemented in frozen order (lifecycle test +
+  call-order spies); 5/5 flags pass — `--port` (OS-assigned default,
+  occupied port → exit 4), `--no-open`, `--reindex` (full rebuild via
+  `indexRepositoryIntoStore`), `--mode` (2.5d/3d-experiment parse then
+  exit 1 citing 10-01/10-02 before any server/indexer work),
+  `--snapshot` (validated via `getSnapshot`+`findDanglingEndpoints`,
+  invalid → exit 3, never served).
+- Teardown/drain (§12): `app.close()` (Fastify cascades WS client
+  termination via `@fastify/websocket` and `GraphState.close()` via
+  `onClose` hook) → `refresh.stop()` → `db.close()`, `shuttingDown`
+  idempotency guard, SIGINT/SIGTERM handlers + injectable AbortSignal.
+- Tests: 5 files, 32 tests, 32/32 (initial 31 + EADDRINUSE exit-4
+  correction test); full suite 45 files, 261/261.
+- Validation (§15, 2026-07-18, all exit 0): install, skills:sync,
+  skills:check, typecheck, lint, test (261/261),
+  `python validate_fixtures.py`, fixtures:validate/index/typecheck,
+  benchmark:incremental, `pnpm tadori diff .`, `git diff --check`.
+- Manual smoke: `pnpm tadori serve . --port 0 --no-open` on the Tadori
+  repo — startup facts printed (`Snapshot #3 (fresh)`, `Mode: 2d`,
+  127.0.0.1 URL), status page and `/api/v1/snapshot` returned 200 with
+  truthful content; automated exit-codes tests prove the signal-driven
+  teardown exits 0 (Windows Git-Bash subshell signal forwarding can't
+  reach the tsx grandchild — harness limitation, not a CLI defect).
+- ASSUMPTION: `indexState` reports `"refreshed"` when
+  `indexer.state().phase === "dirty"` immediately after `initialize()`
+  (restart reconciliation found a mismatch), else `"fresh"` — synchronous
+  public read; startup does not block on `waitForIdle()`.
+- Commit SHA: recorded in INDEX.md `Impl commit` column at merge.
+
 ## 22. Independent review result
 
-- Status: review. §22 content: **Pending Wave 1 adversarial review.**
+- 2026-07-18 cold-start blueprint review (independent Testing Agent, live
+  repo evidence vs. merged 07-01 `5dee45b`): **PASS — ready to implement.**
+  Verified: `createServerApp`/`ServerAppOptions` exact signatures
+  (`packages/server/src/app.ts:39`, `:18-25`),
+  `ConcurrentRefreshController.start/stop`
+  (`packages/mcp/src/concurrentRefresh.ts:52/64/172`),
+  `IncrementalRepositoryIndexer` surface, `findTsconfig`,
+  `scripts/tadori.mts` diff flow, wiring-file assumptions, `.tadori/`
+  gitignore, teardown pattern, frozen-spec compliance (localhost bind, no
+  seventh MCP tool, fail-closed invalid snapshots), CI-safe test plan
+  (port 0, mocked `open()`). Corrections applied in this pass: §2
+  "seven frozen flags" → "five" (§14's count was correct);
+  `indexRepositoryIntoStore` reference confirmed at
+  `packages/indexer/src/indexRepository.ts:169`. Remaining low: §4's
+  32-vs-33 line count for `scripts/tadori.mts` (immaterial).
+- 2026-07-18 implementation validation (independent Testing Agent,
+  cold-start diff inspection + executed tests): **PASS**. Diff scope
+  exact; all §14 criteria mapped to passing tests or documented-manual
+  status; five-flag and exit-code contracts verified in code and tests;
+  frozen-spec compliance confirmed (127.0.0.1 literal bind, truthful
+  status page, no seventh MCP surface, ordered idempotent teardown);
+  cross-platform clean (node:path joins, injected/stubbed `open()`,
+  OS-assigned ports). Findings closed in one correction pass: EADDRINUSE
+  → exit 4 now covered by an automated test (32/32 focused);
+  `@tadori/cli` vitest alias added. IMPLEMENTATION_STATUS.md updated by
+  the coordinator in the same commit.
 
 ## IF SOMETHING IS UNCLEAR
 

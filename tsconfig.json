@@ -13,6 +13,8 @@
     "packages/mcp/test/**/*.ts",
     "packages/server/src/**/*.ts",
     "packages/server/test/**/*.ts",
+    "packages/cli/src/**/*.ts",
+    "packages/cli/test/**/*.ts",
     "vitest.config.ts",
     "eslint.config.js"
   ],
