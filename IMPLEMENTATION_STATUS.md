@@ -11,6 +11,22 @@ atomically publishes validated working-tree snapshots. MCP sessions remain
 pinned while new sessions adopt the latest head. The next roadmap task is
 Phase F visualization and serving.
 
+## 00-02 — CI pipeline, Linux + Windows (built, 2026-07-17; run evidence pending)
+
+- Added `.github/workflows/ci.yml`: one `ci` workflow, matrix
+  `ubuntu-latest` + `windows-latest`, triggered on push (`main`, `Sprint*`)
+  and pull_request (base `main`), concurrency-cancelled per ref, 30-minute
+  timeout, `permissions: contents: read`, no secrets.
+- Steps run the frozen local gate in order through pnpm under the `.npmrc`
+  Node 22.14.0 pin: frozen-lockfile install, skills:check, typecheck, lint,
+  test, `python validate_fixtures.py`, fixtures:validate/index/typecheck,
+  `pnpm tadori diff .` (added per blueprint 00-02 §8 coordination note now
+  that 00-01A landed first), `git diff --check`, and the exact tree-mutation
+  guard (`git add -A` + `git diff --cached --exit-code`).
+- README Development section carries the CI badge.
+- First green run IDs per OS: recorded after the 00-02 PR's runs complete
+  (this subsection is updated in the same PR before merge).
+
 ## 00-01 — Repository sync & README correction (complete, 2026-07-17)
 
 - The blueprint's three hygiene commits (`7891a99` gitignore, `1f97ee1`

@@ -90,6 +90,8 @@ Remaining work is tracked in `BACKLOG.md` (phase backlog) and
 
 ## Development
 
+![CI](https://github.com/Pranav-s79/Tadori/actions/workflows/ci.yml/badge.svg)
+
 | Command | Purpose |
 |---|---|
 | `pnpm typecheck` | Strict TypeScript across the workspace |
