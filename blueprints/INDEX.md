@@ -10,8 +10,8 @@ blueprint IDs. See `BACKLOG.md` for scope detail.
 
 | ID | Title | Phase | Status | Depends | Builder | Cx | File | Impl commit |
 |---|---|---|---|---|---|---|---|---|
-| 00-01 | Repo sync & README correction | 0 | ready (00-01A validated 2026-07-17; baseline PR #4 merged Week 6 + vault to main; remainder: README verification record + status reconciliation) | 00-01A | S | S | `blueprints/00-01-repo-sync-and-readme.md` | partial: `a4ab158` |
-| 00-01A | allowJs scanner contract & regression | 0 | validated (2026-07-17; full gate 178/178, `tadori diff .` exit 0 on Tadori, adversarial review PASS) | — | S | S | `blueprints/00-01A-allowjs-scanner-contract.md` | `8be4741` |
+| 00-01 | Repo sync & README correction | 0 | validated (2026-07-17; hygiene commits on main via PR #4, README commands verified post-00-01A, statuses reconciled via PR #6) | 00-01A | S | S | `blueprints/00-01-repo-sync-and-readme.md` | `a4ab158` + PR #4/#6 |
+| 00-01A | allowJs scanner contract & regression | 0 | validated (2026-07-17; full gate 178/178, `tadori diff .` exit 0 on Tadori, adversarial review PASS) | — | S | S | `blueprints/00-01A-allowjs-scanner-contract.md` | `8be4741` (main: `06d951f`, PR #5) |
 | 00-02 | CI pipeline (Linux+Windows) | 0 | ready | 00-01 | H | S | `blueprints/00-02-ci-pipeline.md` | — |
 | 07-01 | `packages/server` graph API | 7 | review | 00-01 | S | M | `blueprints/07-01-server-graph-api.md` | — |
 | 07-02 | `packages/cli` `tadori serve .` | 7 | review | 07-01 | S | M | `blueprints/07-02-cli-tadori-serve.md` | — |

@@ -6,32 +6,30 @@ Updated by the coordinator at every stage transition. No raw logs.
 ## Current state
 
 - Timestamp: 2026-07-17 (night, local)
-- Current branch: `bp/00-01A-allowjs-scanner` (off `main` = `a79a29e`)
-- Current task: 00-01A — implementation committed; status docs staged; PR
-  pending
-- Blueprint status: validated (full gate + adversarial review PASS)
-- Implementation stage: Stage 8 docs done; next = push branch, open
-  `[00-01A]` PR, squash-merge, update main, proceed to 00-01
-- Implementation commit: `8be4741` (4 files: project.ts additive export,
-  scan.ts gate, scan-allowjs.test.ts ×8, blueprint §22 correction)
-- PR state: baseline PR #4 MERGED (`a79a29e`, merge commit, Week 6 +
-  planning vault now on main); 00-01A PR not yet opened
-- Validation completed (2026-07-17, this machine): install clean; skills
-  sync/check pass; typecheck pass; lint pass; test 178/178 (25 files);
-  validate_fixtures.py pass; fixtures:validate pass; fixtures:index all
-  pass; fixtures:typecheck 5/5; benchmark p95 737.9 ms < 2000 ms;
-  `pnpm tadori diff .` exit 0; MCP stdio clean EOF exit 0;
-  `git diff --check` clean
+- Current branch: `bp/00-01-repo-sync` (off `main` = `06d951f`)
+- Current task: 00-01 — remainder executed (README verification record,
+  README count refresh, status reconciliation); PR pending
+- Completed this run:
+  - Baseline PR #4 MERGED (merge commit `a79a29e`: Week 6 + planning vault
+    + README + checkpoint onto main)
+  - 00-01A PR #5 SQUASH-MERGED (`06d951f`; impl commit `8be4741`;
+    full gate ALL PASS incl. test 178/178, `tadori diff .` exit 0,
+    benchmark p95 737.9 ms; adversarial review PASS 0 blocker/high)
+- 00-01 evidence: all four README quick-start commands executed successfully
+  on `06d951f`; `git tag` empty; five branches + untouched
+  `autonomous-roadmap` on origin
 - Remaining failures: none
-- CI: none configured yet (00-02 pending) — local gate is the merge gate
-- Next task: 00-01 (remainder: README verification record + status
-  reconciliation), then 00-02 (CI pipeline)
+- CI: none configured yet (00-02 next) — local gate is the merge gate
+- Next task: 00-02 (CI pipeline), then Phase 7 (07-01 blueprint review must
+  first resolve the `task_start` observation-contract contradiction vs
+  ARCHITECTURE.md / 08-08 / EventLog)
 
-## Repository topology (updated post-baseline)
+## Repository topology
 
-- `origin/main` = local `main` = `a79a29e` (PR #4 merge: Week 6 `15540b3` +
-  planning vault + README + checkpoint).
-- Sprint4/5/6/7 branches remain on origin (merged content; not deleted).
+- `origin/main` = local `main` = `06d951f` ([00-01A] squash, PR #5) on top
+  of `a79a29e` (PR #4 merge).
+- Sprint4/5/6/7 branches remain on origin (merged content; not deleted);
+  `bp/00-01A-allowjs-scanner` deleted on merge (content on main via squash).
 
 ## Stashes (do not drop)
 

@@ -11,11 +11,33 @@ atomically publishes validated working-tree snapshots. MCP sessions remain
 pinned while new sessions adopt the latest head. The next roadmap task is
 Phase F visualization and serving.
 
+## 00-01 — Repository sync & README correction (complete, 2026-07-17)
+
+- The blueprint's three hygiene commits (`7891a99` gitignore, `1f97ee1`
+  planning vault, `a4ab158` README replacement + byte-identical fixture-guide
+  relocation) reached `main` via merge PR #4 (`a79a29e`); the 00-01A scanner
+  fix followed via squash PR #5 (`06d951f`). Under the re-scoped owner
+  decision (option a), `main` advances only via owner-authorized PRs — the
+  original fast-forward push steps are void and were completed in PR form.
+- README command verification executed 2026-07-17 on this machine (tree =
+  `06d951f`): `pnpm install` clean; `pnpm test` 178/178 (25 files);
+  `pnpm tadori diff .` exit 0 with diff summary;
+  `echo "" | pnpm mcp:stdio --db .tadori/tadori.sqlite --repo .` exit 0 with
+  clean EOF shutdown. Every command documented in the README now runs as
+  written — the previously false `tadori diff` claim is true after 00-01A.
+- README status counts refreshed (170/24 → 178/25 post-00-01A); all five
+  branches confirmed on origin; `origin/autonomous-roadmap` untouched;
+  `git tag` empty.
+- Commit-SHA reconciliation: PR #5 was squash-merged, so the 00-01A
+  implementation commit `8be4741` is superseded on `main` by squash commit
+  `06d951f` (PR #5); records below cite both.
+
 ## 00-01A — allowJs scanner contract & regression (complete, 2026-07-17)
 
 - Fixed the allowJs scanner defect (blueprint
   `blueprints/00-01A-allowjs-scanner-contract.md`, implementation commit
-  `8be4741`): `scanRepository` now resolves the repository's effective root
+  `8be4741`, on `main` as squash commit `06d951f` via PR #5):
+  `scanRepository` now resolves the repository's effective root
   compiler options once per scan via the additive
   `resolveRootCompilerOptions` export in `packages/indexer/src/project.ts`
   (`extends`-resolved, live disk, `capturedTexts` omitted entirely) and
