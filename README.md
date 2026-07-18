@@ -13,9 +13,10 @@ dependency.
 
 ## Status
 
-Weeks 1–6 of the frozen v2.1 roadmap are complete and validated:
+Weeks 1–6 of the frozen v2.1 roadmap are complete and validated, plus the
+Phase 0 allowJs scanner correction (00-01A):
 
-- 170/170 tests across 24 files pass.
+- 178/178 tests across 25 files pass.
 - All five golden fixtures compare exactly — zero missing, unexpected, or
   mismatched nodes and edges.
 - Incremental refresh gates met: single-file refresh p95 1257.685 ms
