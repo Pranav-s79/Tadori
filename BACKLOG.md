@@ -31,6 +31,14 @@ verification also remain outstanding under 00-01. A full-project planning
 run (all phases through 12) started 2026-07-17: planning only — no production
 code, no pushes, no merges, no tags.
 
+2026-07-17 (autonomous run): 00-01A implemented and validated (commit
+`8be4741`: allowJs gate in `scanRepository`, 8-test regression matrix, full
+gate 178/178, `pnpm tadori diff .` exit 0 on Tadori itself, MCP-stdio and
+benchmark README commands verified, adversarial review PASS with 0
+blocker/high). Baseline PR #4 merged `main` to the Week 6 + planning-vault
+state (`a79a29e`); local `main` fast-forwarded. 00-01 unblocked; its
+remainder is the README verification record and status reconciliation.
+
 Frozen constraints (never reopened by any item): six MCP tools only; stable 2D
 default (Sigma.js/WebGL, seeded frozen layout, semantic zoom packages → files →
 exported symbols); provenance edge legend fixed; evidence/origin/confidence/
@@ -71,8 +79,8 @@ with gates in `IMPLEMENTATION_STATUS.md`. Do not rebuild; later phases reuse.
 
 | ID | Item | Scope | Depends | Status |
 |---|---|---|---|---|
-| 00-01 | Repo sync & README correction | Hygiene commits on Sprint7; push sprint branches only (main via owner PRs — re-scoped 2026-07-17); relocate fixture README to `packages/fixtures/README.md`; new product root README; commit planning vault | 00-01A | blocked (commits `7891a99`/`1f97ee1`/`a4ab158` built locally; gates green except README `tadori diff .` claim — defect 00-01A; push deferred) |
-| 00-01A | allowJs scanner contract & regression | Fix `scan.ts` unconditional JS classification: gate `.js/.jsx/.mjs/.cjs` indexing on effective `allowJs`/`checkJs` from the extends-resolved root tsconfig; JS reclassifies to support (captured, hashed) when gated off; regression tests both directions; unblocks `pnpm tadori diff .` on Tadori itself | — | drafting |
+| 00-01 | Repo sync & README correction | Hygiene commits on Sprint7; push sprint branches only (main via owner PRs — re-scoped 2026-07-17); relocate fixture README to `packages/fixtures/README.md`; new product root README; commit planning vault | 00-01A | ready (00-01A validated; baseline PR #4 merged main to `a79a29e`; remainder: README verification record + status reconciliation) |
+| 00-01A | allowJs scanner contract & regression | Fix `scan.ts` unconditional JS classification: gate `.js/.jsx/.mjs/.cjs` indexing on effective `allowJs`/`checkJs` from the extends-resolved root tsconfig; JS reclassifies to support (captured, hashed) when gated off; regression tests both directions; unblocks `pnpm tadori diff .` on Tadori itself | — | validated (2026-07-17, commit `8be4741`; full gate 178/178; `tadori diff .` exit 0 on Tadori) |
 | 00-02 | CI pipeline | GitHub Actions: Linux + Windows; typecheck, lint, test, fixtures:validate/index/typecheck, skills:check; Node 22 pin; better-sqlite3 prebuilds | 00-01 | pending |
 
 ## Phase 7 — Local serving & API foundation

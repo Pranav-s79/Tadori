@@ -5,36 +5,33 @@ Updated by the coordinator at every stage transition. No raw logs.
 
 ## Current state
 
-- Timestamp: 2026-07-17 (evening, local)
-- Current branch: `Sprint7-core-visualization` (baseline; task branch not yet
-  created)
-- Current task: 00-01A allowJs scanner contract & regression
-- Blueprint status: ready (implemented in working tree, not yet committed)
-- Implementation stage: adversarial review PASS (0 blocker / 0 high / 1 medium
-  = status-docs pending / 4 low residuals); reviewer's optional test-(g)
-  hardening applied and re-verified 8/8
-- Changed files (uncommitted, task-authorized):
-  - `packages/indexer/src/project.ts` (additive `resolveRootCompilerOptions`)
-  - `packages/indexer/src/scan.ts` (allowJs gate threaded into `classify`)
-  - `packages/indexer/test/scan-allowjs.test.ts` (new, 8 tests per §13)
-  - `blueprints/00-01A-allowjs-scanner-contract.md` (dated §22 coordinator
-    correction: `classify` vs `classifyFile` naming drift)
-- Latest commit SHA: `45a6d3f` (baseline tip; no task commit yet)
-- PR state: none yet (baseline PR pending; 00-01A PR pending)
-- Validation completed: focused tests 8/8; indexer suite 69/69;
-  `pnpm tadori diff .` exit 0 on Tadori itself (previously crashed on
-  `eslint.config.js`); full repository gate pending
-- Remaining failures: none known
-- Next task after 00-01A: 00-01 (repo sync & README), then 00-02 (CI)
+- Timestamp: 2026-07-17 (night, local)
+- Current branch: `bp/00-01A-allowjs-scanner` (off `main` = `a79a29e`)
+- Current task: 00-01A — implementation committed; status docs staged; PR
+  pending
+- Blueprint status: validated (full gate + adversarial review PASS)
+- Implementation stage: Stage 8 docs done; next = push branch, open
+  `[00-01A]` PR, squash-merge, update main, proceed to 00-01
+- Implementation commit: `8be4741` (4 files: project.ts additive export,
+  scan.ts gate, scan-allowjs.test.ts ×8, blueprint §22 correction)
+- PR state: baseline PR #4 MERGED (`a79a29e`, merge commit, Week 6 +
+  planning vault now on main); 00-01A PR not yet opened
+- Validation completed (2026-07-17, this machine): install clean; skills
+  sync/check pass; typecheck pass; lint pass; test 178/178 (25 files);
+  validate_fixtures.py pass; fixtures:validate pass; fixtures:index all
+  pass; fixtures:typecheck 5/5; benchmark p95 737.9 ms < 2000 ms;
+  `pnpm tadori diff .` exit 0; MCP stdio clean EOF exit 0;
+  `git diff --check` clean
+- Remaining failures: none
+- CI: none configured yet (00-02 pending) — local gate is the merge gate
+- Next task: 00-01 (remainder: README verification record + status
+  reconciliation), then 00-02 (CI pipeline)
 
-## Repository topology (verified 2026-07-17)
+## Repository topology (updated post-baseline)
 
-- `origin/main` = `6e89fc1` (PR #2, through Week 5). Local `main` = `7ff77ae`
-  (stale, behind 4; ff-only update pending).
-- Week 6 (`15540b3`) is on `origin/Sprint6-incremental-indexing`, absent from
-  main.
-- Planning vault + README commits (`7891a99..45a6d3f`) exist only on local
-  `Sprint7-core-visualization` → baseline PR to main will carry Week 6 + docs.
+- `origin/main` = local `main` = `a79a29e` (PR #4 merge: Week 6 `15540b3` +
+  planning vault + README + checkpoint).
+- Sprint4/5/6/7 branches remain on origin (merged content; not deleted).
 
 ## Stashes (do not drop)
 
