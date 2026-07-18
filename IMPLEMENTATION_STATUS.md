@@ -1,6 +1,6 @@
 # Tadori Implementation Status
 
-Last updated: 2026-07-15 (Week 6 incremental indexing complete)
+Last updated: 2026-07-17 (00-01A allowJs scanner defect fixed and validated)
 
 ## Current milestone
 
@@ -10,6 +10,49 @@ TypeScript language service, invalidates deterministic affected regions, and
 atomically publishes validated working-tree snapshots. MCP sessions remain
 pinned while new sessions adopt the latest head. The next roadmap task is
 Phase F visualization and serving.
+
+## 00-01A — allowJs scanner contract & regression (complete, 2026-07-17)
+
+- Fixed the allowJs scanner defect (blueprint
+  `blueprints/00-01A-allowjs-scanner-contract.md`, implementation commit
+  `8be4741`): `scanRepository` now resolves the repository's effective root
+  compiler options once per scan via the additive
+  `resolveRootCompilerOptions` export in `packages/indexer/src/project.ts`
+  (`extends`-resolved, live disk, `capturedTexts` omitted entirely) and
+  classifies `.js/.jsx/.mjs/.cjs` files as indexed only when
+  `allowJs === true || checkJs === true`. Gated-off JS files remain
+  captured, hashed support files, so the indexed+support union, workspace
+  hashes, and freshness behavior are unchanged.
+- Regression matrix `packages/indexer/test/scan-allowjs.test.ts` (8 tests
+  per blueprint §13): include-glob bug shape, allowJs on with JS function
+  extraction, `.jsx/.mjs/.cjs` parity, `extends`-chain resolution (doubles
+  as the capturedTexts empty-Map failure detector), `checkJs` parity, no
+  tsconfig, `.d.ts` invariance, and incremental refresh of an edited
+  gated-off support JS file (asserts a new snapshot publishes).
+- Independent adversarial review: PASS — 0 blockers, 0 high; accepted LOW
+  residuals: scan-vs-capture tsconfig TOCTOU affects error quality only
+  (capture is already non-atomic); an `extends` base inside `node_modules`
+  flipping allowJs is invisible to incremental config-change detection until
+  a captured config/support change forces reconstruction (pre-existing
+  workspace-hash design boundary); the scanner discards the
+  `parseTsconfig().fileNames` enumeration (shared-parser parity mandated by
+  blueprint §8).
+
+### 00-01A full validation (executed 2026-07-17)
+
+| Check | Result |
+|---|---|
+| `pnpm install` | clean |
+| `pnpm skills:sync` / `pnpm skills:check` | pass; 4 canonical skills |
+| `pnpm typecheck` / `pnpm lint` | pass |
+| `pnpm test` | **178/178 tests, 25 files** (170 existing + 8 new) |
+| `python validate_fixtures.py` / `pnpm fixtures:validate` | pass |
+| `pnpm fixtures:index` | all comparisons pass |
+| `pnpm fixtures:typecheck` | pass ×5 |
+| `pnpm benchmark:incremental` | pass; single-file p95 737.9 ms < 2000 ms |
+| `pnpm tadori diff .` (Tadori repo root) | **exit 0, diff summary printed** (previously crashed on `eslint.config.js`) |
+| `echo "" \| pnpm mcp:stdio --db .tadori/tadori.sqlite --repo .` | exit 0, clean EOF shutdown |
+| `git diff --check` | pass |
 
 ## Week 6 — Incremental indexing and hardening (complete, 2026-07-15)
 
@@ -466,7 +509,16 @@ after 17/37.
 
 ## Discovered defects
 
-- None outstanding. (During implementation: ambient `declare function`
+- None outstanding.
+- Fixed 2026-07-17 — allowJs scanner classification (blueprint 00-01A,
+  commit `8be4741`): the scanner indexed JavaScript-family files even when
+  the effective tsconfig enabled neither `allowJs` nor `checkJs`, while the
+  TypeScript program correctly excluded them; extraction diagnostics then
+  crashed (`Could not find source file: eslint.config.js`), breaking
+  `pnpm tadori diff .` on Tadori's own repository (discovered 2026-07-17).
+  See the dated 00-01A section above for the fix, regression matrix, and
+  accepted low-severity residuals.
+- (Historical, Weeks 1–2 implementation: ambient `declare function`
   statements initially produced function nodes; fixed by excluding
   `ModifierFlags.Ambient`. `ts.ExportSpecifier.name` is `ModuleExportName` in
   TS 5.9; fixed the barrel-resolution signature.)

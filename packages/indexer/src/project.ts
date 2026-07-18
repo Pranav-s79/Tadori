@@ -213,6 +213,20 @@ const DEFAULT_OPTIONS: ts.CompilerOptions = {
 };
 
 /**
+ * Resolves the repository's effective compiler options from live disk (no
+ * captured-generation texts), for callers that need the same
+ * `extends`-resolved semantics as `createProjectServices` without building a
+ * full LanguageService (e.g. the scanner's allowJs gate).
+ */
+export function resolveRootCompilerOptions(root: string): ts.CompilerOptions {
+  const tsconfigPath = findTsconfig(root);
+  if (!tsconfigPath) {
+    return { ...DEFAULT_OPTIONS };
+  }
+  return parseTsconfig(root, tsconfigPath).options;
+}
+
+/**
  * Builds the TypeScript LanguageService for one repository. Program roots are
  * the union of the tsconfig file list and the scanned source files, so files
  * outside the tsconfig `include` globs still resolve and extract.

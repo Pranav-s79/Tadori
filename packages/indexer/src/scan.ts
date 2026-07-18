@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { resolveRootCompilerOptions } from "./project.js";
 
 export interface ScannedFile {
   /** Absolute path on disk. */
@@ -101,7 +102,7 @@ function isIgnored(relPath: string, isDirectory: boolean, rules: IgnoreRule[]): 
   return false;
 }
 
-function classify(normalizedPath: string): Pick<ScannedFile, "indexed" | "language"> {
+function classify(normalizedPath: string, allowJs: boolean): Pick<ScannedFile, "indexed" | "language"> {
   const ext = path.posix.extname(normalizedPath).toLowerCase();
   if (normalizedPath.endsWith(".d.ts") || normalizedPath.endsWith(".d.mts") || normalizedPath.endsWith(".d.cts")) {
     // Declaration shims participate in compiler resolution without becoming
@@ -112,7 +113,7 @@ function classify(normalizedPath: string): Pick<ScannedFile, "indexed" | "langua
     return { indexed: true, language: "typescript" };
   }
   if (JS_EXTENSIONS.has(ext)) {
-    return { indexed: true, language: "javascript" };
+    return { indexed: allowJs, language: "javascript" };
   }
   if (ext === ".md") {
     return { indexed: true, language: "markdown" };
@@ -126,6 +127,8 @@ function classify(normalizedPath: string): Pick<ScannedFile, "indexed" | "langua
 /** Walks the repository and splits files into indexed and support sets. */
 export function scanRepository(root: string): ScanResult {
   const rules = readIgnoreRules(root);
+  const options = resolveRootCompilerOptions(root);
+  const allowJs = options.allowJs === true || options.checkJs === true;
   const indexedFiles: ScannedFile[] = [];
   const supportFiles: ScannedFile[] = [];
 
@@ -143,7 +146,7 @@ export function scanRepository(root: string): ScanResult {
       if (isIgnored(rel, false, rules)) {
         continue;
       }
-      const { indexed, language } = classify(rel);
+      const { indexed, language } = classify(rel, allowJs);
       const file: ScannedFile = { absolutePath: absolute, normalizedPath: rel, indexed, language };
       if (language === "other" && !CAPTURED_CONFIGURATION_NAMES.has(path.posix.basename(rel))) {
         continue;
