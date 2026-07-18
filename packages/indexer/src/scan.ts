@@ -33,6 +33,12 @@ const EXCLUDED_DIRECTORIES = new Set([
 
 const TS_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts"]);
 const JS_EXTENSIONS = new Set([".js", ".jsx", ".mjs", ".cjs"]);
+const CAPTURED_CONFIGURATION_NAMES = new Set([
+  "pnpm-lock.yaml",
+  "yarn.lock",
+  ".gitignore",
+  ".tadoriignore"
+]);
 
 export function normalizePath(root: string, absolute: string): string {
   const rel = path.relative(root, absolute).split(path.sep).join("/");
@@ -139,7 +145,7 @@ export function scanRepository(root: string): ScanResult {
       }
       const { indexed, language } = classify(rel);
       const file: ScannedFile = { absolutePath: absolute, normalizedPath: rel, indexed, language };
-      if (language === "other") {
+      if (language === "other" && !CAPTURED_CONFIGURATION_NAMES.has(path.posix.basename(rel))) {
         continue;
       }
       (indexed ? indexedFiles : supportFiles).push(file);

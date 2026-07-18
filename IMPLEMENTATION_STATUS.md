@@ -1,14 +1,100 @@
 # Tadori Implementation Status
 
-Last updated: 2026-07-14 (Week 5 deterministic context selection complete)
+Last updated: 2026-07-15 (Week 6 incremental indexing complete)
 
 ## Current milestone
 
-**Week 5 — Deterministic context selection and budgeting** (frozen v2.1
-Phase D). The six-tool MCP surface now applies the frozen linear ranking,
-hard-required structural context, bounded pagination, explainable omissions,
-and whole-response token budgets. The next roadmap task is Week 6 incremental
-indexing and hardening.
+**Week 6 — Incremental indexing and hardening** (frozen v2.1 Phase E). Tadori
+now watches repositories, captures immutable generations, reuses one persistent
+TypeScript language service, invalidates deterministic affected regions, and
+atomically publishes validated working-tree snapshots. MCP sessions remain
+pinned while new sessions adopt the latest head. The next roadmap task is
+Phase F visualization and serving.
+
+## Week 6 — Incremental indexing and hardening (complete, 2026-07-15)
+
+- Added a native repository watcher with normalized deterministic batches,
+  debounce plus maximum-wait bounds, ignored-path filtering, startup/error
+  rescans, platform fallback, and clean lifecycle handling.
+- Added immutable repository-generation capture: scan membership, file hashes,
+  file bytes, and configuration/package inputs are captured together and
+  rechecked before publication. Late or mixed-generation writes supersede the
+  pass instead of publishing a graph assembled from different filesystem
+  moments.
+- Added a persistent versioned TypeScript language service and regional graph
+  refresh. Body-only changes, dependency changes, test/route/ADR edits, and
+  barrel edits use deterministic invalidation and merge; structural identity,
+  file membership, configuration, analyzer-version, restart-baseline, or
+  validation uncertainty fails closed to a full rebuild.
+- Added generation-CAS publication, immediate stale overlays, no-op and A→B→A
+  reuse, cancellation at publication boundaries, syntax-error rollback and
+  recovery, endpoint/evidence validation, and crash-safe restart reconciliation.
+  TypeScript semantic diagnostics remain graph diagnostics; syntactically
+  invalid source is never activated. A synchronous compiler extraction already
+  in progress cannot be preempted mid-call, but a superseded/cancelled
+  generation cannot activate afterward.
+- Added `tadori diff .`, which records the command-start working-tree head as
+  its base (falling back to the active commit when no working-tree head exists),
+  reconciles and atomically publishes one captured disk generation, then
+  compares those two immutable snapshots. Production stdio runs the compiler,
+  watcher, and writer connection in an isolated worker: MCP reads stay
+  responsive and expose `refresh_pending`; in-flight tasks retain their
+  snapshot while new sessions adopt the replacement head.
+- Added adversarial coverage for import/body/barrel/route/test/ADR regions,
+  add/move/delete/rename fallback, invalid syntax, no-op and A→B→A cycles,
+  supersession/cancellation, restart mismatch, unreported late writes, native
+  saves, held WAL readers, MCP session pinning, and legacy migration databases.
+
+### Migration 006 defect report
+
+Migrations 001–005 are preserved verbatim. Their unique
+`(repo_id, kind, workspace_hash)` snapshot identity and newest-ID head selection
+cannot represent activation order: after A→B→A, reusing A is correct, but B has
+the newer snapshot ID and remains served; inserting A again violates the unique
+constraint. Additive migration 006 introduces append-only
+`snapshot_activations` with monotonic activation IDs and repository/kind
+integrity triggers. This is the smallest correction that preserves historical
+snapshot identity, existing memberships, and the frozen first five migrations.
+Legacy pre-006 databases remain readable and are upgraded by the normal ordered
+migration runner. Tests cover A→B→A, stale-writer ABA prevention, relationship
+integrity, exact-membership reuse checks, and migration-005 compatibility.
+
+### Week 6 performance evidence
+
+Benchmark corpus: 250,330 LOC in 291 files, 12 incremental iterations, Node
+22.14.0 on Windows x64.
+
+| Scenario | Observed | Gate |
+|---|---:|---:|
+| cold full index | 2071.685 ms | informational |
+| single-file refresh p95 | 1257.685 ms | < 2000 ms |
+| dependency-region refresh (40 files) | 450.145 ms | regional |
+| 250-export barrel refresh | 496.337 ms | regional |
+| package/config full fallback | 1147.954 ms | < 10000 ms |
+| heap growth | 202,683,256 bytes | < 512 MiB |
+| database growth | 9,535,488 bytes / 16 snapshots | < 2 MiB per added snapshot |
+
+The latency gates pass. Current scaling ceilings are synchronous TypeScript
+compiler work (cancellation is checked between passes/publication boundaries),
+root-level tsconfig discovery, and intentionally conservative full fallback for
+structural identity or configuration uncertainty.
+
+### Week 6 full validation (executed 2026-07-15)
+
+| Check | Result |
+|---|---|
+| `pnpm install` | clean; lockfile already current |
+| `pnpm skills:sync` / `pnpm skills:check` | pass; 4 canonical skills synchronized and verified |
+| `pnpm typecheck` | pass |
+| `pnpm lint` | pass |
+| `pnpm test` | **170/170 tests, 24 files, all pass** |
+| `python validate_fixtures.py` | pass |
+| `pnpm fixtures:validate` | pass |
+| `pnpm fixtures:index` | all 5 snapshots pass; zero dangling endpoints and zero foreign-key violations |
+| `pnpm fixtures:typecheck` | all 5 fixture repositories pass `tsc --noEmit` |
+| `pnpm benchmark:incremental` | pass; both frozen latency gates and memory/database bounds pass |
+| concurrent MCP refresh probe | `refresh_pending` read served while isolated compiler refresh remained active |
+| `git diff --check` | pass |
 
 ## Week 5 — Context selection and budgeting (complete, 2026-07-14)
 
@@ -236,8 +322,9 @@ All applicable completion gates pass; see "Validation results" below.
   resolutions, repository-state kinds, evidence kinds), Zod schemas for graph
   payloads, canonical pipe-delimited identities with backslash-then-pipe
   escaping, UTF-8 SHA-256 entity keys, collision-index rehashing.
-- `@tadori/store`: the five frozen migrations verbatim (WAL, foreign keys,
-  synchronous NORMAL), ordered migration runner with duplicate protection,
+- `@tadori/store`: the first five frozen migrations verbatim (WAL, foreign
+  keys, synchronous NORMAL), plus evidence-backed additive migration 006 for
+  immutable activation ordering; ordered migration runner with duplicate protection,
   transaction-safe snapshot insertion over stable entities + membership rows,
   collision-safe entity upserts, dangling-endpoint validation (§10) with
   reject-and-rollback, active-snapshot serving that never serves an invalid
@@ -295,7 +382,7 @@ All applicable completion gates pass; see "Validation results" below.
 | `pnpm install` | clean |
 | `pnpm typecheck` (strict, `noUncheckedIndexedAccess`) | pass |
 | `pnpm lint` | pass |
-| `pnpm test` | 132/132 tests, 17 files, all pass |
+| `pnpm test` | 170/170 tests, 24 files, all pass |
 | `python validate_fixtures.py` | pass |
 | `pnpm fixtures:validate` | pass |
 | `pnpm fixtures:typecheck` (all 5 fixture repos, `tsc --noEmit`) | pass |
@@ -306,7 +393,7 @@ All applicable completion gates pass; see "Validation results" below.
 | Canonical SHA-256 identities vs. fixture values | exact match (core tests) |
 | Deterministic repeated indexing | verified (identical keys, hashes, workspace hash) |
 | MCP contract | exactly 6 tools; strict valid/invalid calls; structured output; logging; stale/budget/omission coverage |
-| MCP stdio | protocol-only stdout; malformed-line recovery; two clean restarts; clean EOF shutdown |
+| MCP stdio | protocol-only stdout; isolated concurrent refresh; malformed-line recovery; two clean restarts; clean EOF shutdown |
 
 ## Fixture relations currently supported (compared against golden truth)
 
@@ -430,16 +517,26 @@ after 17/37.
 | adversarial MCP matrix (review subagent) | clean: 39 tests across 6 files |
 | `git diff --check` | pass |
 
-The full repository gate (`pnpm test`, fixture validation/index/typecheck, and
-the required skills checks) is the next resume action because this branch was
-pushed immediately at the user's request.
+The historical Week 5 focused gate was followed by the complete repository gate
+recorded in the Week 6 validation section above.
 
 ## Current roadmap phase
 
-Week 5 / Phase D is complete and validated. The next task is Week 6 / Phase E:
-implement safe incremental repository refresh with file watching, deterministic
-change batching, stale-state tracking during refresh, changed-file parsing,
-affected/dependency-region invalidation, atomic snapshot replacement, crash
-recovery, and measured single-file/package/dependency latency gates. Week 6
-must preserve the frozen snapshot, evidence, identity, and MCP contracts now
-covered by 132 repository tests and the exact five-fixture harness.
+Week 6 / Phase E is complete and validated. The next task is Weeks 7–8 /
+Phase F, beginning with the frozen `tadori serve .` workflow: snapshot reuse or
+refresh, validated local API startup, a stable default 2D package map, binding
+only to `127.0.0.1`, optional browser launch, truthful startup state, and clean
+Ctrl+C teardown. The current graph, snapshot, evidence, identity, ranking, and
+MCP contracts are covered by 170 repository tests and the exact five-fixture
+harness.
+
+## Repository hygiene (2026-07-17)
+
+- Root README replaced with a product overview; the golden-fixture guide moved
+  byte-identically to `packages/fixtures/README.md`.
+- Planning vault committed: `BACKLOG.md` and `blueprints/` (remaining-roadmap
+  backlog and per-item blueprints; item 00-01 re-scoped 2026-07-17 after
+  `origin/main` adopted GitHub PR-merge topology via PR #1/#2).
+- All four sprint branches pushed (`Sprint7-core-visualization` created on
+  origin); local `main` fast-forwarded to `origin/main` (`6e89fc1`). `main`
+  advances only via owner-merged PRs; no tags or releases.

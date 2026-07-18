@@ -27,6 +27,7 @@ export const freshnessStatusSchema = z.enum(["fresh", "stale", "unknown"]);
 export const freshnessReasonSchema = z.enum([
   "matches_snapshot",
   "content_changed",
+  "refresh_pending",
   "unreadable",
   "outside_repository",
   "not_in_snapshot"

@@ -1,6 +1,6 @@
 import type { Database } from "./database.js";
 import { foreignKeyCheck } from "./database.js";
-import { getSnapshot } from "./snapshots.js";
+import { getSnapshot, getSnapshotHead } from "./snapshots.js";
 
 export interface GcResult {
   deletedEdgeEntities: number;
@@ -110,6 +110,10 @@ export function pruneSnapshot(db: Database, snapshotId: number): void {
       throw new Error(
         `Snapshot ${snapshotId} backs active task ${activeTask.id} and cannot be pruned`
       );
+    }
+    const head = getSnapshotHead(db, snapshot.repo_id, snapshot.kind);
+    if (head?.snapshot.id === snapshotId) {
+      throw new Error(`Snapshot ${snapshotId} is the current ${snapshot.kind} head and cannot be pruned`);
     }
     // Membership deletion order respects the composite foreign keys:
     // edges and nodes first, then files (which cascades evidence_items).

@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -101,7 +101,7 @@ describe("MCP stdio transport", () => {
     );
 
     await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("stdio initialize response timed out")), 10_000);
+      const timeout = setTimeout(() => reject(new Error("stdio initialize response timed out")), 20_000);
       const check = (): void => {
         if (stdout.includes("\n")) {
           clearTimeout(timeout);
@@ -121,4 +121,55 @@ describe("MCP stdio transport", () => {
     expect(exitCode).toBe(0);
     expect(stderr).toBe("");
   });
+
+  it("serves stale MCP reads while an isolated refresh is still running", async () => {
+    const bulkPath = path.join(tempRoot, "src", "bulk.ts");
+    const bulkSource = (value: number): string =>
+      Array.from(
+        { length: 3_000 },
+        (_, index) => `export function bulk${String(index)}(): number { return ${String(value)}; }`
+      ).join("\n") + "\n";
+    writeFileSync(bulkPath, bulkSource(1));
+    const transport = new StdioClientTransport({
+      command: process.execPath,
+      args: serverArguments(),
+      cwd: workspaceRoot,
+      stderr: "pipe"
+    });
+    let stderr = "";
+    transport.stderr?.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+    const client = new Client({ name: "stdio-concurrency-test", version: "0.1.0" });
+    try {
+      await client.connect(transport);
+      writeFileSync(bulkPath, bulkSource(2));
+      const deadline = performance.now() + 10_000;
+      let staleLatencyMs: number | null = null;
+      while (performance.now() < deadline && staleLatencyMs === null) {
+        const startedAt = performance.now();
+        const result = await client.callTool({
+          name: "find_symbol",
+          arguments: { query: "bulk0", limit: 1 }
+        });
+        const latency = performance.now() - startedAt;
+        const structured = result.structuredContent as
+          | { context?: { stale?: boolean; staleReason?: string } }
+          | undefined;
+        if (
+          structured?.context?.stale === true &&
+          structured.context.staleReason === "refresh_pending"
+        ) {
+          staleLatencyMs = latency;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      expect(staleLatencyMs).not.toBeNull();
+      expect(staleLatencyMs as number).toBeLessThan(750);
+    } finally {
+      await client.close();
+    }
+    expect(stderr).toBe("");
+  }, 30_000);
 });

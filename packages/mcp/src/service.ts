@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
-import type { GraphEdge, GraphNode, NodeKind, Relation } from "@tadori/core";
+import type { GraphEdge, GraphNode, NodeKind, Relation, RepoStateKind } from "@tadori/core";
 import { computeWorkspaceHash, scanRepository } from "@tadori/indexer";
 import {
-  ensureSnapshotFts,
   getActiveSnapshot,
+  ensureSnapshotFts,
   loadSnapshotGraph,
   searchNodeFts,
   type Database,
@@ -34,7 +34,18 @@ export type FreshnessStatus = "fresh" | "stale" | "unknown";
 export interface FreshnessResult {
   status: FreshnessStatus;
   stale: boolean;
-  reason: "matches_snapshot" | "content_changed" | "unreadable" | "outside_repository" | "not_in_snapshot";
+  reason:
+    | "matches_snapshot"
+    | "content_changed"
+    | "refresh_pending"
+    | "unreadable"
+    | "outside_repository"
+    | "not_in_snapshot";
+}
+
+export interface RefreshFreshnessOverlay {
+  isPathStaleForSnapshot(snapshotId: number, normalizedPath: string): boolean;
+  isSnapshotStale(snapshotId: number): boolean;
 }
 
 export interface BodyReadResult {
@@ -70,7 +81,8 @@ export class GraphService {
     private readonly db: Database,
     readonly repoRoot: string,
     snapshot: SnapshotRow,
-    graph?: StoredSnapshotGraph
+    graph?: StoredSnapshotGraph,
+    private readonly refreshOverlay?: RefreshFreshnessOverlay
   ) {
     this.nativeRepoRoot = path.resolve(repoRoot);
     this.realRepoRoot = realpathSync.native(this.nativeRepoRoot);
@@ -105,7 +117,12 @@ export class GraphService {
     }
   }
 
-  static open(db: Database, repoRoot: string): GraphService {
+  static open(
+    db: Database,
+    repoRoot: string,
+    refreshOverlay?: RefreshFreshnessOverlay,
+    preferredKind?: RepoStateKind
+  ): GraphService {
     const resolvedRoot = path.resolve(repoRoot).split(path.sep).join("/");
     const loadActive = db.transaction((): {
       snapshot: SnapshotRow;
@@ -117,17 +134,22 @@ export class GraphService {
       if (!repo) {
         throw new Error(`Repository ${resolvedRoot} has no indexed snapshots in this database`);
       }
-      const snapshot = getActiveSnapshot(db, repo.id);
+      const snapshot =
+        getActiveSnapshot(db, repo.id, preferredKind) ??
+        (preferredKind === undefined ? undefined : getActiveSnapshot(db, repo.id));
       if (!snapshot) {
         throw new Error(
           `Repository ${resolvedRoot} has no valid active snapshot; run the indexer first`
         );
       }
-      ensureSnapshotFts(db, snapshot.id);
       return { snapshot, graph: loadSnapshotGraph(db, snapshot.id) };
     });
-    const loaded = loadActive.immediate();
-    return new GraphService(db, resolvedRoot, loaded.snapshot, loaded.graph);
+    const loaded = loadActive.deferred();
+    // Repair legacy/missing search rows once at session initialization. Normal
+    // MCP requests remain read-only, including while another connection
+    // publishes a replacement snapshot under WAL.
+    ensureSnapshotFts(db, loaded.snapshot.id);
+    return new GraphService(db, resolvedRoot, loaded.snapshot, loaded.graph, refreshOverlay);
   }
 
   fanIn(entityKey: string): number {
@@ -173,6 +195,9 @@ export class GraphService {
     const snapshotFile = this.filesByPath.get(normalizedPath);
     if (!snapshotFile) {
       return { status: "unknown", stale: true, reason: "not_in_snapshot", contents: null };
+    }
+    if (this.refreshOverlay?.isPathStaleForSnapshot(this.snapshot.id, normalizedPath)) {
+      return { status: "stale", stale: true, reason: "refresh_pending", contents: null };
     }
     const absolute = this.resolveSnapshotPath(normalizedPath);
     if (absolute === null) {
@@ -232,6 +257,9 @@ export class GraphService {
   }
 
   snapshotFreshness(): FreshnessResult {
+    if (this.refreshOverlay?.isSnapshotStale(this.snapshot.id)) {
+      return { status: "stale", stale: true, reason: "refresh_pending" };
+    }
     try {
       const scan = scanRepository(this.nativeRepoRoot);
       const files = [...scan.indexedFiles, ...scan.supportFiles].map((file) => ({

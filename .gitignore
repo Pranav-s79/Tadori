@@ -10,3 +10,7 @@ coverage/
 .claude/credentials.json
 .claude/cache/
 .claude/sessions/
+# Graphify: build-time memory-compaction tool, not part of the Tadori product.
+# Outputs are sanctioned local artifacts, not stray files — do not treat as product state.
+graphify-out/
+.graphify_*
