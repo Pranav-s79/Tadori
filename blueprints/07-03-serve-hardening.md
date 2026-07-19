@@ -3,7 +3,11 @@
 ## 1. Header
 
 - ID / Title / Phase: 07-03 — Serve hardening — Phase 7
-- Status: review
+- Status: built (2026-07-18; frontier OpenAI correction re-review PASS with
+  no blocker/high/medium; fresh full gate ALL PASS: 283/283 tests in 50
+  files, exact golden fixtures 5/5 with zero dangling/FK rows, benchmark
+  gates pass, `pnpm tadori diff .` exit 0, diff checks clean. Pinned-snapshot
+  and failure-safe teardown review findings closed. CI + merge pending.)
 - Primary builder: Claude Opus — concurrency/lifecycle sensitivity: exact
   process-exit-path enumeration (Ctrl+C, SIGTERM, parent death, worker
   crash), port-fallback ordering, and adversarial supervision tests are
@@ -148,8 +152,10 @@ Verified current (2026-07-17):
    `app.listen({host: "127.0.0.1", port: 0})` (OS-assigned) — this always
    succeeds barring total port exhaustion, so "fallback" for the default
    case is really "OS assignment is the only path, no conflict possible."
-   Explicit `--port <N>` → attempt `app.listen({host: "127.0.0.1", port:
-   N})`; on `EADDRINUSE`, fail hard (exit 4) with an actionable message
+   Explicit `--port <N>` → preflight-bind `127.0.0.1:N` before server/worker
+   construction; if free, release the probe and attempt
+   `app.listen({host: "127.0.0.1", port: N})`. Either preflight or listen-site
+   `EADDRINUSE` fails hard (exit 4) with an actionable message
    naming the port and suggesting `--port` omission or a different port —
    **no silent fallback to a different port when `--port` was explicit**
    (a user who pinned a port likely did so for a reason — e.g., a bookmark,
@@ -213,8 +219,10 @@ Verified current (2026-07-17):
 - **Port algorithm: OS-assigned default, hard-fail explicit.** Concretely:
   `flags.port === null` → `listen({port: 0})`, read back the assigned port,
   no conflict is possible by construction (the OS guarantees an unused
-  ephemeral port). `flags.port !== null` → `listen({port: flags.port})`;
-  catch `EADDRINUSE` specifically (not a generic catch-all) and exit 4 with
+  ephemeral port). `flags.port !== null` → preflight-bind the requested port
+  before constructing server routes or a refresh worker, release it, then
+  `listen({port: flags.port})`; catch `EADDRINUSE` at both the preflight and
+  listen site (TOCTOU backstop), and exit 4 with
   message `"Port ${port} is already in use. Choose a different port with
   --port, or omit --port to let the OS pick one."`. Rejected: scanning
   `port, port+1, port+2, ...` on explicit-port conflict — silently serving
@@ -254,12 +262,17 @@ Verified current (2026-07-17):
   phrasing for the real implementation (worker threads, not child
   processes), not dropping the test.
 - **Browser-launch failure simulation is dependency-injected, not a real
-  broken environment.** `runServe`'s browser-open step (07-02 §11 step 7)
-  is refactored to accept an injectable `openBrowser: (url: string) =>
-  Promise<void>` function (defaulting to the real `open` package), so this
-  blueprint's test passes a stub that always rejects. Rejected: trying to
-  actually corrupt the CI environment's browser — flaky, platform-specific,
-  and untestable on a developer's own machine where a real browser exists.
+  broken environment.** 07-02 already shipped this exact seam:
+  `RunServeDeps.openBrowser?` (`packages/cli/src/serve.ts:39-46`,
+  defaulting to the real `open` package at `:76`), threaded as
+  `runServe`'s second parameter and stubbed by every existing lifecycle
+  test. This blueprint adds NO new injection mechanism — it only passes a
+  stub that always rejects and pins the exact §10 stderr message.
+  Rejected: trying to actually corrupt the CI environment's browser —
+  flaky, platform-specific, and untestable on a developer's own machine
+  where a real browser exists. Also rejected (2026-07-18 review): a new
+  `RunServeOptions` interface — it would duplicate/conflict with the live
+  `RunServeDeps` contract that 07-02's tests already consume.
 - **Parent-process-death orphan check uses a real spawned child process in
   the test**, not a mock. The test spawns `tadori serve .` (via `tsx
   packages/cli/src/cli.ts serve <tmpRepo>` or the equivalent invocation, in
@@ -318,16 +331,20 @@ Verified current (2026-07-17):
 
 ## 9. Exact file plan
 
-- `packages/cli/src/serve.ts` — modify. Replace the happy-path port-listen
-  call with the exact algorithm (§8); replace the direct `open(url)` call
-  with the injectable `openBrowser` parameter; add the `--snapshot` two-case
-  error-message branch; wire `refresh`'s `onError` callback to broadcast a
-  `watcher_error` (already a 07-01 WS event type) rather than crashing the
-  process.
-- `packages/cli/src/serve.ts` — modify (same file, additive export):
-  `export interface RunServeOptions { openBrowser?: (url: string) =>
-  Promise<void>; }` threaded as an optional second parameter to `runServe`
-  for test injection, defaulting to the real `open` package when omitted —
+- `packages/cli/src/serve.ts` — modify. Carve the `EADDRINUSE` branch out
+  of the current single outer `catch` into a dedicated try/catch around
+  the `listen` call only (per §11 step 1 — the outer catch currently
+  funnels `openDatabase`/`createServerApp`/listen errors together and
+  must keep handling the non-port paths unchanged); pin the exact §10
+  port and browser-failure message strings; add the `--snapshot` two-case
+  error-message branch; wire `refresh`'s `onError` callback to broadcast
+  a `watcher_error` (already a 07-01 WS event type) rather than crashing
+  the process.
+- NO new interface is added. The injection seam is 07-02's existing
+  `export interface RunServeDeps { openBrowser?(url): Promise<unknown>;
+  signal?: AbortSignal; stdout?(text): void; stderr?(text): void }`
+  (`serve.ts:39-46`), already the optional second parameter of
+  `runServe`, already defaulting to the real `open` package —
   **no behavior change for the real CLI entry point** (`cli.ts` calls
   `runServe(argv)` with no second argument, exactly as 07-02 specified).
 - `packages/cli/test/port-fallback.test.ts` — create.
@@ -335,11 +352,19 @@ Verified current (2026-07-17):
 - `packages/cli/test/orphan-supervision.test.ts` — create.
 - `packages/cli/test/snapshot-reindex-hardening.test.ts` — create.
 - `packages/cli/test/repo-error-messages.test.ts` — create.
+- `packages/cli/test/exit-codes.test.ts` — modify: pin the port message and
+  prove cleanup continues through refresh/indexer/database after a server
+  close failure.
 - `packages/cli/test/fixtures/testMarkerWorker.ts` — create (test-only
   helper referenced by §8's parent-death test: a thin wrapper the test
   spawns that writes a marker file on worker-ready and on worker-exit, used
   only by `orphan-supervision.test.ts`; not imported by any production
   code).
+- `packages/mcp/src/service.ts` / `packages/mcp/test/service.test.ts` — add
+  the exact-snapshot open seam with repository/status/integrity validation.
+- `packages/server/src/app.ts` / `packages/server/src/graphState.ts` — thread
+  the optional pinned snapshot and suppress refresh-driven rotation for a
+  pinned session.
 - `IMPLEMENTATION_STATUS.md` — modify: record this blueprint's hardening
   gates once built/validated (per the project's "maintain
   IMPLEMENTATION_STATUS.md" rule) — deferred to the builder's final report
@@ -348,13 +373,18 @@ Verified current (2026-07-17):
 ## 10. Exact contracts
 
 ```ts
-// packages/cli/src/serve.ts (additive/modified surface over 07-02's runServe)
-export interface RunServeOptions {
-  openBrowser?: (url: string) => Promise<void>; // default: real `open` package
+// packages/cli/src/serve.ts — LIVE 07-02 surface, reused unchanged.
+// (Corrected 2026-07-18: this blueprint originally invented a parallel
+// `RunServeOptions` interface; the shipped seam is `RunServeDeps`.)
+export interface RunServeDeps {
+  openBrowser?(url: string): Promise<unknown>; // default: real `open` package
+  signal?: AbortSignal; // test hook: awaited instead of real OS signals
+  stdout?(text: string): void;
+  stderr?(text: string): void;
 }
 export async function runServe(
   argv: readonly string[],
-  options?: RunServeOptions
+  deps?: RunServeDeps
 ): Promise<number>;
 ```
 
@@ -395,16 +425,25 @@ export async function runServe(
 1. `packages/cli/src/serve.ts`: refactor the port-listen call into the
    exact two-branch algorithm (§8/§10); catch `EADDRINUSE` specifically
    (check `(error as NodeJS.ErrnoException).code === "EADDRINUSE"`, not a
-   string-match on `error.message`). New test file
+   string-match on `error.message`). CARVE-OUT CONSTRAINT (2026-07-18
+   review): the live code funnels `EADDRINUSE` through the same single
+   outer `catch` that handles `openDatabase`/`createServerApp` and other
+   startup errors (currently emitting `"Port unavailable: ${message}"`).
+   Wrap ONLY the `listen` call in its own try/catch for the exit-4 path
+   with §10's exact message; every other error path must keep flowing
+   through the outer catch with unchanged behavior, and 07-02's existing
+   EADDRINUSE test must be updated to the new exact message in the same
+   step (a message-text change, not a behavior change). New test file
    `port-fallback.test.ts`: (a) default (`--port` omitted) binds successfully
    and reports a nonzero OS-assigned port; (b) explicit free port succeeds
    and reports exactly that port; (c) explicit occupied port (bind a
    throwaway listener first in the test to occupy it) exits 4 with the
    exact message. Expected: green; typecheck clean.
-2. `serve.ts`: add `RunServeOptions.openBrowser` injection point,
-   defaulting to the real `open` import; the browser-open call site becomes
-   `await options.openBrowser(url)` wrapped in the existing non-fatal
-   try/catch. New test file `browser-launch-failure.test.ts`: injected
+2. `serve.ts`: the `RunServeDeps.openBrowser` injection point ALREADY
+   exists (07-02) with the real `open` default and a non-fatal call site;
+   this step only pins the browser-failure stderr text to §10's exact
+   string (if the live text differs, update it and any test asserting the
+   old text). New test file `browser-launch-failure.test.ts`: injected
    `openBrowser` that rejects → `runServe` still returns `0` on a
    subsequent clean SIGINT (i.e., the rejection does not propagate as a
    fatal error) and stderr contains the exact reported-URL message (capture
@@ -520,8 +559,9 @@ full-reindex-then-serve sequence reflects post-modification state.
   own test suites (already landed by the time this blueprint builds) stay
   green — this blueprint modifies `packages/cli/src/serve.ts` in place, so
   07-02's `serve-lifecycle.test.ts` and `exit-codes.test.ts` must still
-  pass unmodified (or with only the additive `RunServeOptions` parameter
-  touched, never a behavior change to the untested-injection default path).
+  pass unmodified (exception: the EADDRINUSE test's expected message text
+  updates to §10's exact string per §11 step 1; never a behavior change
+  to the default `RunServeDeps` path).
 
 ## 14. Acceptance criteria
 
@@ -549,9 +589,9 @@ full-reindex-then-serve sequence reflects post-modification state.
       identical, exact `resolveRepoRoot` error string (documented
       equivalence, not a gap).
 - [ ] 07-02's own `serve-lifecycle.test.ts` and `exit-codes.test.ts` pass
-      unmodified in behavior (only the additive `RunServeOptions` parameter
-      may differ in the file, with its default path behaviorally identical
-      to pre-07-03 code).
+      unmodified in behavior (only the EADDRINUSE expected-message text
+      may change per §11 step 1; the default `RunServeDeps` path stays
+      behaviorally identical to pre-07-03 code).
 - [ ] Full existing suite stays green: `pnpm test`, zero failures. 5/5
       golden fixtures still PASS.
 
@@ -562,13 +602,17 @@ python validate_fixtures.py; pnpm fixtures:validate; pnpm fixtures:index;
 pnpm fixtures:typecheck; pnpm benchmark:incremental; pnpm tadori diff .;
 git diff --check; git status --short
 
-(Orphan-supervision tests spawn real child processes and query the OS
-process table — the builder should confirm CI runners permit
-`child_process.spawn` + signal delivery + `tasklist`/`ps` access; if CI
-sandboxing blocks OS-level process listing, the builder documents that
-constraint in §21 and marks the affected assertions as
-local-verification-only, never silently weakening the assertion to an
-internal-state check that wouldn't actually catch a real orphan.)
+DECISION (2026-07-18 review, replaces builder discretion): the
+orphan-supervision test probes the runner at setup — it attempts one
+`tasklist` (win32) / `ps` (POSIX) invocation. If the probe succeeds, the
+full OS-process-listing assertions run (expected on both GitHub-hosted
+runners, which permit spawn/signals/process listing). If the probe fails,
+those specific assertions `skip` with an explicit named reason visible in
+CI output (`it.skipIf(...)` or equivalent), the spawn/signal/exit-code
+assertions still run, and the skipped OS-listing assertions MUST be
+verified locally on the primary Windows dev machine with the transcript
+recorded in §21. Never silently weaken an OS-listing assertion to an
+internal-state check — an internal check cannot falsify a real orphan.
 
 ## 16. Performance budgets
 
@@ -633,9 +677,98 @@ output summary (§15); any CI sandboxing constraint on OS-level process
 checks; commit SHA; `ASSUMPTION:` lines; explicit confirmation 07-02's
 existing tests still pass unmodified in behavior.
 
+### 21.1 Builder implementation notes / deviations (2026-07-18)
+
+- **Message-string reconciliation.** EADDRINUSE: adopted §10's exact string
+  and updated 07-02's `exit-codes.test.ts:152` assertion (`toContain("Port
+  unavailable")` → the §10 string) in the same step — a message-text change,
+  not a behavior change, explicitly permitted by §11 step 1. `--snapshot`:
+  adopted §10's exact strings (`"Snapshot #${id} does not exist."` and
+  `"Snapshot #${id} failed validation: ${n} dangling endpoint(s)."`),
+  replacing the live 07-02 text (`"Snapshot ${id} does not exist."` and the
+  dangling-validation variant). Rationale: unlike EADDRINUSE, no shipped test
+  pinned the old `--snapshot` text (the existing test asserts only
+  `toContain("999999")`, still satisfied), and §4 designates §10 as this
+  blueprint's intended contract for these strings — so no frozen-merged
+  string is churned. The blueprint §10 text and live code now agree; §10 was
+  NOT edited (it already matched the chosen contract).
+- **Port carve-out.** The acceptance criterion "createServerApp is never
+  called on the conflict path" requires the explicit-port check to happen
+  before server construction. Chosen mechanism: a throwaway `net.createServer`
+  probe of the explicit port before `createServerApp` (default port 0 skips
+  the probe — OS-assigned, no conflict possible). The `app.listen` call keeps
+  its own EADDRINUSE catch as the §11-step-1 carve-out and a TOCTOU backstop.
+  No port scanning (§8 rejected). ponytail note: the probe/listen TOCTOU gap
+  is acceptable for a single-user localhost dev tool.
+- **onError → watcher_error wiring.** No new CLI-side broadcast was added:
+  07-01's `GraphState` poll loop already emits `watcher_error` off
+  `refresh.state()`'s `lastError` null→non-null transition, and
+  `isSnapshotStale()`/`context.stale` already reflect `fatalError`. The CLI's
+  `onError` stays an operator-facing stderr line. §11 step 3 said "supply the
+  callback, no new event type" — the callback already existed; the broadcast
+  path is the poll loop, verified end-to-end in the worker-crash test.
+- **"kill -9 the worker" mechanism (§8).** In-process `runServe` with a real,
+  unmodified `ConcurrentRefreshController` captured via a `start` spy; the
+  test calls `.terminate()` on the controller's private `worker` (the Node
+  worker-threads analog of an ungraceful kill), producing the real `exit`
+  event `recordFatal` handles. Not a controller mock.
+- **Dangling-invalid `--snapshot` construction (§11 step 4c).**
+  `ASSUMPTION:` a genuinely-invalid-but-present snapshot cannot be built
+  through public APIs (`insertSnapshotGraph` validates endpoints), so the test
+  forces it with a direct SQL mutation in setup only (permitted here, never in
+  production): `DELETE FROM snapshot_nodes` for one node that an edge in the
+  snapshot references, making `findDanglingEndpoints` report the missing
+  endpoint. The asserted count comes from `findDanglingEndpoints` at runtime.
+- **Pinned/cross-repo `--snapshot` correction (§11 step 4b).** Independent
+  review reproduced `requested=1, active=2, served=2`: the CLI validated the
+  ID but `GraphState` reopened the active working-tree head. The correction
+  adds `GraphService.openSnapshot`, threads `snapshotId` through
+  `createServerApp`, disables refresh rotation for pinned sessions, and
+  validates active status, repository ownership, foreign keys, and dangling
+  endpoints. The cross-repo test now stores both repositories' snapshots in
+  the same SQLite DB and proves an ID owned by the other `repo_id` is rejected.
+- **Orphan test — spawn mechanism & OS-listing probe.** Spawned via direct
+  `spawn(process.execPath, ["--import", <tsx/esm>, testMarkerWorker.ts, ...])`
+  — NO `pnpm`/shell wrapper, so `child.pid` IS the node process killed (a
+  wrapper would orphan the real node child for reasons unrelated to the code
+  under test — this was observed and fixed during the build). OS-listing
+  command: Windows `tasklist /FI "PID eq <pid>" /NH` (POSIX `ps -p <pid>`).
+  Grace period: 2000 ms (§16). The setup probe SUCCEEDED on this Windows dev
+  machine, so all three OS-listing assertions RAN (not skipped) with real
+  `tasklist` verification. `it.skipIf(!probe.ok)` guards them for constrained
+  runners, with the reason surfaced in the test name.
+- **Windows graceful-signal constraint.** `child.kill('SIGINT'/'SIGTERM')`
+  hard-terminates a spawned child on Windows (verified empirically: the
+  handler never runs, exit signal is the sent signal). So graceful exit-0 +
+  teardown-order is asserted through `serve.ts`'s `deps.signal` AbortSignal
+  path — the SAME `teardown()` the `process.once('SIGINT'/'SIGTERM')`
+  handlers invoke — not through a spawned child's signal. The orphan (no
+  leaked process) guarantee IS verified via spawned children for all three
+  kill types, since any kill removes the process from the OS table.
+- **Signal/OS-listing correction.** Real spawned SIGINT/SIGTERM/SIGKILL exit
+  assertions always run. Only the separate `tasklist`/`ps` PID checks use
+  `skipIf` when the setup probe fails; POSIX SIGINT/SIGTERM require exit 0.
+- **Teardown-failure correction.** Cleanup is centralized and independently
+  attempts server/GraphState, refresh worker, incremental indexer, and DB
+  shutdown. A server-close rejection falls back to raw socket closure, reports
+  the failure, returns exit 1 within a bound, and cannot skip worker/DB cleanup.
+- **07-02 tests unchanged in behavior.** `serve-lifecycle.test.ts` passes
+  unmodified; `exit-codes.test.ts` changed only the EADDRINUSE expected
+  message text (permitted). Default `RunServeDeps` path (cli.ts →
+  `runServe(argv)` with no deps) is behaviorally identical to pre-07-03.
+- **Grace-period value:** 2000 ms (§16). **WS client mechanism:**
+  `@fastify/websocket`'s in-process `injectWS` (mirrors the server package's
+  own `ws.test.ts`), captured via a `createServerApp` spy — no `ws` module
+  specifier added to `@tadori/cli` (it is not a declared dependency).
+
 ## 22. Independent review result
 
-- Status: review. §22 content: **Pending Wave 1 adversarial review.**
+- Status: PASS (2026-07-18). Initial review found one blocker (validated
+  `--snapshot` ID was not the snapshot served), three high findings (conditional
+  signal-test skips, vacuous reindex assertion, teardown could skip worker stop
+  and hang), and precision gaps. All were corrected. Correction re-review found
+  no remaining blocker/high/medium; independent targeted run 29/29, coordinator
+  focused matrix 35/35, fresh repository suite 283/283.
 
 ## IF SOMETHING IS UNCLEAR
 

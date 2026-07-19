@@ -131,6 +131,33 @@ describe("GraphService snapshot safety", () => {
     );
   });
 
+  it("opens one explicitly selected snapshot and rejects another repository's snapshot", () => {
+    const source = "export function first() {}\n";
+    mkdirSync(path.join(tempRoot, "src"), { recursive: true });
+    writeFileSync(path.join(tempRoot, "src", "first.ts"), source);
+    const file = makeFile("src/first.ts", source);
+    const first = makeNode("function", "src/first.ts.first", file.normalizedPath);
+    const selected = insertSnapshotGraph(db, makeGraph(tempRoot, [file], [first], []));
+
+    const otherRoot = mkdtempSync(path.join(tmpdir(), "tadori-mcp-other-"));
+    try {
+      mkdirSync(path.join(otherRoot, "src"), { recursive: true });
+      writeFileSync(path.join(otherRoot, "src", "other.ts"), "export const other = true;\n");
+      const otherFile = makeFile("src/other.ts", "export const other = true;\n");
+      const otherNode = makeNode("function", "src/other.ts.other", otherFile.normalizedPath);
+      const other = insertSnapshotGraph(db, makeGraph(otherRoot, [otherFile], [otherNode], []));
+
+      expect(GraphService.openSnapshot(db, tempRoot, selected.snapshotId).snapshot.id).toBe(
+        selected.snapshotId
+      );
+      expect(() => GraphService.openSnapshot(db, tempRoot, other.snapshotId)).toThrow(
+        "is not available for repository"
+      );
+    } finally {
+      rmSync(otherRoot, { recursive: true, force: true });
+    }
+  });
+
   it("repairs missing legacy FTS rows before serving search requests", () => {
     const source = "export function searchable() {}\n";
     mkdirSync(path.join(tempRoot, "src"), { recursive: true });

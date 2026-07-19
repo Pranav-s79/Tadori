@@ -3,9 +3,8 @@
 ## 1. Header
 
 - ID / Title / Phase: 07-02 — `packages/cli` `tadori serve .` — Phase 7
-- Status: built (2026-07-18; implementation + correction pass complete,
-  full gate ALL PASS 261/261, independent validation PASS; CI + merge
-  pending)
+- Status: validated (2026-07-18; full gate ALL PASS 261/261, independent
+  validation PASS, CI green both OSes, squash-merged as `7865548` PR #10)
 - Primary builder: Claude Sonnet — sequential lifecycle wiring over
   already-built seams (`GraphService`-backed server from 07-01,
   `IncrementalRepositoryIndexer` from Week 6); flag parsing and step
