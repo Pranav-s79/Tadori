@@ -1,3 +1,22 @@
+---
+graph_blueprint_version: 1
+node_id: 08-07
+state: review
+phase: 8
+risk: medium
+complexity: M
+predecessors: [08-04, 08-06]
+successors: [08-11]
+execution_card: blueprints/execution/08-07.md
+dossier: blueprints/08-07-path-route-test-doc-displays.md
+read_policy: execution-card-first
+local_full_gate_budget: 1
+independent_validation_budget: 1
+architecture_review: on-demand-only
+---
+
+> **GRAPH EXECUTION MODE:** Read the execution card first. This long file is an evidence dossier, not mandatory context. Open only the sections linked by the card. Planning-time existence claims and line numbers are historical hints; live repository semantics win. Use one full local gate and one independent validation pass.
+
 # BLUEPRINT 08-07: Path, route, test, and document displays
 
 ## 1. Header

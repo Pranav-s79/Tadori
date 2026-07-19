@@ -1,3 +1,22 @@
+---
+graph_blueprint_version: 1
+node_id: 10-01
+state: review
+phase: 10
+risk: medium
+complexity: M
+predecessors: [08-10]
+successors: [10-02, 10-03]
+execution_card: blueprints/execution/10-01.md
+dossier: blueprints/10-01-25d-fixed-tilt.md
+read_policy: execution-card-first
+local_full_gate_budget: 1
+independent_validation_budget: 1
+architecture_review: on-demand-only
+---
+
+> **GRAPH EXECUTION MODE:** Read the execution card first. This long file is an evidence dossier, not mandatory context. Open only the sections linked by the card. Planning-time existence claims and line numbers are historical hints; live repository semantics win. Use one full local gate and one independent validation pass.
+
 # BLUEPRINT 10-01: 2.5D fixed-tilt mode
 
 ## 1. Header

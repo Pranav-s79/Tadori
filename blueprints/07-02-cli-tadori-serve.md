@@ -1,3 +1,22 @@
+---
+graph_blueprint_version: 1
+node_id: 07-02
+state: validated
+phase: 7
+risk: high
+complexity: M
+predecessors: [07-01]
+successors: [07-03, 08-01, 12-01]
+execution_card: blueprints/execution/07-02.md
+dossier: blueprints/07-02-cli-tadori-serve.md
+read_policy: execution-card-first
+local_full_gate_budget: 1
+independent_validation_budget: 1
+architecture_review: required-on-contract-delta
+---
+
+> **GRAPH EXECUTION MODE:** Read the execution card first. This long file is an evidence dossier, not mandatory context. Open only the sections linked by the card. Planning-time existence claims and line numbers are historical hints; live repository semantics win. Use one full local gate and one independent validation pass.
+
 # BLUEPRINT 07-02: `packages/cli` `tadori serve .`
 
 ## 1. Header

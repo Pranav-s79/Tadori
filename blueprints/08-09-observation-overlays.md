@@ -1,3 +1,22 @@
+---
+graph_blueprint_version: 1
+node_id: 08-09
+state: review
+phase: 8
+risk: medium
+complexity: M
+predecessors: [08-02, 08-08]
+successors: [09-05]
+execution_card: blueprints/execution/08-09.md
+dossier: blueprints/08-09-observation-overlays.md
+read_policy: execution-card-first
+local_full_gate_budget: 1
+independent_validation_budget: 1
+architecture_review: on-demand-only
+---
+
+> **GRAPH EXECUTION MODE:** Read the execution card first. This long file is an evidence dossier, not mandatory context. Open only the sections linked by the card. Planning-time existence claims and line numbers are historical hints; live repository semantics win. Use one full local gate and one independent validation pass.
+
 # BLUEPRINT 08-09: Observation overlays
 
 ## 1. Header

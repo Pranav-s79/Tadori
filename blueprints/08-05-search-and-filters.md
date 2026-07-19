@@ -1,3 +1,22 @@
+---
+graph_blueprint_version: 1
+node_id: 08-05
+state: review
+phase: 8
+risk: medium
+complexity: M
+predecessors: [08-02]
+successors: [08-11]
+execution_card: blueprints/execution/08-05.md
+dossier: blueprints/08-05-search-and-filters.md
+read_policy: execution-card-first
+local_full_gate_budget: 1
+independent_validation_budget: 1
+architecture_review: on-demand-only
+---
+
+> **GRAPH EXECUTION MODE:** Read the execution card first. This long file is an evidence dossier, not mandatory context. Open only the sections linked by the card. Planning-time existence claims and line numbers are historical hints; live repository semantics win. Use one full local gate and one independent validation pass.
+
 # BLUEPRINT 08-05: Search & filters
 
 ## 1. Header

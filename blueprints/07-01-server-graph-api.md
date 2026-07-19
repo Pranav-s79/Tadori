@@ -1,3 +1,22 @@
+---
+graph_blueprint_version: 1
+node_id: 07-01
+state: validated
+phase: 7
+risk: high
+complexity: M
+predecessors: [00-01]
+successors: [07-02, 08-01, 08-08]
+execution_card: blueprints/execution/07-01.md
+dossier: blueprints/07-01-server-graph-api.md
+read_policy: execution-card-first
+local_full_gate_budget: 1
+independent_validation_budget: 1
+architecture_review: required-on-contract-delta
+---
+
+> **GRAPH EXECUTION MODE:** Read the execution card first. This long file is an evidence dossier, not mandatory context. Open only the sections linked by the card. Planning-time existence claims and line numbers are historical hints; live repository semantics win. Use one full local gate and one independent validation pass.
+
 # BLUEPRINT 07-01: `packages/server` graph API
 
 ## 1. Header

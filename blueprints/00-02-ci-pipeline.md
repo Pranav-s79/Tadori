@@ -1,3 +1,22 @@
+---
+graph_blueprint_version: 1
+node_id: 00-02
+state: validated
+phase: 0
+risk: low
+complexity: S
+predecessors: [00-01]
+successors: [11-01, 12-03]
+execution_card: blueprints/execution/00-02.md
+dossier: blueprints/00-02-ci-pipeline.md
+read_policy: execution-card-first
+local_full_gate_budget: 1
+independent_validation_budget: 1
+architecture_review: on-demand-only
+---
+
+> **GRAPH EXECUTION MODE:** Read the execution card first. This long file is an evidence dossier, not mandatory context. Open only the sections linked by the card. Planning-time existence claims and line numbers are historical hints; live repository semantics win. Use one full local gate and one independent validation pass.
+
 # BLUEPRINT 00-02: CI pipeline (Linux + Windows)
 
 ## 1. Header

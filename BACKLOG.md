@@ -4,9 +4,10 @@ Source of truth for remaining work. Maintained by the planning model; consumed
 by builder agents via `blueprints/`. State lives in files, never in chat.
 
 Last updated: 2026-07-18
-Verified repository state: 07-02 validated and merged at `7865548` (PR #10,
-Linux+Windows CI green). Branch `bp/07-03-serve-hardening`; 07-03 corrections
-passed the fresh full gate (283/283, fixtures 5/5) and await PR CI.
+Verified repository state: Phase 7 complete through 07-03 (`f0181c3`, PR #11,
+Linux/Windows CI green). 08-01 validated on
+`bp/08-01-layout-engine-persistence` (full gate green, 293/293, independent
+validator PASS); 08-02 is the next frontier node.
 2026-07-17: `origin/main` moved to `6e89fc1` — the owner merged PR #1
 (Sprint4) and PR #2 (Sprint5) on GitHub as merge commits. Content-identical to
 the Sprint5 tip (`git diff 6795399 origin/main` empty) but the topology is no
@@ -107,13 +108,13 @@ with gates in `IMPLEMENTATION_STATUS.md`. Do not rebuild; later phases reuse.
 |---|---|---|---|---|
 | 07-01 | `packages/server` graph API | Fastify HTTP+WS on 127.0.0.1; read-only snapshot/nodes/edges/evidence/search endpoints over `@tadori/store`; snapshot pinning; `refresh_pending` surface | 00-01 | validated (`5dee45b`, PR #9, two-OS CI green) |
 | 07-02 | `packages/cli` `tadori serve .` | Frozen CLI contract end-to-end: resolve repo, load config (`.gitignore`/`.tadoriignore`/`tadori.rules.json`), reuse/refresh/rebuild snapshot, validate, start server, open browser, print startup facts, Ctrl+C teardown; frozen flags | 07-01 | validated (`7865548`, PR #10, two-OS CI green) |
-| 07-03 | Serve hardening | Port conflict/fallback, browser-launch failure path, orphan-free supervision of watcher+server, `--snapshot`/`--reindex` paths, non-TS repo errors | 07-02 | built (283/283 full gate, fixtures 5/5, correction re-review PASS; CI/PR pending) |
+| 07-03 | Serve hardening | Port conflict/fallback, browser-launch failure path, orphan-free supervision of watcher+server, `--snapshot`/`--reindex` paths, non-TS repo errors | 07-02 | validated (`f0181c3`, PR #11, CI green both OSes) |
 
 ## Phase 8 — Guided 2D visualization
 
 | ID | Item | Scope | Depends | Status |
 |---|---|---|---|---|
-| 08-01 | Layout engine + persistence | graphology seeded force-directed run once; persist into the existing frozen migration-004 `layout_positions` table (no new migration — ARCHITECTURE.md C-1); frozen positions; new-node package-centroid placement w/ local relaxation; byte-identical reload | 07-01 | pending |
+| 08-01 | Layout engine + persistence | graphology seeded force-directed run once; persist into the existing frozen migration-004 `layout_positions` table (no new migration — ARCHITECTURE.md C-1); frozen positions; new-node package-centroid placement w/ local relaxation; byte-identical reload | 07-01, 07-02, 07-03 | validated (2026-07-19; full gate green, 293/293, independent validator PASS) |
 | 08-02 | `apps/viz` scaffold + package map | React+Vite+Sigma.js, fully offline bundle; package-level base map, convex hulls + labels; provenance edge legend (solid/dashed/dotted, muted doc/git) | 08-01 | pending |
 | 08-03 | Semantic zoom: file expansion | Package → files level; deterministic; no global movement | 08-02 | pending |
 | 08-04 | Task-region symbol expansion | File → exported symbols level (third and final zoom level) | 08-03 | pending |

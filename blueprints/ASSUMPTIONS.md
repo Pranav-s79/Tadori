@@ -1,5 +1,8 @@
 # Tadori planning assumptions (living register)
 
+> **Execution note (2026-07-19):** This is a shared decision/evidence dossier. Planning-time existence claims and source line numbers may be stale. Use `TASK_GRAPH.json`, the current execution card, and live repository semantics for preflight. Open only the sections adjacent to the current contract edge.
+
+
 Every assumption is dated, owned, and either CONFIRMED (by whom/what) or OPEN.
 Builders must not silently contradict an entry; a conflicting discovery is
 reported back and this file is updated.
