@@ -14,8 +14,8 @@ blueprint IDs. See `BACKLOG.md` for scope detail.
 | 00-01A | allowJs scanner contract & regression | 0 | validated (2026-07-17; full gate 178/178, `tadori diff .` exit 0 on Tadori, adversarial review PASS) | — | S | S | `blueprints/00-01A-allowjs-scanner-contract.md` | `8be4741` (main: `06d951f`, PR #5) |
 | 00-02 | CI pipeline (Linux+Windows) | 0 | validated (2026-07-17; both OS green, run 29628448665, 178/178 parity; owner-merged PR #7) | 00-01 | H | S | `blueprints/00-02-ci-pipeline.md` | `7876837` (PR #7) |
 | 07-01 | `packages/server` graph API | 7 | validated (2026-07-18; full gate ALL PASS 229/229, independent validation PASS, CI green both OSes, squash-merged PR #9) | 00-01 | S | M | `blueprints/07-01-server-graph-api.md` | `5dee45b` (PR #9) |
-| 07-02 | `packages/cli` `tadori serve .` | 7 | built (2026-07-18; full gate ALL PASS 261/261, independent validation PASS, EADDRINUSE correction closed; CI + merge pending) | 07-01 | S | M | `blueprints/07-02-cli-tadori-serve.md` | — |
-| 07-03 | Serve hardening | 7 | review | 07-02 | S | M | `blueprints/07-03-serve-hardening.md` | — |
+| 07-02 | `packages/cli` `tadori serve .` | 7 | validated (2026-07-18; full gate ALL PASS 261/261, independent validation PASS, CI green both OSes, squash-merged PR #10) | 07-01 | S | M | `blueprints/07-02-cli-tadori-serve.md` | `7865548` (PR #10) |
+| 07-03 | Serve hardening | 7 | built (2026-07-18; full gate 283/283 + fixtures 5/5, independent correction review PASS; CI + merge pending) | 07-02 | O | M | `blueprints/07-03-serve-hardening.md` | — |
 | 08-01 | Layout engine + persistence | 8 | review | 07-01 | S | M | `blueprints/08-01-layout-engine-persistence.md` | — |
 | 08-02 | `apps/viz` scaffold + package map | 8 | review | 08-01 | S | L | `blueprints/08-02-viz-package-map.md` | — |
 | 08-03 | Semantic zoom: file expansion | 8 | review | 08-02 | S | M | `blueprints/08-03-semantic-zoom-files.md` | — |

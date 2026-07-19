@@ -4,7 +4,10 @@ import path from "node:path";
 import type { GraphEdge, GraphNode, NodeKind, Relation, RepoStateKind } from "@tadori/core";
 import { computeWorkspaceHash, scanRepository } from "@tadori/indexer";
 import {
+  findDanglingEndpoints,
+  foreignKeyCheck,
   getActiveSnapshot,
+  getSnapshot,
   ensureSnapshotFts,
   loadSnapshotGraph,
   searchNodeFts,
@@ -148,6 +151,40 @@ export class GraphService {
     // Repair legacy/missing search rows once at session initialization. Normal
     // MCP requests remain read-only, including while another connection
     // publishes a replacement snapshot under WAL.
+    ensureSnapshotFts(db, loaded.snapshot.id);
+    return new GraphService(db, resolvedRoot, loaded.snapshot, loaded.graph, refreshOverlay);
+  }
+
+  /** Opens one explicitly selected, valid snapshot for the resolved repository. */
+  static openSnapshot(
+    db: Database,
+    repoRoot: string,
+    snapshotId: number,
+    refreshOverlay?: RefreshFreshnessOverlay
+  ): GraphService {
+    const resolvedRoot = path.resolve(repoRoot).split(path.sep).join("/");
+    const loadSelected = db.transaction((): {
+      snapshot: SnapshotRow;
+      graph: StoredSnapshotGraph;
+    } => {
+      const repo = db
+        .prepare("SELECT id FROM repositories WHERE root_path = ?")
+        .get(resolvedRoot) as { id: number } | undefined;
+      const snapshot = getSnapshot(db, snapshotId);
+      if (!repo || !snapshot || snapshot.repo_id !== repo.id || snapshot.status !== "active") {
+        throw new Error(`Snapshot ${snapshotId} is not available for repository ${resolvedRoot}`);
+      }
+      const foreignKeys = foreignKeyCheck(db);
+      if (foreignKeys.length > 0) {
+        throw new Error(`Snapshot ${snapshotId} cannot be served with foreign-key violations`);
+      }
+      const dangling = findDanglingEndpoints(db, snapshot.id);
+      if (dangling.length > 0) {
+        throw new Error(`Snapshot ${snapshotId} cannot be served with dangling endpoints`);
+      }
+      return { snapshot, graph: loadSnapshotGraph(db, snapshot.id) };
+    });
+    const loaded = loadSelected.deferred();
     ensureSnapshotFts(db, loaded.snapshot.id);
     return new GraphService(db, resolvedRoot, loaded.snapshot, loaded.graph, refreshOverlay);
   }

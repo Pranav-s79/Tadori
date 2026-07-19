@@ -6,47 +6,32 @@ Updated by the coordinator at every stage transition. No raw logs.
 ## Current state
 
 - Timestamp: 2026-07-18 (autonomous run, session 2)
-- Current branch: `bp/07-02-cli-tadori-serve` (off main `5dee45b`)
-- DONE this session: 07-01 VALIDATED — full gate ALL PASS, independent
-  validation PASS (8/8 correction points), CI green both OSes (run
-  29644637101), squash-merged as `5dee45b` (PR #9), branch deleted, INDEX
-  row = validated.
-- Current task: 07-02 `tadori serve .` — blueprint cold-start review PASS
-  2026-07-18 (marked ready; flag-count wording corrected, §22 recorded).
-  Implementation COMPLETE + validation PASS + correction pass closed
-  (EADDRINUSE exit-4 test, @tadori/cli vitest alias): 32/32 focused,
-  full gate ALL PASS 2026-07-18 (261/261 tests, fixtures, benchmark,
-  `pnpm tadori diff .`, git diff --check). Status docs updated
-  (blueprint §1/§21/§22, INDEX=built, IMPLEMENTATION_STATUS). Stage:
-  commit → push → PR → CI (07-03 blueprint review runs during CI).
-- 07-03 packet ready (Pipeline Agent): complete blueprint, needs own
-  cold-start review + §4 line-range re-verification
-  (concurrentRefresh.ts/incremental.ts/snapshots.ts spans) before build;
-  sole dependency = 07-02 merge.
+- Current branch: `bp/07-03-serve-hardening` (off main `7865548`)
+- DONE this session: 07-01 VALIDATED (merged `5dee45b`, PR #9, CI green
+  both OSes); 07-02 VALIDATED (merged `7865548`, PR #10, CI green both
+  OSes — ubuntu 2m5s, windows 3m34s; INDEX/blueprint flips to validated
+  ride the 07-03 branch).
+- Current task: 07-03 serve hardening. Implementation review found a real
+  pinned-snapshot blocker (`--snapshot 1` validated 1 but served active 2),
+  plus teardown, reindex-proof, and process-test gaps. Corrections are on disk:
+  exact snapshot threading/no rotation, repository+FK validation, failure-safe
+  cleanup, non-vacuous reindex proof, and always-run real signal assertions.
+  Focused correction suite: 35/35; independent correction re-review PASS;
+  fresh full gate ALL PASS (283/283, fixtures 5/5 exact, benchmark and diff
+  flow pass). Stage: final diff/staging audit → commit/push/PR/two-OS CI.
 - Environment fact: `.npmrc` pins `use-node-version=22.14.0` (machine Node
   25 has no better-sqlite3 prebuilds/toolchain). Always run tests via
   `pnpm`; bare `npx vitest` bypasses the pin and fails on native ABI.
 - Phase 0 (00-01A, 00-01, 00-02): fully validated and merged (PRs #4–#8;
   see git history for evidence). CI LIVE on both OSes for main + PRs.
-- 07-01 status: blueprint ready (task_start contradiction resolved via
-  AD-011). Implementation on disk: `packages/server/` untracked + 4 wiring
-  files (pnpm-lock.yaml, pnpm-workspace.yaml, tsconfig.base.json,
-  tsconfig.json). Prior session: 51/51 server tests, 229/229 repo tests,
-  6 required + 1 recommended review corrections applied.
-- Pipeline Agent packet (2026-07-18): staging list clean — lockfile adds
-  only fastify@5.10.0 / @fastify/websocket@11.3.0 / workspace links; no
-  unrelated deps. Commit scope = packages/server/** + 4 wiring files +
-  status docs.
-- 07-02 readiness: blueprint implementation-ready, sole hard dependency is
-  07-01 exports (`createServerApp`, `ServerAppOptions`); 00-01A soft dep
-  satisfied. INDEX.md row may still say `review` — reconcile at selection.
-- Pipeline: validation (Testing Agent) → full gate incl.
-  `pnpm benchmark:incremental` → status docs → commit → push → PR → CI →
-  squash-merge → 07-02.
+- Next dependency root after 07-03 publication: 08-01 blueprint correction.
+  Its current `review` draft does not yet own layout materialization through
+  the server route and has unresolved empty-layout/input/benchmark contracts;
+  implementation must not start until those are corrected and reviewed.
 
 ## Repository topology
 
-- `origin/main` = local `main` = `fad17c2` (PR #8 docs close of Phase 0).
+- `origin/main` = local `main` = `7865548` (07-02, PR #10).
 - Sprint4/5/6/7 branches remain on origin (merged content; not deleted);
   all `bp/*` task branches deleted after merge.
 

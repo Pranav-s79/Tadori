@@ -3,9 +3,10 @@
 Source of truth for remaining work. Maintained by the planning model; consumed
 by builder agents via `blueprints/`. State lives in files, never in chat.
 
-Last updated: 2026-07-17
-Verified repository state: Week 6 complete at `15540b3` (170/170 tests, 5/5
-fixtures exact, incremental gates pass). Branch `Sprint7-core-visualization`.
+Last updated: 2026-07-18
+Verified repository state: 07-02 validated and merged at `7865548` (PR #10,
+Linux+Windows CI green). Branch `bp/07-03-serve-hardening`; 07-03 corrections
+passed the fresh full gate (283/283, fixtures 5/5) and await PR CI.
 2026-07-17: `origin/main` moved to `6e89fc1` — the owner merged PR #1
 (Sprint4) and PR #2 (Sprint5) on GitHub as merge commits. Content-identical to
 the Sprint5 tip (`git diff 6795399 origin/main` empty) but the topology is no
@@ -63,7 +64,9 @@ material only; TypeScript/JavaScript only; ATLAS separate; no runtime tracing.
 
 Decisions locked 2026-07-15 (owner answers):
 - Push authorized once for existing sprint branches + resulting `main`; no tags/releases.
-- One `Sprint<N>-<slug>` branch per phase; local commits per blueprint; one PR per phase.
+- One `bp/<task>` branch and PR per blueprint/task; `main` advances only by
+  reviewed PR merge. This supersedes the earlier sprint-per-phase convention
+  and matches the owner-requested task branch workflow used by PRs #5–#10.
 - Deps allowed: spec-named runtime deps (react, sigma, graphology, fastify,
   simple-git; R3F behind experiment flag only) + minimal tooling (Vite). Anything
   else: justified in-blueprint, reviewed before addition.
@@ -102,9 +105,9 @@ with gates in `IMPLEMENTATION_STATUS.md`. Do not rebuild; later phases reuse.
 
 | ID | Item | Scope | Depends | Status |
 |---|---|---|---|---|
-| 07-01 | `packages/server` graph API | Fastify HTTP+WS on 127.0.0.1; read-only snapshot/nodes/edges/evidence/search endpoints over `@tadori/store`; snapshot pinning; `refresh_pending` surface | 00-01 | pending |
-| 07-02 | `packages/cli` `tadori serve .` | Frozen CLI contract end-to-end: resolve repo, load config (`.gitignore`/`.tadoriignore`/`tadori.rules.json`), reuse/refresh/rebuild snapshot, validate, start server, open browser, print startup facts, Ctrl+C teardown; frozen flags | 07-01 | pending |
-| 07-03 | Serve hardening | Port conflict/fallback, browser-launch failure path, orphan-free supervision of watcher+server, `--snapshot`/`--reindex` paths, non-TS repo errors | 07-02 | pending |
+| 07-01 | `packages/server` graph API | Fastify HTTP+WS on 127.0.0.1; read-only snapshot/nodes/edges/evidence/search endpoints over `@tadori/store`; snapshot pinning; `refresh_pending` surface | 00-01 | validated (`5dee45b`, PR #9, two-OS CI green) |
+| 07-02 | `packages/cli` `tadori serve .` | Frozen CLI contract end-to-end: resolve repo, load config (`.gitignore`/`.tadoriignore`/`tadori.rules.json`), reuse/refresh/rebuild snapshot, validate, start server, open browser, print startup facts, Ctrl+C teardown; frozen flags | 07-01 | validated (`7865548`, PR #10, two-OS CI green) |
+| 07-03 | Serve hardening | Port conflict/fallback, browser-launch failure path, orphan-free supervision of watcher+server, `--snapshot`/`--reindex` paths, non-TS repo errors | 07-02 | built (283/283 full gate, fixtures 5/5, correction re-review PASS; CI/PR pending) |
 
 ## Phase 8 — Guided 2D visualization
 

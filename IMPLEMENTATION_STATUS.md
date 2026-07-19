@@ -1,7 +1,7 @@
 # Tadori Implementation Status
 
-Last updated: 2026-07-18 (07-02 tadori serve CLI built; 07-01 validated and
-merged as `5dee45b` PR #9)
+Last updated: 2026-07-18 (07-03 independent-review corrections fully validated;
+07-02 validated and merged as `7865548` PR #10)
 
 ## Current milestone
 
@@ -12,7 +12,63 @@ evidence, MCP, context selection, incremental indexing) remain complete and
 frozen; Phase 0 hygiene (00-01A/00-01/00-02) is validated with live
 two-OS CI.
 
-## 07-02 — `packages/cli` `tadori serve .` (built, 2026-07-18; CI + merge pending)
+## 07-03 — Serve hardening (built, 2026-07-18; full gate passed, CI pending)
+
+- Hardened 07-02's `serve.ts` lifecycle in place (no re-architecture, reused
+  the existing `RunServeDeps` seam — no new interface). Port algorithm
+  (§8/§10): default (`--port` omitted) → `listen({port:0})` OS-assigned, no
+  conflict possible; explicit `--port N` occupied → hard-fail exit 4 with the
+  exact message `"Port ${N} is already in use. Choose a different port with
+  --port, or omit --port to let the OS pick one."`. An explicit occupied port
+  is probed (`net.createServer`) BEFORE `createServerApp`, so no server routes
+  or refresh worker start on the conflict path (spy asserts `createServerApp`
+  never called); the `app.listen` call also carries its own EADDRINUSE catch as
+  a TOCTOU backstop.
+- Browser-launch failure: the non-fatal call site already existed; message
+  pinned to `"Could not open a browser automatically. Open ${url} manually."`.
+- Worker-crash (`watcher_error`): no new CLI wiring needed — `GraphState`'s
+  poll loop already emits `watcher_error` off `refresh.state()`'s
+  null→non-null `lastError` transition, and `isSnapshotStale()` already flips
+  `context.stale` true when `fatalError !== null`. The CLI's `onError`
+  remains an operator-facing stderr log. Verified end-to-end: worker
+  `terminate()` → HTTP still serves last snapshot (stale:true) → WS client
+  gets `watcher_error` → subsequent SIGINT exits 0 (idempotent `refresh.stop()`).
+- `--snapshot` two-case validation pinned to §10: nonexistent id →
+  `"Snapshot #${id} does not exist."`; present-but-dangling →
+  `"Snapshot #${id} failed validation: ${n} dangling endpoint(s)."` (exit 3).
+- Independent review found the validated ID was not threaded into
+  `createServerApp`; the server reopened the newest working-tree head. The
+  correction adds an exact-snapshot `GraphService` seam, validates repository
+  ownership/active status/foreign keys, and prevents refresh rotation while a
+  pinned session is running. A regression test builds requested snapshot 1,
+  active snapshot 2, refreshes to snapshot 3, and proves snapshot 1 remains
+  served throughout.
+- Teardown now attempts server/GraphState, refresh worker, incremental indexer,
+  and database cleanup independently. A simulated `app.close()` rejection
+  proves worker/DB cleanup still occurs, the raw listening socket is closed,
+  and `runServe` resolves with exit 1 instead of hanging.
+- Empty-repo and non-TS-repo both produce the identical `resolveRepoRoot`
+  message (documented honest equivalence, not a gap).
+- Orphan supervision (OS-level `tasklist`/PID assertions, grace 2000 ms):
+  SIGTERM / SIGINT / SIGKILL of a directly-spawned `tadori serve` process all
+  leave zero processes at its PID. On this Windows machine the `tasklist`
+  probe SUCCEEDED, so all three OS-listing assertions RAN (not skipped).
+  Graceful exit-0 + teardown order is exercised via the in-process
+  `AbortSignal` path (the same `teardown()` the real SIGINT/SIGTERM handlers
+  call), because Windows `child.kill('SIGINT'/'SIGTERM')` hard-terminates a
+  spawned child (verified: the handler never runs).
+- Tests: 5 new files (`port-fallback`, `browser-launch-failure`,
+  `orphan-supervision`, `snapshot-reindex-hardening`, `repo-error-messages`)
+  + `fixtures/testMarkerWorker.ts`; existing `exit-codes.test.ts` EADDRINUSE
+  assertion updated to the new exact message (message-text change only).
+  Corrected full suite: 50 files, 283/283.
+- Fresh correction full gate 2026-07-18 (all exit 0): skills:check,
+  typecheck, lint, test,
+  `python validate_fixtures.py`, fixtures:validate/index/typecheck (5/5
+  golden fixtures PASS), benchmark:incremental, `pnpm tadori diff .`,
+  `git diff --check`.
+
+## 07-02 — `packages/cli` `tadori serve .` (validated, 2026-07-18; merged `7865548`, PR #10, CI green both OSes)
 
 - New workspace package `@tadori/cli`: `tadori serve <path>` implementing
   all nine frozen `docs/CLI_CONTRACT.md` steps in order and the five
@@ -690,13 +746,13 @@ recorded in the Week 6 validation section above.
 
 ## Current roadmap phase
 
-Week 6 / Phase E is complete and validated. The next task is Weeks 7–8 /
-Phase F, beginning with the frozen `tadori serve .` workflow: snapshot reuse or
-refresh, validated local API startup, a stable default 2D package map, binding
-only to `127.0.0.1`, optional browser launch, truthful startup state, and clean
-Ctrl+C teardown. The current graph, snapshot, evidence, identity, ranking, and
-MCP contracts are covered by 170 repository tests and the exact five-fixture
-harness.
+Phase 7 local serving is built through 07-03 and locally validated; PR CI is
+the remaining publication gate. The next implementation dependency root is
+08-01 (layout engine + persistence), but its review draft must first close the
+server-materialization ownership, empty-layout persistence, edge-input, and
+benchmark-contract gaps. The current graph, snapshot, evidence, identity,
+ranking, MCP, server, and CLI contracts are covered by 283 repository tests and
+the exact five-fixture harness.
 
 ## Repository hygiene (2026-07-17)
 

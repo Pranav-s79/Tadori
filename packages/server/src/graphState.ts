@@ -25,6 +25,8 @@ export interface GraphStateOptions {
   db: Database;
   repoRoot: string;
   refresh: ConcurrentRefreshController;
+  /** When set, serve this snapshot for the lifetime of the process. */
+  snapshotId?: number;
   /** Poll interval (ms) for detecting refresh-state changes. ASSUMPTION: the
    * frozen ConcurrentRefreshController exposes no change event, only a
    * `state()` getter (verified: `worker` is `private readonly`, no public
@@ -65,6 +67,7 @@ export class GraphState {
   private readonly db: Database;
   private readonly repoRoot: string;
   private readonly refresh: ConcurrentRefreshController;
+  private readonly pinnedSnapshotId: number | null;
   private service: GraphService;
   private eventLog: EventLog;
   private lastKnownState: SerializedRefreshState;
@@ -76,7 +79,11 @@ export class GraphState {
     this.db = options.db;
     this.repoRoot = options.repoRoot;
     this.refresh = options.refresh;
-    this.service = GraphService.open(this.db, this.repoRoot, this.refresh, PREFERRED_KIND);
+    this.pinnedSnapshotId = options.snapshotId ?? null;
+    this.service =
+      this.pinnedSnapshotId === null
+        ? GraphService.open(this.db, this.repoRoot, this.refresh, PREFERRED_KIND)
+        : GraphService.openSnapshot(this.db, this.repoRoot, this.pinnedSnapshotId, this.refresh);
     this.eventLog = new EventLog(this.db, this.service, "tadori-serve", "tadori serve HTTP session");
     this.lastKnownState = this.refresh.state();
     const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
@@ -137,7 +144,9 @@ export class GraphState {
       }
       const previousState = this.lastKnownState;
       const rotated =
-        nextState.snapshotId !== null && nextState.snapshotId !== previousState.snapshotId;
+        this.pinnedSnapshotId === null &&
+        nextState.snapshotId !== null &&
+        nextState.snapshotId !== previousState.snapshotId;
       if (rotated) {
         // May throw (GraphService.open/new EventLog) during the rotation
         // race. Only commit lastKnownState AFTER a successful rotation, so a

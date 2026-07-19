@@ -22,6 +22,8 @@ export interface ServerAppOptions {
   repoRoot: string;
   /** Caller-owned lifecycle (07-02 owns start/stop). */
   refresh: ConcurrentRefreshController;
+  /** Optional immutable snapshot selection for `tadori serve --snapshot`. */
+  snapshotId?: number;
 }
 
 declare module "fastify" {
@@ -41,7 +43,8 @@ export async function createServerApp(options: ServerAppOptions): Promise<Fastif
   const graphState = new GraphState({
     db: options.db,
     repoRoot: options.repoRoot,
-    refresh: options.refresh
+    refresh: options.refresh,
+    ...(options.snapshotId === undefined ? {} : { snapshotId: options.snapshotId })
   });
   app.decorate("graphState", graphState);
   app.addHook("onClose", async () => {

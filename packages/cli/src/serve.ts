@@ -1,4 +1,5 @@
 import { mkdirSync } from "node:fs";
+import { createServer } from "node:net";
 import path from "node:path";
 import open from "open";
 import {
@@ -53,6 +54,39 @@ function modeNotImplementedError(mode: ServeFlags["mode"]): string | null {
     return "Mode '3d-experiment' is not implemented until Phase 10 (10-02). Use --mode 2d.";
   }
   return null;
+}
+
+/**
+ * §8/§10: for an explicit `--port N`, verify the port is bindable on
+ * 127.0.0.1 before building the server. Returns true if free, false on
+ * EADDRINUSE (the only conflict we hard-fail on). Any other bind error is
+ * rethrown to flow through the normal outer catch. The default `port 0`
+ * case skips this entirely — the OS assigns an unused ephemeral port, so no
+ * conflict is possible by construction (no port scanning; §8 rejected that).
+ * Note: The TOCTOU gap between the probe and real listen is acceptable for a
+ * single-user localhost dev tool; the listen-site catch below is the backstop.
+ */
+function probePortFree(port: number): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.once("error", (error: NodeJS.ErrnoException) => {
+      if (error.code === "EADDRINUSE") {
+        resolve(false);
+      } else {
+        reject(error);
+      }
+    });
+    probe.listen({ host: "127.0.0.1", port }, () => {
+      probe.close(() => resolve(true));
+    });
+  });
+}
+
+function portInUseMessage(port: number): string {
+  return (
+    `Port ${port} is already in use. Choose a different port with --port, ` +
+    "or omit --port to let the OS pick one.\n"
+  );
 }
 
 function printStartupFacts(facts: StartupFacts, write: (text: string) => void): void {
@@ -118,16 +152,64 @@ export async function runServe(argv: readonly string[], deps: RunServeDeps = {})
   let indexer: IncrementalRepositoryIndexer | null = null;
   let refresh: ConcurrentRefreshController | null = null;
   let app: ServerApp | null = null;
+  let pinnedSnapshotId: number | null = null;
 
-  /** Closes whatever has been opened so far and returns the given exit code. */
-  const closeAndExit = async (code: number): Promise<number> => {
+  interface CleanupFailure {
+    stage: "server" | "refresh" | "indexer" | "database";
+    error: unknown;
+  }
+  const cleanupResources = async (): Promise<CleanupFailure[]> => {
+    const failures: CleanupFailure[] = [];
+    const currentApp = app;
+    app = null;
+    if (currentApp) {
+      try {
+        await currentApp.close();
+      } catch (error) {
+        failures.push({ stage: "server", error });
+        try {
+          await currentApp.graphState.close();
+          currentApp.server.closeAllConnections?.();
+          if (currentApp.server.listening) {
+            await new Promise<void>((resolve, reject) => {
+              currentApp.server.close((closeError) =>
+                closeError === undefined ? resolve() : reject(closeError)
+              );
+            });
+          }
+        } catch (fallbackError) {
+          failures.push({ stage: "server", error: fallbackError });
+        }
+      }
+    }
+    try {
+      await refresh?.stop();
+    } catch (error) {
+      failures.push({ stage: "refresh", error });
+    } finally {
+      refresh = null;
+    }
     try {
       await indexer?.stop();
-    } catch {
-      // Best-effort cleanup.
+    } catch (error) {
+      failures.push({ stage: "indexer", error });
+    } finally {
+      indexer = null;
     }
-    db.close();
-    return code;
+    try {
+      db.close();
+    } catch (error) {
+      failures.push({ stage: "database", error });
+    }
+    return failures;
+  };
+  const closeAndExit = async (code: number): Promise<number> => {
+    const failures = await cleanupResources();
+    for (const failure of failures) {
+      const message = failure.error instanceof Error ? failure.error.message : String(failure.error);
+      stderr(`Cleanup failed (${failure.stage}): ${message}\n`);
+    }
+    return failures.length === 0 ? code : EXIT_UNEXPECTED_ERROR;
   };
 
   try {
@@ -137,19 +219,37 @@ export async function runServe(argv: readonly string[], deps: RunServeDeps = {})
     if (flags.snapshotId !== null) {
       // Pinned --snapshot: validate instead of the working-tree reuse/refresh flow.
       const snapshot = getSnapshot(db, flags.snapshotId);
-      if (!snapshot) {
-        stderr(`Snapshot ${flags.snapshotId} does not exist.\n`);
+      const normalizedRoot = root.split(path.sep).join("/");
+      const repository = db
+        .prepare("SELECT id FROM repositories WHERE root_path = ?")
+        .get(normalizedRoot) as { id: number } | undefined;
+      if (
+        !snapshot ||
+        !repository ||
+        snapshot.repo_id !== repository.id ||
+        snapshot.status !== "active"
+      ) {
+        stderr(`Snapshot #${flags.snapshotId} does not exist.\n`);
+        return await closeAndExit(EXIT_INVALID_SNAPSHOT);
+      }
+      const foreignKeys = foreignKeyCheck(db);
+      if (foreignKeys.length > 0) {
+        stderr(
+          `Snapshot #${flags.snapshotId} failed validation: ` +
+            `${foreignKeys.length} foreign-key violation(s).\n`
+        );
         return await closeAndExit(EXIT_INVALID_SNAPSHOT);
       }
       const dangling = findDanglingEndpoints(db, snapshot.id);
       if (dangling.length > 0) {
         stderr(
-          `Snapshot ${flags.snapshotId} failed dangling-endpoint validation ` +
-            `(${dangling.length} violation(s)).\n`
+          `Snapshot #${flags.snapshotId} failed validation: ` +
+            `${dangling.length} dangling endpoint(s).\n`
         );
         return await closeAndExit(EXIT_INVALID_SNAPSHOT);
       }
       snapshotId = snapshot.id;
+      pinnedSnapshotId = snapshot.id;
       indexState = "stale";
     } else {
       // Step 3: reuse/refresh/rebuild.
@@ -191,17 +291,44 @@ export async function runServe(argv: readonly string[], deps: RunServeDeps = {})
       }
     }
 
+    // §8/§10: an explicit occupied `--port` fails hard (exit 4) BEFORE any
+    // server routes or refresh worker are started (no partial startup). The
+    // default (port 0) case is skipped — the OS always assigns a free port.
+    if (flags.port !== null && !(await probePortFree(flags.port))) {
+      stderr(portInUseMessage(flags.port));
+      return await closeAndExit(EXIT_PORT_UNAVAILABLE);
+    }
+
     // Step 5/6/7: start local API + status route + listen + open browser.
+    // onError logs to stderr for the operator; the WS `watcher_error` frame is
+    // emitted independently by GraphState's poll loop off refresh.state()'s
+    // lastError transition (no CLI-side broadcast wiring needed — see §21).
     refresh = await ConcurrentRefreshController.start(db, root, {
       onError: (error) => stderr(`Tadori refresh worker failed: ${error.message}\n`)
     });
-    app = await createServerApp({ db, repoRoot: root, refresh });
+    app = await createServerApp({
+      db,
+      repoRoot: root,
+      refresh,
+      ...(pinnedSnapshotId === null ? {} : { snapshotId: pinnedSnapshotId })
+    });
     app.get("/", async (_request, reply) => {
       return reply.type("text/html").send(
         renderStatusPage({ repoRoot: root, snapshotId, indexState, mode: "2d" })
       );
     });
-    await app.listen({ host: "127.0.0.1", port: flags.port ?? 0 });
+    // §11 step 1 carve-out: the listen call gets its own try/catch for the
+    // exit-4 path (backstop for the probe's TOCTOU gap). Every other startup
+    // error still flows through the outer catch unchanged.
+    try {
+      await app.listen({ host: "127.0.0.1", port: flags.port ?? 0 });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EADDRINUSE" && flags.port !== null) {
+        stderr(portInUseMessage(flags.port));
+        return await closeAndExit(EXIT_PORT_UNAVAILABLE);
+      }
+      throw error;
+    }
     const address = app.server.address();
     if (address === null || typeof address === "string") {
       throw new Error("Expected an AddressInfo from app.server.address()");
@@ -223,29 +350,15 @@ export async function runServe(argv: readonly string[], deps: RunServeDeps = {})
     // Step 9: teardown on SIGINT/SIGTERM, exact order (§12).
     return await new Promise<number>((resolve) => {
       let shuttingDown = false;
-      const currentApp = app;
-      const currentRefresh = refresh;
-      const currentDb = db;
       const teardown = async (): Promise<void> => {
         if (shuttingDown) {
           return;
         }
         shuttingDown = true;
-        try {
-          // (1)+(2) app.close() stops accepting new connections and, via
-          // @fastify/websocket's onClose hook, closes active WS clients.
-          if (currentApp) {
-            await currentApp.close();
-          }
-          // (3) stop the refresh worker.
-          if (currentRefresh) {
-            await currentRefresh.stop();
-          }
-        } finally {
-          // (5) close the database.
-          currentDb.close();
-        }
-        resolve(EXIT_CLEAN);
+        // app.close() drains HTTP/WS, followed by refresh/indexer shutdown and
+        // database close. Each stage is attempted even when an earlier stage
+        // fails, so a close error cannot orphan the worker or hang shutdown.
+        resolve(await closeAndExit(EXIT_CLEAN));
       };
       if (deps.signal) {
         if (deps.signal.aborted) {
@@ -259,33 +372,20 @@ export async function runServe(argv: readonly string[], deps: RunServeDeps = {})
       }
     });
   } catch (error) {
-    try {
-      await app?.close();
-    } catch {
-      // Best-effort cleanup; the original error is what gets reported.
-    }
-    try {
-      await refresh?.stop();
-    } catch {
-      // Best-effort cleanup.
-    }
-    try {
-      await indexer?.stop();
-    } catch {
-      // Best-effort cleanup.
-    }
     const message = error instanceof Error ? error.message : String(error);
     const isPortError =
       error instanceof Error &&
       "code" in error &&
       (error as NodeJS.ErrnoException).code === "EADDRINUSE";
     if (isPortError) {
-      stderr(`Port unavailable: ${message}\n`);
-      db.close();
-      return EXIT_PORT_UNAVAILABLE;
+      // Explicit-port conflicts are handled at the probe/listen carve-out
+      // above with §10's exact message; this branch is the residual backstop
+      // (e.g. a surprising EADDRINUSE from a non-listen call). Reuse the same
+      // §10 string when a port was pinned, else a generic port message.
+      stderr(flags.port !== null ? portInUseMessage(flags.port) : `Port unavailable: ${message}\n`);
+      return await closeAndExit(EXIT_PORT_UNAVAILABLE);
     }
     stderr(`${message}\n`);
-    db.close();
-    return EXIT_UNEXPECTED_ERROR;
+    return await closeAndExit(EXIT_UNEXPECTED_ERROR);
   }
 }

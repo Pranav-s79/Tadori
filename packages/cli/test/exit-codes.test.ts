@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { openDatabase } from "@tadori/store";
 import * as mcpModule from "@tadori/mcp";
+import * as serverModule from "@tadori/server";
 import { runServe } from "../src/serve.js";
 
 const FIXTURE_REPO_ROOT = fileURLToPath(
@@ -129,6 +130,56 @@ describe("runServe teardown", () => {
     expect(stopCount).toBe(1);
   });
 
+  it("a server-close failure still stops refresh, closes the socket and DB, and resolves nonzero", async () => {
+    const repoRoot = copyFixtureRepo();
+    const controller = new AbortController();
+    const stdoutLines: string[] = [];
+    const stderrLines: string[] = [];
+    let capturedApp: Awaited<ReturnType<typeof serverModule.createServerApp>> | null = null;
+    let stopCount = 0;
+
+    const realCreate = serverModule.createServerApp;
+    vi.spyOn(serverModule, "createServerApp").mockImplementation(async (options) => {
+      const instance = await realCreate(options);
+      capturedApp = instance;
+      vi.spyOn(instance, "close").mockRejectedValueOnce(new Error("simulated app close failure"));
+      return instance;
+    });
+    const realStop = mcpModule.ConcurrentRefreshController.prototype.stop;
+    vi.spyOn(mcpModule.ConcurrentRefreshController.prototype, "stop").mockImplementation(
+      async function (this: mcpModule.ConcurrentRefreshController) {
+        stopCount += 1;
+        return realStop.call(this);
+      }
+    );
+
+    const runPromise = runServe([repoRoot, "--port", "0", "--no-open"], {
+      openBrowser: async () => undefined,
+      signal: controller.signal,
+      stdout: (text) => stdoutLines.push(text),
+      stderr: (text) => stderrLines.push(text)
+    });
+    await waitFor(() => (stdoutLines.join("").includes("URL:") ? true : null));
+    controller.abort();
+
+    const exitCode = await Promise.race([
+      runPromise,
+      new Promise<never>((_resolve, reject) =>
+        setTimeout(() => reject(new Error("teardown did not resolve")), 5_000)
+      )
+    ]);
+    expect(exitCode).toBe(1);
+    expect(stopCount).toBe(1);
+    expect(stderrLines.join("")).toContain(
+      "Cleanup failed (server): simulated app close failure"
+    );
+    const app = capturedApp as unknown as Awaited<
+      ReturnType<typeof serverModule.createServerApp>
+    >;
+    expect(app.server.listening).toBe(false);
+    expect(app.graphState.currentDb().open).toBe(false);
+  });
+
   it("an occupied --port exits 4 (EADDRINUSE) and leaves no orphan listener", async () => {
     const repoRoot = copyFixtureRepo();
     const occupied = await new Promise<Server>((resolve) => {
@@ -149,7 +200,10 @@ describe("runServe teardown", () => {
     });
 
     expect(exitCode).toBe(4);
-    expect(stderrLines.join("")).toContain("Port unavailable");
+    expect(stderrLines.join("")).toContain(
+      `Port ${port} is already in use. Choose a different port with --port, ` +
+        "or omit --port to let the OS pick one."
+    );
 
     // The occupying server is still the only listener on this port; runServe
     // must not have left its own server bound anywhere (no orphan listener).
