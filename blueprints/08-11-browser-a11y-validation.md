@@ -1,3 +1,22 @@
+---
+graph_blueprint_version: 1
+node_id: 08-11
+state: review
+phase: 8
+risk: medium
+complexity: M
+predecessors: [08-05, 08-06, 08-07]
+successors: [12-04]
+execution_card: blueprints/execution/08-11.md
+dossier: blueprints/08-11-browser-a11y-validation.md
+read_policy: execution-card-first
+local_full_gate_budget: 1
+independent_validation_budget: 1
+architecture_review: on-demand-only
+---
+
+> **GRAPH EXECUTION MODE:** Read the execution card first. This long file is an evidence dossier, not mandatory context. Open only the sections linked by the card. Planning-time existence claims and line numbers are historical hints; live repository semantics win. Use one full local gate and one independent validation pass.
+
 # BLUEPRINT 08-11: Browser & accessibility validation
 
 ## 1. Header

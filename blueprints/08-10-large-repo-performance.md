@@ -1,3 +1,22 @@
+---
+graph_blueprint_version: 1
+node_id: 08-10
+state: review
+phase: 8
+risk: medium
+complexity: M
+predecessors: [08-04]
+successors: [10-01]
+execution_card: blueprints/execution/08-10.md
+dossier: blueprints/08-10-large-repo-performance.md
+read_policy: execution-card-first
+local_full_gate_budget: 1
+independent_validation_budget: 1
+architecture_review: on-demand-only
+---
+
+> **GRAPH EXECUTION MODE:** Read the execution card first. This long file is an evidence dossier, not mandatory context. Open only the sections linked by the card. Planning-time existence claims and line numbers are historical hints; live repository semantics win. Use one full local gate and one independent validation pass.
+
 # BLUEPRINT 08-10: Large-repo performance
 
 ## 1. Header

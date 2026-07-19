@@ -1,3 +1,22 @@
+---
+graph_blueprint_version: 1
+node_id: 09-02
+state: review
+phase: 9
+risk: medium
+complexity: M
+predecessors: [09-01]
+successors: [12-04]
+execution_card: blueprints/execution/09-02.md
+dossier: blueprints/09-02-rename-move-coalescing.md
+read_policy: execution-card-first
+local_full_gate_budget: 1
+independent_validation_budget: 1
+architecture_review: on-demand-only
+---
+
+> **GRAPH EXECUTION MODE:** Read the execution card first. This long file is an evidence dossier, not mandatory context. Open only the sections linked by the card. Planning-time existence claims and line numbers are historical hints; live repository semantics win. Use one full local gate and one independent validation pass.
+
 # BLUEPRINT 09-02: Rename/move coalescing views
 
 ## 1. Header

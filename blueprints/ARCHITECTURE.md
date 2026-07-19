@@ -1,5 +1,8 @@
 # Tadori Systems Architecture (Step-2 global pass)
 
+> **Execution note (2026-07-19):** This is a shared decision/evidence dossier. Planning-time existence claims and source line numbers may be stale. Use `TASK_GRAPH.json`, the current execution card, and live repository semantics for preflight. Open only the sections adjacent to the current contract edge.
+
+
 Planning artifact. Resolves cross-phase contracts BEFORE Wave 1-4 blueprints
 are drafted. No production code exists for `packages/server`, `packages/cli`,
 `apps/viz`, `packages/hooks`, `packages/bench` (verified: `ls packages/` =
@@ -189,7 +192,7 @@ Node/edge item shapes reuse the frozen `toolNodeSchema`/`toolEdgeSchema`
 | 12 | GET | `/api/v1/routes` | — | `{ routes: ToolNode[] }` | — | 08-07 |
 | 13 | GET | `/api/v1/docs` | `for?` (entityKey) | `{ docs: {node:ToolNode; body:string\|null}[] }` (ADR/doc bodies, root-confined) | — | 08-07 |
 | 14 | GET | `/api/v1/refresh` | — | `{ phase:"idle"\|"dirty"\|"refreshing"\|"failed"\|"stopped"; generation:number; dirtyPaths:string[]; snapshotId:number\|null; lastError:string\|null }` | — | 07-01 |
-| 15 | GET | `/api/v1/layout` | `level=package\|file\|symbol`, `viewKey=base` | `{ positions: {entityKey:string; x:number; y:number; z:number; pinned:boolean}[]; layoutVersion:number }` | 404 layout_not_materialized | 08-01 |
+| 15 | GET | `/api/v1/layout` | `level=package\|file\|symbol`, `viewKey=base` | `{ positions: {entityKey:string; x:number; y:number; z:number; pinned:boolean}[]; layoutVersion:number }` | 400 bad_level/bad_view_key; 500 layout_engine_error | 08-01 |
 | 16 | GET | `/api/v1/overview` | — | deterministic subsystem overview (Section 8) | — | 08B-01 |
 | 17 | GET | `/api/v1/tour` | `id?` | tour + steps (Section 8) | 404 | 08B-02 |
 | 18 | GET/PUT | `/api/v1/tour/progress` | body `{tourId,stepIndex}` | progress echo (persisted `.tadori/`, Section 8) | — | 08B-02 |
@@ -330,9 +333,12 @@ by `node_id` (stable entity) survive; a node present in the new snapshot but
 absent from `layout_positions` is placed at its **package centroid** (mean of
 its package peers' stored positions) with bounded local relaxation, then
 persisted — existing nodes never move (frozen coordinates). If
-`layout_version` (algorithm) changes, all rows for that `(repo, level, view)`
-are treated as stale and recomputed once. Owner: 08-01 (engine + store
-writer), 07-01 (serve-time trigger).
+`layout_version` (algorithm) changes, all current-snapshot member rows for
+that `(repo, level, view)` are treated as stale and the current topology is
+recomputed once; historical rows absent from that snapshot remain untouched.
+Owner: 08-01 (engine, store writer,
+orchestration, and serve-time trigger); 07-01 supplied the route seam and its
+original pre-materialization response.
 
 Rejected: viz computes layout client-side each load — rejected because it
 breaks byte-identical reload and pushes graphology-on-node into the browser
@@ -546,7 +552,7 @@ bundle (zero cost to 2D, per 10-02).
 | AD-002 | Reuse `GraphService` in place; no new query package; MCP stays exactly six tools | 07-01 | Extract `packages/query` now (no-value move, risks frozen MCP tests) |
 | AD-003 | CLI = one in-process Fastify server + reused isolated `ConcurrentRefreshController` worker | 07-02 | Separate supervised indexer process (duplicate machinery) |
 | AD-004 | Canonical `.tadori/tadori.sqlite` default for `tadori serve`/`diff`; MCP stdio CLI stays explicit | 07-02 | Unify by making MCP CLI default too (it is machine-facing, must stay explicit) |
-| AD-005 | Server materializes seeded layout once on first serve; viz never computes; persist for byte-identical reload | 08-01, 07-01 | Client-side layout each load (breaks byte-identical reload, bloats bundle) |
+| AD-005 | Server materializes seeded layout once on first serve; viz never computes; persist for byte-identical reload | 08-01 (07-01 route seam) | Client-side layout each load (breaks byte-identical reload, bloats bundle) |
 | AD-006 (C-1) | No migration 007; populate existing frozen migration-004 `layout_positions` | 08-01 | New migration 007 (table already exists) |
 | AD-007 (C-2) | No new observation schema; hooks feed existing migration-003 `agent_events` via `EventLog` | 08-08 | New hooks schema/tables (duplicates frozen migration 003) |
 | AD-008 | `/api/v1` prefix; viz item shapes reuse frozen `toolNodeSchema`/`toolEdgeSchema` | 07-01 | Bespoke server node/edge shapes (two wire formats to keep in sync) |

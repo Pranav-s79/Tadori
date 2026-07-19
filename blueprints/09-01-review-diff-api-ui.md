@@ -1,3 +1,22 @@
+---
+graph_blueprint_version: 1
+node_id: 09-01
+state: review
+phase: 9
+risk: high
+complexity: L
+predecessors: [08-06]
+successors: [09-02, 09-03, 09-04, 09-05]
+execution_card: blueprints/execution/09-01.md
+dossier: blueprints/09-01-review-diff-api-ui.md
+read_policy: execution-card-first
+local_full_gate_budget: 1
+independent_validation_budget: 1
+architecture_review: required-on-contract-delta
+---
+
+> **GRAPH EXECUTION MODE:** Read the execution card first. This long file is an evidence dossier, not mandatory context. Open only the sections linked by the card. Planning-time existence claims and line numbers are historical hints; live repository semantics win. Use one full local gate and one independent validation pass.
+
 # BLUEPRINT 09-01: Review diff API + raw diff UI
 
 ## 1. Header

@@ -1,3 +1,22 @@
+---
+graph_blueprint_version: 1
+node_id: 08-02
+state: review
+phase: 8
+risk: high
+complexity: L
+predecessors: [08-01]
+successors: [08-03, 08-05, 08-06, 08-09, 08B-01]
+execution_card: blueprints/execution/08-02.md
+dossier: blueprints/08-02-viz-package-map.md
+read_policy: execution-card-first
+local_full_gate_budget: 1
+independent_validation_budget: 1
+architecture_review: required-on-contract-delta
+---
+
+> **GRAPH EXECUTION MODE:** Read the execution card first. This long file is an evidence dossier, not mandatory context. Open only the sections linked by the card. Planning-time existence claims and line numbers are historical hints; live repository semantics win. Use one full local gate and one independent validation pass.
+
 # BLUEPRINT 08-02: apps/viz scaffold + package map
 
 ## 1. Header

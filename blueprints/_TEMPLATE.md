@@ -1,150 +1,122 @@
-# BLUEPRINT [ID]: [Title]
+# GRAPH BLUEPRINT [ID]: [Title]
 
-## 1. Header
+> This is an evidence dossier. The executable context is
+> `blueprints/execution/[ID].md`. A builder reads this full file only for a
+> linked unresolved contract or escalation.
 
-- ID / Title / Phase:
-- Status: (pending | drafting | review | ready | built | validated | blocked)
-- Primary builder: (Claude Sonnet | Claude Opus | Codex | Claude Haiku) + one-line model rationale
-- Reviewer roles:
-- Complexity: S / M / L (one focused builder session)
-- Depends on / Unlocks: (blueprint IDs)
-- Estimated sessions:
-- Related frozen-spec sections:
+## 1. Graph node
 
-## 2. Objective
+```yaml
+id: [ID]
+state: pending | drafting | review | ready | built | validated | blocked
+phase: [phase]
+risk: low | medium | high
+complexity: S | M | L
+predecessors: []
+successors: []
+reads: []
+writes: []
+produces: []
+preserves: []
+proofs: []
+```
 
-What becomes true when this blueprint is complete (one or two sentences,
-observable).
+State the observable graph rewrite in two sentences: what nodes/edges exist
+before and what becomes true after completion.
 
-## 3. Why this matters
+## 2. Contract neighborhood
 
-User value; system value; downstream dependency value.
+Only the one-hop contracts required by this task:
 
-## 4. Current repository evidence
+- predecessor contract and exact exported symbol/API;
+- owned output contract;
+- frozen invariants preserved;
+- explicitly rejected adjacent edges.
 
-Exact existing files, packages, exports, schemas, commands, tests, fixtures,
-migrations, docs, constraints — with paths (and line refs for code). Separate
-**verified current** from **PROPOSED** items. List files to read first and
-gotchas.
+Separate `VERIFIED LIVE` facts from `HISTORICAL PLANNING EVIDENCE` and
+`PROPOSED` items. Line numbers are hints, never preconditions.
 
-## 5. Scope
+## 3. Artifact ownership
 
-All included behaviors.
+| Artifact | Action | Ownership reason | Integration edge |
+|---|---|---|---|
+| path | create/modify/delete | responsibility | importer/export/barrel/wiring |
 
-## 6. Non-goals
+A one-hop wiring artifact omitted here may be added with a recorded reason.
+Anything broader requires coordinator escalation.
 
-Explicitly excluded adjacent work.
+## 4. Execution slices
 
-## 7. Dependencies and prerequisites
+Each slice contains at most three cohesive implementation steps and closes one
+contract edge.
 
-Blueprint IDs plus the exact contracts they must have delivered.
+### Slice A — [contract edge]
 
-## 8. Architectural decisions
+- Reads:
+- Writes:
+- Implementation:
+- Focused proof:
+- Checkpoint condition:
 
-Resolved before implementation: package ownership; data flow; state
-ownership; persistence; lifecycle; concurrency; APIs; compatibility;
-security; privacy; performance; accessibility; failure semantics. Chosen
-approach + rejected alternatives + reasons. No open choices left to the
-builder.
+Repeat only as needed. A coherent slice may be committed and pushed to the
+draft PR before the full task is complete.
 
-## 9. Exact file plan
+## 5. Proof graph
 
-Per file: full path; create/modify/move/delete; responsibility; key exports;
-key imports; integration points; relevant tests.
+| Output/invariant | Proof node | Exact assertion | Risk class |
+|---|---|---|---|
 
-## 10. Exact contracts
+Use `GATE_GRAPH.md`. Focused proofs run per slice; independent validation and
+the full local completion cut each run once.
 
-Concrete proposed TypeScript interfaces/types/classes/functions; CLI syntax;
-HTTP endpoints; WebSocket messages; config keys; DB tables/migrations;
-events; React state; graph payloads; error codes; status enums. Code-shaped
-examples where useful.
+## 6. Failure boundaries
 
-## 11. Ordered implementation procedure
+Only conditions that stop this task:
 
-Strict numbered steps. Each step: exact files; exact behavior; reason; test
-added immediately; expected intermediate result.
+- frozen-contract contradiction;
+- absent predecessor contract;
+- migration/schema mismatch with data-loss risk;
+- inability to restore focused proofs without weakening an invariant;
+- required credential or external platform unavailable.
 
-## 12. Data and lifecycle flows
+Historical existence claims, line drift, and a necessary one-hop wiring change
+do not stop the task.
 
-Startup, operation, refresh, failure, retry, shutdown. Text sequence
-diagrams where useful.
+## 7. Completion cut
 
-## 13. Test plan
+Binary checklist:
 
-Applicable: unit / integration / fixture / migration / API / WebSocket / CLI
-/ browser / accessibility / performance / cross-platform / adversarial /
-regression. Name proposed test files and exact assertions.
+- [ ] predecessor edges satisfied;
+- [ ] promised output contracts exist;
+- [ ] preserved invariants have proof;
+- [ ] focused proof cut passes;
+- [ ] independent validator passes;
+- [ ] full local completion cut passes once;
+- [ ] required CI passes;
+- [ ] no blocker/high remains;
+- [ ] branch owns only listed artifacts;
+- [ ] INDEX and checkpoint updated;
+- [ ] PR merged or task explicitly left as draft/WIP.
 
-## 14. Acceptance criteria
+## 8. Delta report
 
-Binary and verifiable only. No "polished / robust / works correctly /
-user friendly / production ready".
+Require only:
 
-## 15. Validation commands
+- graph rewrite completed;
+- files changed;
+- contracts produced/preserved;
+- proof nodes and exact results;
+- commit/PR/SHA;
+- blocker/high findings and disposition;
+- remaining medium/low risks;
+- next unlocked node.
 
-Preserve all applicable repository gates (pnpm install or frozen-lockfile,
-skills:sync, skills:check, typecheck, lint, test, python
-validate_fixtures.py, fixtures:validate, fixtures:index, fixtures:typecheck,
-applicable benchmarks, browser/a11y tests, git diff --check) plus
-blueprint-specific commands.
+## Global invariants
 
-## 16. Performance budgets
-
-Measurable latency / memory / graph-size / rendering / response limits where
-relevant.
-
-## 17. Failure and recovery behavior
-
-Malformed input; stale data; interrupted operations; invalid snapshots;
-corrupt storage; browser disconnection; watcher failure; port collision;
-partial event streams; unsupported repositories; retry and cleanup.
-
-## 18. Security and privacy
-
-Localhost binding; path confinement; sensitive content; redaction;
-retention; purge; safe deep links; untrusted event payloads.
-
-## 19. Accessibility
-
-(Human-facing work.) Keyboard behavior; focus order; screen-reader text;
-reduced motion; contrast; non-canvas fallback; textual process
-representation.
-
-## 20. Documentation updates
-
-Exact documentation files to modify.
-
-## 21. Builder final report
-
-Require: summary; files changed; contracts implemented; tests added;
-validation results; benchmark evidence; screenshots where applicable; commit
-SHA; known limitations; follow-on risks; `ASSUMPTION:` lines.
-
-## 22. Independent review result
-
-Reviewer role; blocker findings; high-severity findings; corrections made;
-final review status. A blueprint is `ready` only after blockers and
-high-severity findings are resolved.
-
-## IF SOMETHING IS UNCLEAR
-
-Make the smallest safe assumption, record `ASSUMPTION: ...` in the report,
-continue without expanding scope. If the uncertainty could violate a frozen
-contract, stop that item and report blocked.
-
-## TADORI NON-NEGOTIABLES (every blueprint)
-
-Frozen v2.1; TS/JS only; ATLAS separate; exactly six MCP tools; stable 2D
-default; 2.5D optional; 3D experimental only; no city metaphor; no default
-hairball; no generic admin dashboard or permanent dual sidebars; progressive
-disclosure package → file → task-region symbols; deterministic positions;
-every visible relation keeps evidence, origin, confidence, resolution;
-unresolved stays visibly unresolved; static test linkage is not runtime
-coverage; agent observation honesty ("not observed inspected"; coverage
-complete_for_registered_sources | partial | unknown); design rationale only
-from ADRs/docs/instructions/explicit human input, otherwise "No documented
-design decision found"; hooks remain an evidence receiver, never an
-orchestrator/runtime; invalid snapshots never served; `tadori serve .` is the
-normal command; localhost default; no cloud dependency; Graphify is ignored
-reference only — never import/copy/ship; never weaken golden fixtures; no
-seventh tool; no runtime tracing.
+Frozen v2.1; TS/JS only; exactly six MCP tools; stable 2D default; 2.5D/3D
+experimental; no city metaphor or default hairball; progressive disclosure;
+evidence/origin/confidence/resolution preserved; unresolved remains visible;
+static test linkage is not runtime coverage; “not observed inspected” honesty;
+hooks are evidence receivers only; invalid snapshots are never served;
+localhost default; no cloud dependency; no seventh tool; no runtime tracing;
+never weaken golden fixtures or frozen migrations.

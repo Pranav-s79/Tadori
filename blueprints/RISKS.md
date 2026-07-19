@@ -1,5 +1,8 @@
 # Tadori project-level risks (living register)
 
+> **Execution note (2026-07-19):** This is a shared decision/evidence dossier. Planning-time existence claims and source line numbers may be stale. Use `TASK_GRAPH.json`, the current execution card, and live repository semantics for preflight. Open only the sections adjacent to the current contract edge.
+
+
 Severity: H / M / L. Every risk names a mitigation owner (blueprint ID or
 process rule). Dated entries; resolved risks move to the bottom with outcome.
 

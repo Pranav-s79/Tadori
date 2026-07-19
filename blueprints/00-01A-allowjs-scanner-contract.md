@@ -1,3 +1,22 @@
+---
+graph_blueprint_version: 1
+node_id: 00-01A
+state: validated
+phase: 0
+risk: low
+complexity: S
+predecessors: []
+successors: [00-01]
+execution_card: blueprints/execution/00-01A.md
+dossier: blueprints/00-01A-allowjs-scanner-contract.md
+read_policy: execution-card-first
+local_full_gate_budget: 1
+independent_validation_budget: 1
+architecture_review: on-demand-only
+---
+
+> **GRAPH EXECUTION MODE:** Read the execution card first. This long file is an evidence dossier, not mandatory context. Open only the sections linked by the card. Planning-time existence claims and line numbers are historical hints; live repository semantics win. Use one full local gate and one independent validation pass.
+
 # BLUEPRINT 00-01A: allowJs scanner contract & regression
 
 ## 1. Header

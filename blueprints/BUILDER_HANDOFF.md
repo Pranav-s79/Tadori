@@ -1,96 +1,96 @@
-# Tadori builder handoff guide
+# Tadori graph-first builder handoff
 
-How a fresh builder session (Claude Sonnet, Claude Opus, Codex, or Claude
-Haiku — cold start, no hidden context) implements exactly one blueprint.
+This guide replaces the old cold-start rule that required reading an entire
+30–50k-character blueprint. The builder operates on a small graph neighborhood
+and loads the dossier only on demand.
 
-## 1. Read your blueprint — and only yours
+## 1. Load the execution node
 
-Open `blueprints/<ID>-<slug>.md`. Read it completely before touching
-anything. Your blueprint is the contract; `blueprints/ARCHITECTURE.md`
-defines shared cross-phase contracts your blueprint references;
-`blueprints/ASSUMPTIONS.md` and `blueprints/RISKS.md` carry global
-constraints. Do not read other blueprints except those named in your
-"Depends on" line.
+Read only:
 
-## 2. Inspect required files
+1. `blueprints/execution/<ID>.md`;
+2. `blueprints/TASK_GRAPH.json` entry for `<ID>`;
+3. `blueprints/AUTONOMOUS_RUN_CHECKPOINT.md`;
+4. directly named source and test artifacts.
 
-Read every file in your blueprint's §4 "files to read first" list. Verify
-the §4 evidence still matches reality (line numbers may drift; semantics
-must not). If the code contradicts the blueprint's evidence, STOP and
-report the mismatch — do not improvise around it.
+Do not read every blueprint. Do not read all of ARCHITECTURE.md. Open only a
+section linked by the execution card when a contract is genuinely unclear.
 
-## 3. Confirm prerequisites
+## 2. Verify the live one-hop neighborhood
 
-- `git status --short` must be clean before you start.
-- Verify every "Depends on" blueprint shows `built` or `validated` in
-  `blueprints/INDEX.md`, and that the exact contracts it promised exist in
-  the code (import them; do not re-declare them).
-- Verify branch: work lands on the branch named by the Program Manager's
-  wave plan (see `blueprints/PARALLEL_WORK_MATRIX.md`); never on `main`.
-  `main` advances only via owner-merged PRs (ASSUMPTIONS A-001).
+Use targeted commands to verify:
 
-## 4. Implement only your scope
+- predecessor exports exist;
+- owned files and direct importers;
+- current branch/worktree;
+- focused tests named by the card.
 
-Follow §11 (ordered implementation procedure) step by step. §5 is your
-scope; §6 is explicitly not. Touch only files listed in §9. If you believe
-another file must change, that is a scope finding: record it, implement
-nothing outside §9, and report it in your final report.
+Planning-time line numbers and “does not exist yet” statements are historical.
+Live repository semantics win. Stop only for the failure boundaries in the
+execution card.
 
-Environment rules (non-negotiable):
+## 3. Execute slices, not a monolith
 
-- Run everything through pnpm (`.npmrc` pins Node 22.14.0; global Node 25
-  cannot build better-sqlite3).
-- Write files with LF endings (`.gitattributes` enforces `* text=auto
-  eol=lf`; fixture hashes depend on it).
-- A "Fact-Forcing Gate" hook may deny your first write to each file: state
-  the four requested facts in plain text (importers, affected API, data
-  schemas, verbatim instruction) and retry the identical write.
-- Never weaken a golden fixture, schema, or frozen migration to make
-  anything pass. A fixture delta is a stop-and-report event.
+The card groups implementation into slices of at most three steps. For each
+slice:
 
-## 5. Run incremental tests
+1. writer implements only the listed graph rewrite;
+2. run the focused proof;
+3. record the result in the checkpoint;
+4. create a checkpoint commit when the slice is coherent;
+5. push to the draft PR when usage risk is material;
+6. continue to the next slice.
 
-Every §11 step that adds a test runs it immediately. Keep the full suite
-green as you go — do not batch test debt to the end.
+Only one production writer owns a file node at a time.
 
-## 6. Run final validation
+## 4. Subagent topology
 
-Execute your blueprint's §15 validation commands completely. All existing
-repository gates must pass (typecheck, lint, full test suite, all fixture
-gates, git diff --check). Record exact counts and PASS lines. If a gate
-fails: fix your work or report blocked — never delete or weaken the gate.
+Default team:
 
-## 7. Commit
+- **Writer (Sonnet/Codex):** card + owned files; writes code and focused tests.
+- **Validator (Sonnet/cheaper capable):** card + final diff + proof nodes;
+  independently runs the proof cut.
+- **Pipeline agent (Haiku):** task graph, Git/PR/checkpoint, next-frontier prep.
 
-- One logical commit per blueprint unless §11 states otherwise.
-- Imitate existing message style (`feat(indexer): …`, `fix(indexer): …`,
-  `docs(planning): …`, `ci: …`).
-- Update `IMPLEMENTATION_STATUS.md` (dated subsection, per project rules),
-  `blueprints/INDEX.md` (status + impl commit SHA), and `BACKLOG.md` in the
-  same commit or an immediately following docs commit.
-- Never push, tag, or create releases unless your blueprint explicitly
-  carries a recorded owner authorization for that exact ref set.
+Use an architecture reviewer only for the escalation edges listed in
+`GATE_GRAPH.md`. Do not create separate investigator, validator, adversarial,
+and re-review agents for an ordinary task.
 
-## 8. Return the required report
+Subagents exchange deltas, not full transcripts. Reuse a writer for one narrow
+correction. A second correction cycle requires a newly exposed blocker.
 
-Your blueprint's §21 lists the required fields. Always include: summary;
-files changed; contracts implemented; tests added (names + counts);
-validation output summary; benchmark evidence where applicable; commit SHA;
-known limitations; follow-on risks; every `ASSUMPTION:` line you made.
-Statuses you may set: `built` (implemented, gates green) — `validated` only
-when every §14 acceptance criterion has been executed and observed.
+## 5. Validation economy
 
-## 9. Do not modify future-phase work
+- Focused tests: during each slice.
+- Independent validation: once after the final slice.
+- Full local completion gate: once before completion commit.
+- CI: independent Windows/Linux proof.
+- Re-review: only if a blocker/high correction changed the disputed edge.
 
-Do not scaffold, stub, or "prepare" files owned by later blueprints. Do not
-edit other blueprints' sections of INDEX.md. If your work reveals a defect
-in a later blueprint's plan, write it as a finding in your report; the
-Program Manager updates the vault.
+Select gates from `GATE_GRAPH.md`. Never repeat the entire gate after a docs-
+only or unrelated slice.
 
-## Failure protocol
+## 6. Branch and preservation policy
 
-Blocked (missing prerequisite, contradicting evidence, failing gate you did
-not cause, frozen-contract conflict): stop that item, leave the tree clean
-(commit nothing half-done), set INDEX status `blocked` with a one-line
-reason, and report. A wrong-but-committed change is worse than a reported
-blocker.
+- One task branch and PR per blueprint node.
+- Open a draft PR after the first coherent checkpoint when practical.
+- Commit cohesive slices; squash at merge.
+- If usage ends, push coherent work and leave a draft PR. Do not leave a large
+  validated rewrite only in an uncommitted working tree.
+- Never include unrelated stashes, local DBs, secrets, or unexplained deps.
+
+## 7. Scope and integration
+
+The card’s `writes` set is the ownership boundary. A directly required
+workspace/barrel/export/status wiring file is a permitted one-hop integration
+edge when recorded in the delta report. Broader files require coordinator
+approval. Never scaffold future nodes.
+
+## 8. Completion and continuation
+
+Close the task only when the execution card’s completion cut is satisfied.
+Update INDEX and checkpoint, commit, push, PR, CI, merge, pull main, then select
+the next frontier node from TASK_GRAPH without asking the user.
+
+Final task output is a concise delta report, not a replay of reasoning or raw
+logs.

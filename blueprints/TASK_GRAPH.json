@@ -1,0 +1,1796 @@
+{
+  "schema_version": "1.1",
+  "generated_from": "blueprints/INDEX.md",
+  "execution_model": "blueprints/GRAPH_ENGINEERING.md",
+  "nodes": [
+    {
+      "id": "00-01",
+      "title": "Repo sync & README correction",
+      "phase": "0",
+      "status": "validated",
+      "status_detail": "validated (2026-07-17; hygiene commits on main via PR #4, README commands verified post-00-01A, statuses reconciled via PR #6)",
+      "depends_on": [
+        "00-01A"
+      ],
+      "builder": "S",
+      "complexity": "S",
+      "blueprint": "blueprints/00-01-repo-sync-and-readme.md",
+      "impl_commit": "`a4ab158` + PR #4/#6",
+      "unlocks": [
+        "00-02",
+        "07-01"
+      ],
+      "execution_card": "blueprints/execution/00-01.md",
+      "risk": "low",
+      "reads": [],
+      "writes": [],
+      "slice_count": 1,
+      "dossier_estimated_tokens": 3700,
+      "dependency_satisfied": true,
+      "frontier_state": "closed"
+    },
+    {
+      "id": "00-01A",
+      "title": "allowJs scanner contract & regression",
+      "phase": "0",
+      "status": "validated",
+      "status_detail": "validated (2026-07-17; full gate 178/178, `tadori diff .` exit 0 on Tadori, adversarial review PASS)",
+      "depends_on": [],
+      "builder": "S",
+      "complexity": "S",
+      "blueprint": "blueprints/00-01A-allowjs-scanner-contract.md",
+      "impl_commit": "`8be4741` (main: `06d951f`, PR #5)",
+      "unlocks": [
+        "00-01"
+      ],
+      "execution_card": "blueprints/execution/00-01A.md",
+      "risk": "low",
+      "reads": [
+        "packages/indexer/src/scan.ts",
+        "packages/indexer/src/project.ts",
+        "packages/indexer/src/indexRepository.ts:32-50",
+        "eslint.config.js",
+        "tsconfig.base.json",
+        "tsconfig.json",
+        "mcp/service.ts:264",
+        "mcp/service.ts:265",
+        ".js",
+        "packages/harness/src/compare.ts:205-215",
+        "packages/indexer/src/indexRepository.ts",
+        "packages/indexer/test/",
+        "mcp/service.ts"
+      ],
+      "writes": [
+        "packages/indexer/src/scan.ts",
+        "./project.js",
+        "packages/indexer/src/project.ts",
+        "packages/indexer/test/scan-allowjs.test.ts",
+        "IMPLEMENTATION_STATUS.md",
+        "blueprints/INDEX.md",
+        "BACKLOG.md"
+      ],
+      "slice_count": 2,
+      "dossier_estimated_tokens": 4712,
+      "dependency_satisfied": true,
+      "frontier_state": "closed"
+    },
+    {
+      "id": "00-02",
+      "title": "CI pipeline (Linux+Windows)",
+      "phase": "0",
+      "status": "validated",
+      "status_detail": "validated (2026-07-17; both OS green, run 29628448665, 178/178 parity; owner-merged PR #7)",
+      "depends_on": [
+        "00-01"
+      ],
+      "builder": "H",
+      "complexity": "S",
+      "blueprint": "blueprints/00-02-ci-pipeline.md",
+      "impl_commit": "`7876837` (PR #7)",
+      "unlocks": [
+        "11-01",
+        "12-03"
+      ],
+      "execution_card": "blueprints/execution/00-02.md",
+      "risk": "low",
+      "reads": [
+        ".github/",
+        "package.json",
+        ".github/workflows/ci.yml",
+        "IMPLEMENTATION_STATUS.md",
+        "blueprints/research/EVIDENCE-BASELINE.md",
+        "actions/setup-node"
+      ],
+      "writes": [
+        ".github/workflows/ci.yml",
+        "README.md",
+        "![CI](https://github.com/Pranav-s79/Tadori/actions/workflows/ci.yml/badge.svg)",
+        "IMPLEMENTATION_STATUS.md"
+      ],
+      "slice_count": 2,
+      "dossier_estimated_tokens": 3579,
+      "dependency_satisfied": true,
+      "frontier_state": "closed"
+    },
+    {
+      "id": "07-01",
+      "title": "`packages/server` graph API",
+      "phase": "7",
+      "status": "validated",
+      "status_detail": "validated (2026-07-18; full gate ALL PASS 229/229, independent validation PASS, CI green both OSes, squash-merged PR #9)",
+      "depends_on": [
+        "00-01"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/07-01-server-graph-api.md",
+      "impl_commit": "`5dee45b` (PR #9)",
+      "unlocks": [
+        "07-02",
+        "08-01",
+        "08-08"
+      ],
+      "execution_card": "blueprints/execution/07-01.md",
+      "risk": "high",
+      "reads": [
+        "blueprints/research/EVIDENCE-BASELINE.md",
+        "packages/server",
+        "ls packages/",
+        "package.json",
+        "@tadori/mcp",
+        "@modelcontextprotocol/sdk",
+        "packages/mcp/src/service.ts:66-355",
+        "@tadori/core",
+        "@tadori/indexer",
+        "@tadori/store",
+        "/",
+        "packages/mcp/src/concurrentRefresh.ts:52",
+        "/api/v1/refresh",
+        "packages/mcp/src/events.ts:65-360",
+        "EVIDENCE-BASELINE.md",
+        "packages/mcp/src/contracts.ts:49-88"
+      ],
+      "writes": [
+        "packages/server/package.json",
+        "name: \"@tadori/server\"",
+        "./src/index.ts",
+        "@fastify/websocket: \"^11.x\"",
+        "@tadori/mcp: workspace:*",
+        "packages/server/src/index.ts",
+        "export * from \"./app.js\"",
+        "export * from \"./types.js\"",
+        "packages/server/src/types.ts",
+        "packages/server/src/app.ts",
+        "@fastify/websocket",
+        "packages/server/src/graphState.ts",
+        "packages/server/src/routes/snapshots.ts",
+        "/snapshot",
+        "/snapshots",
+        "/snapshots/:id/pin",
+        "packages/server/src/routes/graph.ts",
+        "/nodes",
+        "/edges",
+        "/nodes/:entityKey",
+        "/nodes/:entityKey/evidence",
+        "packages/server/src/routes/source.ts",
+        "/source",
+        "packages/server/src/routes/search.ts",
+        "/search",
+        "packages/server/src/routes/path.ts",
+        "/path",
+        "packages/server/src/routes/derived.ts",
+        "/tests",
+        "/routes"
+      ],
+      "slice_count": 6,
+      "dossier_estimated_tokens": 13414,
+      "dependency_satisfied": true,
+      "frontier_state": "closed"
+    },
+    {
+      "id": "07-02",
+      "title": "`packages/cli` `tadori serve .`",
+      "phase": "7",
+      "status": "validated",
+      "status_detail": "validated (2026-07-18; merged PR #10)",
+      "depends_on": [
+        "07-01"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/07-02-cli-tadori-serve.md",
+      "impl_commit": "`7865548` (PR #10)",
+      "unlocks": [
+        "07-03",
+        "08-01",
+        "12-01"
+      ],
+      "execution_card": "blueprints/execution/07-02.md",
+      "risk": "high",
+      "reads": [
+        "packages/cli",
+        "docs/CLI_CONTRACT.md",
+        "docs/CLI_CONTRACT.md:19-39",
+        "docs/CLI_CONTRACT.md:43-51",
+        ".tadori/tadori.sqlite",
+        "scripts/tadori.mts",
+        "packages/mcp/src/cli.ts",
+        "packages/mcp/src/cli.ts:46-61",
+        "packages/mcp/src/stdio.ts:66-107",
+        "packages/indexer/src/project.ts:24-32",
+        "tsconfig.json",
+        "package.json",
+        "packages/indexer/src/scan.ts",
+        "tadori.rules.json",
+        ".tadori/",
+        "c:\\SideProjects\\Tadori\\package.json:10-21"
+      ],
+      "writes": [
+        "packages/cli/package.json",
+        "name: \"@tadori/cli\"",
+        "./src/index.ts",
+        "@tadori/core: workspace:*",
+        "@tadori/store: workspace:*",
+        "@tadori/indexer: workspace:*",
+        "@tadori/mcp: workspace:*",
+        "@tadori/server: workspace:*",
+        "packages/cli/src/index.ts",
+        "export * from \"./serve.js\"",
+        "export * from \"./flags.js\"",
+        "packages/cli/src/flags.ts",
+        "packages/cli/src/repoResolve.ts",
+        "packages/cli/src/config.ts",
+        "packages/cli/src/statusPage.ts",
+        "packages/cli/src/serve.ts",
+        "scripts/tadori.mts",
+        "packages/cli/src/cli.ts",
+        "packages/cli/test/flags.test.ts",
+        "packages/cli/test/repoResolve.test.ts",
+        "packages/cli/test/config.test.ts",
+        "packages/cli/test/serve-lifecycle.test.ts",
+        "packages/cli/test/exit-codes.test.ts",
+        "pnpm-workspace.yaml",
+        "\"packages/cli\"",
+        "tsconfig.json",
+        "packages/cli/{src,test}/**/*.ts",
+        "tsconfig.base.json",
+        "\"@tadori/cli\": [\"packages/cli/src/index.ts\"]"
+      ],
+      "slice_count": 4,
+      "dossier_estimated_tokens": 12398,
+      "dependency_satisfied": true,
+      "frontier_state": "closed"
+    },
+    {
+      "id": "07-03",
+      "title": "Serve hardening",
+      "phase": "7",
+      "status": "validated",
+      "status_detail": "validated (2026-07-18; independent validation and Linux/Windows CI green; merged PR #11)",
+      "depends_on": [
+        "07-02"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/07-03-serve-hardening.md",
+      "impl_commit": "`f0181c3` (PR #11)",
+      "unlocks": [
+        "08-01",
+        "12-02",
+        "12-03"
+      ],
+      "execution_card": "blueprints/execution/07-03.md",
+      "risk": "high",
+      "reads": [
+        "blueprints/07-02-cli-tadori-serve.md",
+        "/",
+        "packages/indexer/src/incremental.ts:253-302",
+        ".tadori/tadori.sqlite",
+        "packages/store/src/snapshots.ts:626-661",
+        "packages/server",
+        "packages/cli",
+        "incremental-refresh.test.ts",
+        "refresh-integration.test.ts",
+        "packages/mcp/src/concurrentRefresh.ts",
+        "packages/indexer/src/incremental.ts:218-320"
+      ],
+      "writes": [
+        "packages/cli/src/serve.ts",
+        "cli.ts",
+        "packages/cli/test/port-fallback.test.ts",
+        "packages/cli/test/browser-launch-failure.test.ts",
+        "packages/cli/test/orphan-supervision.test.ts",
+        "packages/cli/test/snapshot-reindex-hardening.test.ts",
+        "packages/cli/test/repo-error-messages.test.ts",
+        "packages/cli/test/fixtures/testMarkerWorker.ts",
+        "orphan-supervision.test.ts",
+        "IMPLEMENTATION_STATUS.md"
+      ],
+      "slice_count": 3,
+      "dossier_estimated_tokens": 9917,
+      "dependency_satisfied": true,
+      "frontier_state": "closed"
+    },
+    {
+      "id": "08-01",
+      "title": "Layout engine + persistence",
+      "phase": "8",
+      "status": "built",
+      "status_detail": "built (2026-07-18; focused 33/33 and all layout benchmark gates green; final full gate/PR pending)",
+      "depends_on": [
+        "07-01",
+        "07-02",
+        "07-03"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/08-01-layout-engine-persistence.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "08-02"
+      ],
+      "execution_card": "blueprints/execution/08-01.md",
+      "risk": "high",
+      "reads": [
+        "packages/server/src/routes/layout.ts",
+        "packages/store/src/migrations.ts",
+        "packages/store/src/snapshots.ts",
+        "packages/store/src/database.ts",
+        "packages/core/src/graph.ts",
+        "packages/core/src/enums.ts",
+        "packages/server/src/graphState.ts",
+        "packages/server/test/layout.test.ts"
+      ],
+      "writes": [
+        "packages/store/src/layout.ts",
+        "packages/store/src/index.ts",
+        "packages/store/package.json",
+        "packages/store/test/layout.test.ts",
+        "packages/server/src/routes/layout.ts",
+        "packages/server/test/layout.test.ts",
+        "scripts/benchmark-layout.mts",
+        "package.json",
+        "pnpm-lock.yaml",
+        ".github/workflows/ci.yml",
+        "IMPLEMENTATION_STATUS.md",
+        "BACKLOG.md",
+        "blueprints/INDEX.md",
+        "blueprints/AUTONOMOUS_RUN_CHECKPOINT.md"
+      ],
+      "slice_count": 4,
+      "dossier_estimated_tokens": 7662,
+      "dependency_satisfied": true,
+      "frontier_state": "finish_completion_cut"
+    },
+    {
+      "id": "08-02",
+      "title": "`apps/viz` scaffold + package map",
+      "phase": "8",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "08-01"
+      ],
+      "builder": "S",
+      "complexity": "L",
+      "blueprint": "blueprints/08-02-viz-package-map.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "08-03",
+        "08-05",
+        "08-06",
+        "08-09",
+        "08B-01"
+      ],
+      "execution_card": "blueprints/execution/08-02.md",
+      "risk": "high",
+      "reads": [
+        "ls packages/",
+        "apps/",
+        "apps/viz",
+        "pnpm-workspace.yaml",
+        "apps/*",
+        "- \"apps/viz\"",
+        "tsconfig.json",
+        "packages/fixtures",
+        "package.json",
+        "packages/mcp/src/contracts.ts:49-88",
+        "/api/v1/nodes",
+        "/api/v1/edges",
+        "@tadori/mcp",
+        "packages/core/src/enums.ts:20-32",
+        "/api/v1/snapshot",
+        "/api/v1/layout?level=package"
+      ],
+      "writes": [
+        "pnpm-workspace.yaml",
+        "- \"apps/viz\"",
+        "apps/viz/package.json",
+        "@vitejs/plugin-react",
+        "@types/react",
+        "@types/react-dom",
+        "@testing-library/react",
+        "apps/viz/tsconfig.json",
+        "apps/viz/vite.config.ts",
+        "/",
+        "apps/viz/index.html",
+        "apps/viz/eslint.config.js",
+        "apps/viz/src/main.tsx",
+        "apps/viz/src/App.tsx",
+        "apps/viz/src/api/types.ts",
+        "contracts.ts",
+        "apps/viz/src/api/client.ts",
+        "apps/viz/src/api/ws.ts",
+        "apps/viz/src/hooks/useSnapshot.ts",
+        "apps/viz/src/hooks/usePackageGraph.ts",
+        "apps/viz/src/hooks/useRefreshStatus.ts",
+        "apps/viz/src/graph/buildGraphologyGraph.ts",
+        "apps/viz/src/graph/convexHull.ts",
+        "apps/viz/src/graph/PackageMapCanvas.tsx",
+        "apps/viz/src/legend.ts",
+        "apps/viz/src/legend/ProvenanceLegend.tsx",
+        "apps/viz/src/states/EmptyLoadingStale.tsx",
+        "apps/viz/test/legend.test.ts",
+        "apps/viz/test/convexHull.test.ts",
+        "apps/viz/test/ws-reconnect.test.ts"
+      ],
+      "slice_count": 5,
+      "dossier_estimated_tokens": 11150,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "08-03",
+      "title": "Semantic zoom: file expansion",
+      "phase": "8",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "08-02"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/08-03-semantic-zoom-files.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "08-04"
+      ],
+      "execution_card": "blueprints/execution/08-03.md",
+      "risk": "medium",
+      "reads": [
+        "packages/core/src/enums.ts:20-26",
+        "apps/viz",
+        "blueprints/08-02-viz-package-map.md",
+        "PackageMapCanvas.tsx",
+        "blueprints/08-01-layout-engine-persistence.md"
+      ],
+      "writes": [
+        "apps/viz/src/graph/expansion.ts",
+        "apps/viz/src/hooks/usePackageExpansion.ts",
+        "apps/viz/src/graph/PackageMapCanvas.tsx",
+        "apps/viz/src/api/client.ts",
+        "apps/viz/src/api/types.ts",
+        "apps/viz/test/expansion.test.ts",
+        "apps/viz/test/usePackageExpansion.test.ts",
+        "apps/viz/test/expand-collapse-canvas.test.tsx"
+      ],
+      "slice_count": 4,
+      "dossier_estimated_tokens": 8544,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "08-04",
+      "title": "Task-region symbol expansion",
+      "phase": "8",
+      "status": "pending",
+      "status_detail": "pending",
+      "depends_on": [
+        "08-03"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": null,
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "08-07",
+        "08-10"
+      ],
+      "execution_card": "blueprints/execution/08-04.md",
+      "risk": "medium",
+      "reads": [],
+      "writes": [],
+      "slice_count": 1,
+      "dossier_estimated_tokens": 0,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "08-05",
+      "title": "Search & filters",
+      "phase": "8",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "08-02"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/08-05-search-and-filters.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "08-11"
+      ],
+      "execution_card": "blueprints/execution/08-05.md",
+      "risk": "medium",
+      "reads": [
+        "packages/store/src/search.ts",
+        "packages/mcp/src/service.ts",
+        "packages/mcp/src/contracts.ts",
+        "packages/core/src/enums.ts",
+        "apps/viz",
+        "@tadori/*",
+        "ls packages/",
+        "ls apps/",
+        "packages/server",
+        "packages/mcp/src/service.ts:155-166",
+        "packages/mcp/src/contracts.ts:49-89",
+        "blueprints/ARCHITECTURE.md",
+        "blueprints/08-02-*.md"
+      ],
+      "writes": [
+        "apps/viz",
+        "apps/viz/src/features/search/SearchPanel.tsx",
+        "apps/viz/src/features/search/useSearchStore.ts",
+        "apps/viz/src/features/search/searchApi.ts",
+        "apps/viz/src/features/search/filterState.ts",
+        "apps/viz/src/features/search/ResultList.tsx",
+        "apps/viz/src/features/search/SearchPanel.test.tsx",
+        "apps/viz/src/features/search/filterState.test.ts",
+        "apps/viz/src/features/search/searchApi.test.ts"
+      ],
+      "slice_count": 3,
+      "dossier_estimated_tokens": 8296,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "08-06",
+      "title": "Inspection & evidence panels",
+      "phase": "8",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "08-02"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/08-06-inspection-evidence-panels.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "08-07",
+        "08-11",
+        "09-01"
+      ],
+      "execution_card": "blueprints/execution/08-06.md",
+      "risk": "medium",
+      "reads": [
+        "packages/mcp/src/contracts.ts",
+        "packages/mcp/src/service.ts",
+        "/api/v1/source",
+        "packages/mcp/src/tools.ts",
+        "docs/CLI_CONTRACT.md",
+        "vscode://file/...",
+        "/api/v1/docs",
+        "migrations.ts",
+        "packages/mcp/src/contracts.ts:36-89",
+        "packages/mcp/src/service.ts:168-354",
+        "blueprints/ARCHITECTURE.md",
+        "packages/store/src/migrations.ts",
+        "packages/server",
+        "apps/viz",
+        "/api/v1/nodes/:entityKey"
+      ],
+      "writes": [
+        "apps/viz",
+        "apps/viz/src/features/inspect/InspectionPanel.tsx",
+        "apps/viz/src/features/inspect/NodeView.tsx",
+        "apps/viz/src/features/inspect/EdgeView.tsx",
+        "apps/viz/src/features/inspect/EvidenceList.tsx",
+        "apps/viz/src/features/inspect/SourceView.tsx",
+        "apps/viz/src/features/inspect/deepLink.ts",
+        "vscode://file/...",
+        "apps/viz/src/features/inspect/inspectApi.ts",
+        "/api/v1/nodes/:entityKey",
+        "/api/v1/nodes/:entityKey/evidence",
+        "/api/v1/source",
+        "/api/v1/docs",
+        "apps/viz/src/features/inspect/useInspectionStore.ts",
+        "apps/viz/src/features/inspect/InspectionPanel.test.tsx",
+        "apps/viz/src/features/inspect/deepLink.test.ts",
+        "apps/viz/src/features/inspect/SourceView.test.tsx"
+      ],
+      "slice_count": 3,
+      "dossier_estimated_tokens": 8599,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "08-07",
+      "title": "Path/route/test/doc displays",
+      "phase": "8",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "08-04",
+        "08-06"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/08-07-path-route-test-doc-displays.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "08-11"
+      ],
+      "execution_card": "blueprints/execution/08-07.md",
+      "risk": "medium",
+      "reads": [
+        "packages/mcp/src/contracts.ts",
+        "packages/mcp/src/tools.ts",
+        "tools.ts",
+        "/api/v1/routes",
+        "pages/users/[id].tsx",
+        "/users/:id",
+        "contracts.ts",
+        "/api/v1/tests",
+        "packages/mcp/src/contracts.ts:387-417",
+        "packages/mcp/src/tools.ts:1255-1346",
+        "packages/mcp/src/tools.ts:1623-1775",
+        "packages/server",
+        "apps/viz"
+      ],
+      "writes": [
+        "apps/viz",
+        "apps/viz/src/features/explore/ExploreTabs.tsx",
+        "apps/viz/src/features/explore/PathFinder.tsx",
+        "apps/viz/src/features/explore/pathApi.ts",
+        "apps/viz/src/features/explore/RouteTable.tsx",
+        "apps/viz/src/features/explore/routeLabels.ts",
+        "apps/viz/src/features/explore/routesApi.ts",
+        "apps/viz/src/features/explore/LikelyTests.tsx",
+        "apps/viz/src/features/explore/testsApi.ts",
+        "apps/viz/src/features/explore/DocumentsPanel.tsx",
+        "apps/viz/src/features/explore/docsApi.ts",
+        "apps/viz/src/features/explore/PathFinder.test.tsx",
+        "apps/viz/src/features/explore/routeLabels.test.ts",
+        "apps/viz/src/features/explore/LikelyTests.test.tsx",
+        "apps/viz/src/features/explore/DocumentsPanel.test.tsx",
+        "packages/server/test/path-parity.test.ts"
+      ],
+      "slice_count": 3,
+      "dossier_estimated_tokens": 10154,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "08-08",
+      "title": "`packages/hooks` event receiver",
+      "phase": "8",
+      "status": "review",
+      "status_detail": "review (corrected 2026-07-17: task-start call path removed per AD-011; own full review still pending)",
+      "depends_on": [
+        "07-01"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/08-08-hooks-event-receiver.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "08-09"
+      ],
+      "execution_card": "blueprints/execution/08-08.md",
+      "risk": "high",
+      "reads": [
+        "packages/hooks",
+        "ls packages/",
+        "packages/store/src/migrations.ts:286-433",
+        "packages/mcp/src/events.ts:65-360",
+        "events.ts",
+        "/api/v1",
+        ".claude/settings.json",
+        "~/.claude/settings.json",
+        "packages/mcp/src/events.ts",
+        "packages/mcp/src/service.ts",
+        "docs/CLI_CONTRACT.md"
+      ],
+      "writes": [
+        "packages/hooks/package.json",
+        "@tadori/hooks",
+        "/",
+        "packages/hooks/src/index.ts",
+        "packages/hooks/src/client.ts",
+        "packages/hooks/src/types.ts",
+        "packages/hooks/src/scripts/plan.ts",
+        "packages/hooks/src/scripts/file-read.ts",
+        "packages/hooks/src/scripts/modification.ts",
+        "packages/hooks/src/scripts/test.ts",
+        "packages/hooks/src/log.ts",
+        ".tadori/hooks.log",
+        "packages/hooks/test/client.test.ts",
+        "packages/hooks/test/mapping.test.ts",
+        "pnpm-workspace.yaml",
+        "\"packages/hooks\"",
+        "tsconfig.json",
+        "packages/hooks/{src,test}/**/*.ts",
+        "tsconfig.base.json"
+      ],
+      "slice_count": 3,
+      "dossier_estimated_tokens": 8670,
+      "dependency_satisfied": true,
+      "frontier_state": "available"
+    },
+    {
+      "id": "08-09",
+      "title": "Observation overlays",
+      "phase": "8",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "08-02",
+        "08-08"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/08-09-observation-overlays.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "09-05"
+      ],
+      "execution_card": "blueprints/execution/08-09.md",
+      "risk": "medium",
+      "reads": [
+        "apps/viz",
+        "ls packages/",
+        "packages/store/src/migrations.ts:442-458",
+        "packages/mcp/src/contracts.ts:71-...",
+        "packages/store/src/migrations.ts:300-302",
+        "packages/mcp/src/events.ts:337-341",
+        "/tests",
+        "packages/mcp/src/events.ts:12-18",
+        "packages/mcp/src/events.ts",
+        "packages/store/src/migrations.ts:286-433",
+        "packages/mcp/src/contracts.ts"
+      ],
+      "writes": [
+        "apps/viz/src/overlays/types.ts",
+        "apps/viz/src/overlays/useTaskObservations.ts",
+        "apps/viz/src/overlays/computeOverlayState.ts",
+        "apps/viz/src/overlays/OverlayLegend.tsx",
+        "apps/viz/src/overlays/OverlayEmptyState.tsx",
+        "apps/viz/src/overlays/applyOverlaysToRenderer.ts",
+        "apps/viz/test/computeOverlayState.test.ts",
+        "apps/viz/test/useTaskObservations.test.ts"
+      ],
+      "slice_count": 3,
+      "dossier_estimated_tokens": 9033,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "08-10",
+      "title": "Large-repo performance",
+      "phase": "8",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "08-04"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/08-10-large-repo-performance.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "10-01"
+      ],
+      "execution_card": "blueprints/execution/08-10.md",
+      "risk": "medium",
+      "reads": [
+        "scripts/benchmark-incremental.mts",
+        "package.json",
+        "tsconfig.json",
+        "IMPLEMENTATION_STATUS.md",
+        "benchmark-incremental.mts",
+        "README.md",
+        "x/y/z",
+        "packages/store/src/migrations.ts:442-458",
+        "packages/mcp/src/contracts.ts",
+        "blueprints/00-02-ci-pipeline.md:90-96",
+        "apps/viz",
+        "packages/server",
+        "packages/cli",
+        "packages/store/src/migrations.ts:435-458",
+        "blueprints/00-02-ci-pipeline.md",
+        "docs/CLI_CONTRACT.md"
+      ],
+      "writes": [
+        "scripts/lib/syntheticCorpus.mts",
+        "benchmark-incremental.mts",
+        "scripts/benchmark-serve-coldstart.mts",
+        "syntheticCorpus.mts",
+        "scripts/benchmark-serve-positions-identity.mts",
+        "scripts/benchmark-serve-memory.mts",
+        "apps/viz/test/perf/memory.spec.ts",
+        "apps/viz/test/perf/",
+        "apps/viz/src/lod/budgets.ts",
+        "apps/viz/test/lod-budgets.test.ts",
+        "packages/server/test/lod-response-caps.test.ts",
+        "packages/server/test/",
+        "IMPLEMENTATION_STATUS.md"
+      ],
+      "slice_count": 3,
+      "dossier_estimated_tokens": 9492,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "08-11",
+      "title": "Browser & accessibility validation",
+      "phase": "8",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "08-05",
+        "08-06",
+        "08-07"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/08-11-browser-a11y-validation.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "12-04"
+      ],
+      "execution_card": "blueprints/execution/08-11.md",
+      "risk": "medium",
+      "reads": [
+        "package.json",
+        "pnpm-workspace.yaml",
+        "apps/viz",
+        "blueprints/08-05-search-and-filters.md",
+        "(\u00a715/\u00a719),",
+        "docs/CLI_CONTRACT.md",
+        "ASSUMPTIONS.md",
+        "fixture-manifest.json",
+        "packages/server",
+        "packages/cli"
+      ],
+      "writes": [
+        "vitest.config.ts",
+        "apps/viz",
+        "packages/server",
+        "packages/cli",
+        "package.json",
+        "@playwright/test",
+        "@axe-core/playwright",
+        "playwright.config.ts",
+        "e2e/full-flow.chromium.spec.ts",
+        "e2e/critical-flow.firefox.spec.ts",
+        "e2e/keyboard-traversal.spec.ts",
+        "e2e/a11y.spec.ts",
+        "e2e/list-completeness.spec.ts",
+        "e2e/reduced-motion.spec.ts",
+        "e2e/visible-focus.spec.ts",
+        "e2e/fixtures/serveFixtureRepo.ts",
+        "test-results/",
+        "playwright-report/"
+      ],
+      "slice_count": 4,
+      "dossier_estimated_tokens": 10123,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "08B-01",
+      "title": "Subsystem & overview derivation",
+      "phase": "8B",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "08-02"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/08B-01-subsystem-overview-derivation.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "08B-02"
+      ],
+      "execution_card": "blueprints/execution/08B-01.md",
+      "risk": "medium",
+      "reads": [
+        "packages/mcp/src/service.ts:66-355",
+        "packages/core/src/enums.ts:4-18",
+        "packages/core/src/enums.ts:23-35",
+        "packages/core/src/graph.ts:47-65",
+        "packages/core/src/graph.ts:16-29",
+        "columnStart/End",
+        "@tadori-fixtures/<name>",
+        "origin:\"heuristic\"/confidence:\"likely\"/resolution:\"partial\"",
+        "expected/graph.json",
+        "packages/mcp/src/service.ts",
+        "packages/core/src/enums.ts",
+        "packages/core/src/graph.ts",
+        "blueprints/ARCHITECTURE.md",
+        "packages/fixtures/0{1,2,3}-*/expected/graph.json",
+        "packages/<name>"
+      ],
+      "writes": [
+        "packages/mcp/src/overview.ts",
+        "@tadori/mcp",
+        "ranking.ts",
+        "packages/mcp/src/",
+        "packages/mcp/src/index.ts",
+        "export { deriveRepoOverview } from \"./overview.js\";",
+        "packages/server",
+        "packages/mcp/test/overview.test.ts",
+        "packages/server/src/routes/overview.ts",
+        "packages/server/test/overview.route.test.ts"
+      ],
+      "slice_count": 3,
+      "dossier_estimated_tokens": 8945,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "08B-02",
+      "title": "Tour engine + progress state",
+      "phase": "8B",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "08B-01"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/08B-02-tour-engine-progress.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "08B-03"
+      ],
+      "execution_card": "blueprints/execution/08B-02.md",
+      "risk": "medium",
+      "reads": [
+        ".tadori/",
+        "progress.json",
+        "packages/server",
+        "packages/cli",
+        "GET/PUT /api/v1/tour/progress",
+        "overview.ts",
+        "packages/core/src/identity.ts",
+        ".tadori/progress.json",
+        "blueprints/ARCHITECTURE.md"
+      ],
+      "writes": [
+        "packages/mcp/src/tourEngine.ts",
+        "packages/mcp/src/index.ts",
+        "packages/mcp/test/tourEngine.test.ts",
+        "packages/server/src/progressStore.ts",
+        "packages/server/src/routes/tour.ts",
+        "packages/server/test/progressStore.test.ts",
+        "packages/server/test/tour.route.test.ts"
+      ],
+      "slice_count": 3,
+      "dossier_estimated_tokens": 9254,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "08B-03",
+      "title": "Walkthrough tours",
+      "phase": "8B",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "08B-02"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/08B-03-walkthrough-tours.md",
+      "impl_commit": "\u2014",
+      "unlocks": [],
+      "execution_card": "blueprints/execution/08B-03.md",
+      "risk": "medium",
+      "reads": [
+        "packages/fixtures/0{1,2,3}-*/expected/graph.json",
+        "expected/graph.json",
+        "route:GET /users/:id",
+        "src/routes/users.ts:7",
+        "src/routes/admin.ts:8",
+        "packages/mcp/src/service.ts:155-156",
+        "packages/core/src/enums.ts:23-35",
+        "packages/core/src/enums.ts:4-18",
+        "blueprints/08B-01-subsystem-overview-derivation.md",
+        "blueprints/08B-02-tour-engine-progress.md",
+        "packages/core/src/enums.ts"
+      ],
+      "writes": [
+        "packages/mcp/src/tours/entryPointTour.ts",
+        "packages/mcp/src/tours/routeTour.ts",
+        "packages/mcp/src/tours/dependencyTour.ts",
+        "packages/mcp/src/tours/testTour.ts",
+        "packages/mcp/src/tours/index.ts",
+        "packages/mcp/src/index.ts",
+        "tours/index.js",
+        "packages/mcp/test/tours/entryPointTour.test.ts",
+        ".../routeTour.test.ts",
+        ".../dependencyTour.test.ts",
+        ".../testTour.test.ts",
+        ".../recommendedOrder.test.ts",
+        "packages/server/src/routes/tour.ts"
+      ],
+      "slice_count": 3,
+      "dossier_estimated_tokens": 8850,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "09-01",
+      "title": "Review diff API + raw diff UI",
+      "phase": "9",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "08-06"
+      ],
+      "builder": "S",
+      "complexity": "L",
+      "blueprint": "blueprints/09-01-review-diff-api-ui.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "09-02",
+        "09-03",
+        "09-04",
+        "09-05"
+      ],
+      "execution_card": "blueprints/execution/09-01.md",
+      "risk": "high",
+      "reads": [
+        "packages/store/src/diff.ts:21-104",
+        "packages/mcp/src/service.ts:66-355",
+        "@tadori/store",
+        "packages/mcp/src/contracts.ts:49-88",
+        "packages/server",
+        "blueprints/07-01-server-graph-api.md",
+        "packages/store/src/diff.ts",
+        "packages/indexer/src/diffWorkingTree.ts",
+        "packages/store/src/snapshots.ts",
+        "packages/mcp/src/contracts.ts",
+        ".js"
+      ],
+      "writes": [
+        "packages/server/src/routes/reviewDiff.ts",
+        "packages/server/src/reviewDiffAssembly.ts",
+        "packages/indexer/src/captureStagedTree.ts",
+        "packages/indexer/package.json",
+        "packages/indexer/src/index.ts",
+        "apps/viz/src/views/ReviewDiffView.tsx",
+        "apps/viz/src/overlays/DiffBadgeOverlay.tsx",
+        "/api/v1/layout",
+        "apps/viz/src/api/reviewDiff.ts",
+        "packages/server/test/reviewDiff.test.ts",
+        "packages/indexer/test/captureStagedTree.test.ts",
+        "blueprints/ARCHITECTURE.md"
+      ],
+      "slice_count": 2,
+      "dossier_estimated_tokens": 7889,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "09-02",
+      "title": "Rename/move coalescing views",
+      "phase": "9",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "09-01"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/09-02-rename-move-coalescing.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "12-04"
+      ],
+      "execution_card": "blueprints/execution/09-02.md",
+      "risk": "medium",
+      "reads": [
+        "schemas/expected-diff.schema.json",
+        "packages/fixtures/04-diff-coalescing/expected/coalesced-diff.json",
+        "file:src/legacy/helper.ts",
+        "file:src/helpers/helper.ts",
+        "fn:task.processTask -calls-> method:formatter.formatValue/renderValue",
+        ".claude/skills/tadori-indexer/SKILL.md",
+        ".agents/skills/tadori-indexer/SKILL.md",
+        "agent-skills/tadori-indexer/SKILL.md",
+        "packages/harness/src/compare.ts:432",
+        "expected-diff.schema.json",
+        "compare.ts",
+        "packages/harness/src/compareDiff.ts",
+        "raw-diff.json",
+        "coalesced-diff.json",
+        "IMPLEMENTATION_STATUS.md",
+        "extract.ts"
+      ],
+      "writes": [
+        "packages/harness/src/compareDiff.ts",
+        "raw-diff.json",
+        "coalesced-diff.json",
+        "packages/harness/src/index.ts",
+        "packages/harness/src/cli-index.ts",
+        "packages/harness/test/diff-comparison.test.ts",
+        "packages/server/src/coalescing.ts",
+        "packages/server/src/routes/reviewDiff.ts",
+        "packages/server/test/coalescing.test.ts",
+        "apps/viz/src/views/ReviewDiffView.tsx",
+        "IMPLEMENTATION_STATUS.md"
+      ],
+      "slice_count": 3,
+      "dossier_estimated_tokens": 7602,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "09-03",
+      "title": "Boundary rules & violations",
+      "phase": "9",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "09-01"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/09-03-boundary-rules-violations.md",
+      "impl_commit": "\u2014",
+      "unlocks": [],
+      "execution_card": "blueprints/execution/09-03.md",
+      "risk": "high",
+      "reads": [
+        "packages/store/src/migrations.ts:195-284",
+        "tadori.rules.json",
+        "packages/fixtures/01-core-symbols/expected/graph.json",
+        "packages/fixtures/02-express-routes/expected/graph.json",
+        "src/controllers/user-controller.ts:2",
+        "contains: \"../infra/db.js\"",
+        "schemas/expected-graph.schema.json",
+        "packages/harness/src/compare.ts:432",
+        "IMPLEMENTATION_STATUS.md",
+        "rules.json",
+        "docs/CLI_CONTRACT.md",
+        "CLI_CONTRACT.md",
+        "packages/harness/src/compare.ts"
+      ],
+      "writes": [
+        "schemas/tadori-rules.schema.json",
+        "tadori.rules.json",
+        "packages/server/src/boundaryRules.ts",
+        "packages/store/src/boundaries.ts",
+        "/",
+        "packages/store/src/index.ts",
+        "packages/server/src/computeBoundaryViolations.ts",
+        "packages/server/src/routes/nodes.ts",
+        "/api/v1/nodes/:entityKey",
+        "packages/server/src/routes/reviewDiff.ts",
+        "packages/harness/src/compareBoundaries.ts",
+        "packages/fixtures/01-core-symbols/repo/tadori.rules.json",
+        "expected/graph.json",
+        "packages/fixtures/02-express-routes/repo/tadori.rules.json",
+        "packages/harness/src/index.ts",
+        "packages/harness/src/cli-index.ts",
+        "packages/harness/test/boundary-comparison.test.ts",
+        "packages/server/test/boundaryRules.test.ts",
+        "packages/server/test/computeBoundaryViolations.test.ts",
+        "packages/store/test/boundaries.test.ts",
+        "apps/viz/src/overlays/ViolationBadge.tsx",
+        "IMPLEMENTATION_STATUS.md"
+      ],
+      "slice_count": 4,
+      "dossier_estimated_tokens": 7922,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "09-04",
+      "title": "`changed_with` extraction",
+      "phase": "9",
+      "status": "pending",
+      "status_detail": "pending",
+      "depends_on": [
+        "09-01"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": null,
+      "impl_commit": "\u2014",
+      "unlocks": [],
+      "execution_card": "blueprints/execution/09-04.md",
+      "risk": "medium",
+      "reads": [],
+      "writes": [],
+      "slice_count": 1,
+      "dossier_estimated_tokens": 0,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "09-05",
+      "title": "Agent-change review overlays",
+      "phase": "9",
+      "status": "pending",
+      "status_detail": "pending",
+      "depends_on": [
+        "08-09",
+        "09-01"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": null,
+      "impl_commit": "\u2014",
+      "unlocks": [],
+      "execution_card": "blueprints/execution/09-05.md",
+      "risk": "medium",
+      "reads": [],
+      "writes": [],
+      "slice_count": 1,
+      "dossier_estimated_tokens": 0,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "10-01",
+      "title": "2.5D fixed-tilt mode",
+      "phase": "10",
+      "status": "review",
+      "status_detail": "review",
+      "depends_on": [
+        "08-10"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": "blueprints/10-01-25d-fixed-tilt.md",
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "10-02",
+        "10-03"
+      ],
+      "execution_card": "blueprints/execution/10-01.md",
+      "risk": "medium",
+      "reads": [
+        "packages/store/src/migrations.ts:435-471",
+        "docs/CLI_CONTRACT.md:48",
+        "apps/viz",
+        "x/y/z",
+        "@tadori/*",
+        "packages/core/src/enums.ts:4-17",
+        "packages/store/src/diff.ts:4-15",
+        "before_origin/after_origin",
+        "before_resolution/after_resolution",
+        "packages/mcp/src/events.ts:15",
+        "/api/v1/layout"
+      ],
+      "writes": [
+        "apps/viz",
+        "packages/cli",
+        "apps/viz/src/render/depthBinding.ts",
+        "apps/viz/src/render/fixedTiltProjection.ts",
+        "Math.atan(1 / Math.sqrt(2))",
+        "apps/viz/src/render/webglCapability.ts",
+        "apps/viz/src/modes/mode25d.tsx",
+        "apps/viz/src/modes/ModeToggle.tsx",
+        "packages/cli/src/flags.ts",
+        "docs/CLI_CONTRACT.md",
+        "mode25d.tsx",
+        "apps/viz/test/depthBinding.test.ts",
+        "apps/viz/test/fixedTiltProjection.test.ts",
+        "apps/viz/test/mode25d.test.tsx"
+      ],
+      "slice_count": 3,
+      "dossier_estimated_tokens": 8129,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "10-02",
+      "title": "3D experimental flag",
+      "phase": "10",
+      "status": "pending",
+      "status_detail": "pending",
+      "depends_on": [
+        "10-01"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": null,
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "10-03"
+      ],
+      "execution_card": "blueprints/execution/10-02.md",
+      "risk": "medium",
+      "reads": [],
+      "writes": [],
+      "slice_count": 1,
+      "dossier_estimated_tokens": 0,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "10-03",
+      "title": "Depth study instrumentation",
+      "phase": "10",
+      "status": "pending",
+      "status_detail": "pending",
+      "depends_on": [
+        "10-01",
+        "10-02"
+      ],
+      "builder": "S",
+      "complexity": "S",
+      "blueprint": null,
+      "impl_commit": "\u2014",
+      "unlocks": [],
+      "execution_card": "blueprints/execution/10-03.md",
+      "risk": "low",
+      "reads": [],
+      "writes": [],
+      "slice_count": 1,
+      "dossier_estimated_tokens": 0,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "11-01",
+      "title": "`packages/bench` harness",
+      "phase": "11",
+      "status": "pending",
+      "status_detail": "pending",
+      "depends_on": [
+        "00-02"
+      ],
+      "builder": "S",
+      "complexity": "L",
+      "blueprint": null,
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "11-02"
+      ],
+      "execution_card": "blueprints/execution/11-01.md",
+      "risk": "high",
+      "reads": [],
+      "writes": [],
+      "slice_count": 1,
+      "dossier_estimated_tokens": 0,
+      "dependency_satisfied": true,
+      "frontier_state": "available"
+    },
+    {
+      "id": "11-02",
+      "title": "Seeded-trap repos + task sets",
+      "phase": "11",
+      "status": "pending",
+      "status_detail": "pending",
+      "depends_on": [
+        "11-01"
+      ],
+      "builder": "S",
+      "complexity": "L",
+      "blueprint": null,
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "11-03"
+      ],
+      "execution_card": "blueprints/execution/11-02.md",
+      "risk": "high",
+      "reads": [],
+      "writes": [],
+      "slice_count": 1,
+      "dossier_estimated_tokens": 0,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "11-03",
+      "title": "Competitor profiles + protocol",
+      "phase": "11",
+      "status": "pending",
+      "status_detail": "pending",
+      "depends_on": [
+        "11-02"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": null,
+      "impl_commit": "\u2014",
+      "unlocks": [],
+      "execution_card": "blueprints/execution/11-03.md",
+      "risk": "medium",
+      "reads": [],
+      "writes": [],
+      "slice_count": 1,
+      "dossier_estimated_tokens": 0,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "12-01",
+      "title": "Privacy & data lifecycle",
+      "phase": "12",
+      "status": "pending",
+      "status_detail": "pending",
+      "depends_on": [
+        "07-02"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": null,
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "12-05"
+      ],
+      "execution_card": "blueprints/execution/12-01.md",
+      "risk": "high",
+      "reads": [],
+      "writes": [],
+      "slice_count": 1,
+      "dossier_estimated_tokens": 0,
+      "dependency_satisfied": true,
+      "frontier_state": "available"
+    },
+    {
+      "id": "12-02",
+      "title": "Failure hardening",
+      "phase": "12",
+      "status": "pending",
+      "status_detail": "pending",
+      "depends_on": [
+        "07-03"
+      ],
+      "builder": "S",
+      "complexity": "L",
+      "blueprint": null,
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "12-05"
+      ],
+      "execution_card": "blueprints/execution/12-02.md",
+      "risk": "high",
+      "reads": [],
+      "writes": [],
+      "slice_count": 1,
+      "dossier_estimated_tokens": 0,
+      "dependency_satisfied": true,
+      "frontier_state": "available"
+    },
+    {
+      "id": "12-03",
+      "title": "Packaging & cross-platform",
+      "phase": "12",
+      "status": "pending",
+      "status_detail": "pending",
+      "depends_on": [
+        "07-03",
+        "00-02"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": null,
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "12-05"
+      ],
+      "execution_card": "blueprints/execution/12-03.md",
+      "risk": "high",
+      "reads": [],
+      "writes": [],
+      "slice_count": 1,
+      "dossier_estimated_tokens": 0,
+      "dependency_satisfied": true,
+      "frontier_state": "available"
+    },
+    {
+      "id": "12-04",
+      "title": "Documentation & demo",
+      "phase": "12",
+      "status": "pending",
+      "status_detail": "pending",
+      "depends_on": [
+        "08-11",
+        "09-02"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": null,
+      "impl_commit": "\u2014",
+      "unlocks": [
+        "12-05"
+      ],
+      "execution_card": "blueprints/execution/12-04.md",
+      "risk": "medium",
+      "reads": [],
+      "writes": [],
+      "slice_count": 1,
+      "dossier_estimated_tokens": 0,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    },
+    {
+      "id": "12-05",
+      "title": "Pilot package & RC",
+      "phase": "12",
+      "status": "pending",
+      "status_detail": "pending",
+      "depends_on": [
+        "12-01",
+        "12-02",
+        "12-03",
+        "12-04"
+      ],
+      "builder": "S",
+      "complexity": "M",
+      "blueprint": null,
+      "impl_commit": "\u2014",
+      "unlocks": [],
+      "execution_card": "blueprints/execution/12-05.md",
+      "risk": "medium",
+      "reads": [],
+      "writes": [],
+      "slice_count": 1,
+      "dossier_estimated_tokens": 0,
+      "dependency_satisfied": false,
+      "frontier_state": "waiting_on_predecessor"
+    }
+  ],
+  "edges": [
+    {
+      "from": "00-01A",
+      "to": "00-01",
+      "type": "depends_on"
+    },
+    {
+      "from": "00-01",
+      "to": "00-02",
+      "type": "depends_on"
+    },
+    {
+      "from": "00-01",
+      "to": "07-01",
+      "type": "depends_on"
+    },
+    {
+      "from": "07-01",
+      "to": "07-02",
+      "type": "depends_on"
+    },
+    {
+      "from": "07-02",
+      "to": "07-03",
+      "type": "depends_on"
+    },
+    {
+      "from": "07-01",
+      "to": "08-01",
+      "type": "depends_on"
+    },
+    {
+      "from": "07-02",
+      "to": "08-01",
+      "type": "depends_on"
+    },
+    {
+      "from": "07-03",
+      "to": "08-01",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-01",
+      "to": "08-02",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-02",
+      "to": "08-03",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-03",
+      "to": "08-04",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-02",
+      "to": "08-05",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-02",
+      "to": "08-06",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-04",
+      "to": "08-07",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-06",
+      "to": "08-07",
+      "type": "depends_on"
+    },
+    {
+      "from": "07-01",
+      "to": "08-08",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-02",
+      "to": "08-09",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-08",
+      "to": "08-09",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-04",
+      "to": "08-10",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-05",
+      "to": "08-11",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-06",
+      "to": "08-11",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-07",
+      "to": "08-11",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-02",
+      "to": "08B-01",
+      "type": "depends_on"
+    },
+    {
+      "from": "08B-01",
+      "to": "08B-02",
+      "type": "depends_on"
+    },
+    {
+      "from": "08B-02",
+      "to": "08B-03",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-06",
+      "to": "09-01",
+      "type": "depends_on"
+    },
+    {
+      "from": "09-01",
+      "to": "09-02",
+      "type": "depends_on"
+    },
+    {
+      "from": "09-01",
+      "to": "09-03",
+      "type": "depends_on"
+    },
+    {
+      "from": "09-01",
+      "to": "09-04",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-09",
+      "to": "09-05",
+      "type": "depends_on"
+    },
+    {
+      "from": "09-01",
+      "to": "09-05",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-10",
+      "to": "10-01",
+      "type": "depends_on"
+    },
+    {
+      "from": "10-01",
+      "to": "10-02",
+      "type": "depends_on"
+    },
+    {
+      "from": "10-01",
+      "to": "10-03",
+      "type": "depends_on"
+    },
+    {
+      "from": "10-02",
+      "to": "10-03",
+      "type": "depends_on"
+    },
+    {
+      "from": "00-02",
+      "to": "11-01",
+      "type": "depends_on"
+    },
+    {
+      "from": "11-01",
+      "to": "11-02",
+      "type": "depends_on"
+    },
+    {
+      "from": "11-02",
+      "to": "11-03",
+      "type": "depends_on"
+    },
+    {
+      "from": "07-02",
+      "to": "12-01",
+      "type": "depends_on"
+    },
+    {
+      "from": "07-03",
+      "to": "12-02",
+      "type": "depends_on"
+    },
+    {
+      "from": "07-03",
+      "to": "12-03",
+      "type": "depends_on"
+    },
+    {
+      "from": "00-02",
+      "to": "12-03",
+      "type": "depends_on"
+    },
+    {
+      "from": "08-11",
+      "to": "12-04",
+      "type": "depends_on"
+    },
+    {
+      "from": "09-02",
+      "to": "12-04",
+      "type": "depends_on"
+    },
+    {
+      "from": "12-01",
+      "to": "12-05",
+      "type": "depends_on"
+    },
+    {
+      "from": "12-02",
+      "to": "12-05",
+      "type": "depends_on"
+    },
+    {
+      "from": "12-03",
+      "to": "12-05",
+      "type": "depends_on"
+    },
+    {
+      "from": "12-04",
+      "to": "12-05",
+      "type": "depends_on"
+    }
+  ]
+}
