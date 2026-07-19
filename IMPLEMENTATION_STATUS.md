@@ -1,18 +1,42 @@
 # Tadori Implementation Status
 
-Last updated: 2026-07-18 (07-03 independent-review corrections fully validated;
-07-02 validated and merged as `7865548` PR #10)
+Last updated: 2026-07-19 (08-01 layout engine/persistence validated: full gate
+green, independent validator PASS with no blocker/high; 07-03 validated and
+merged as `f0181c3` PR #11)
 
 ## Current milestone
 
-**Phase 7 — Local serving** (frozen v2.1 Phase F). 07-01 adds
-`@tadori/server`: a localhost-only Fastify HTTP+WS surface over the
-already-tested `GraphService` query seam. Weeks 1–6 (indexing, identity,
-evidence, MCP, context selection, incremental indexing) remain complete and
-frozen; Phase 0 hygiene (00-01A/00-01/00-02) is validated with live
-two-OS CI.
+**Phase 8 — Guided 2D visualization** (frozen v2.1 Phase F). Phase 7 local
+serving is validated through 07-03 and merged. 08-01 supplies the deterministic
+server-owned layout and persistence boundary required before the visualization
+app can be built. Weeks 1–7 remain complete and frozen; Phase 0 CI remains
+live on Linux and Windows.
 
-## 07-03 — Serve hardening (built, 2026-07-18; full gate passed, CI pending)
+## 08-01 — deterministic layout engine + persistence (validated, 2026-07-19)
+
+- Added strict deterministic graphology/ForceAtlas2 layout contracts for
+  package/file/symbol topology, semantic multiedges, fixed anchors, seeded
+  initial positions, and a versioned 25-unit centroid-bounded delta path.
+- Added snapshot-aware ordered reads, immediate atomic replace/append writes,
+  explicit integrity failures, exact current-membership validation, historical
+  row preservation, stable pin/anchor handling, and byte-identical reuse.
+- `/api/v1/layout` captures one coherent current graph, materializes on first
+  serve, supports the three frozen levels/base view, and sanitizes failures.
+- Focused evidence: 33/33 layout/store/server tests; adversarial review drove
+  fixes for dangling snapshots, corrupt stored coordinates, ignored inserts,
+  ambiguous file ownership, centroid-bound origin, and an initially over-broad
+  full-graph cache-hit reload.
+- Full gate 2026-07-19 (all green): skills:sync/check, typecheck, lint,
+  test (46 files, 293/293), `python validate_fixtures.py`, fixtures:validate,
+  fixtures:index, fixtures:typecheck, `git diff --check`. Independent validator
+  PASS on all 10 completion-cut invariants; zero blocker/high findings.
+- Layout benchmark on Node 22.14.0, win32-x64, Intel Core Ultra 9 288V
+  (one warm-up, five samples): package-500 p95 243.6 ms; symbol-1000 p95
+  1446.5 ms; ordered-read p95 1.5 ms; first materialization p95 341.4 ms;
+  byte-identical reuse p95 28.2 ms. Every enforced budget passed
+  (respectively 3000/50/3000/100 ms).
+
+## 07-03 — Serve hardening (validated, 2026-07-18; merged `f0181c3`, PR #11, CI green both OSes)
 
 - Hardened 07-02's `serve.ts` lifecycle in place (no re-architecture, reused
   the existing `RunServeDeps` seam — no new interface). Port algorithm

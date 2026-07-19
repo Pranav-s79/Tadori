@@ -1,54 +1,58 @@
 # Autonomous run checkpoint
 
-Concise persistent state for the autonomous build/validate/PR/merge loop.
-Updated by the coordinator at every stage transition. No raw logs.
+This file stores only the current execution frontier. Historical task details
+belong in Git/PRs and INDEX, not here.
 
-## Current state
+## Snapshot basis
 
-- Timestamp: 2026-07-18 (autonomous run, session 2)
-- Current branch: `bp/07-03-serve-hardening` (off main `7865548`)
-- DONE this session: 07-01 VALIDATED (merged `5dee45b`, PR #9, CI green
-  both OSes); 07-02 VALIDATED (merged `7865548`, PR #10, CI green both
-  OSes — ubuntu 2m5s, windows 3m34s; INDEX/blueprint flips to validated
-  ride the 07-03 branch).
-- Current task: 07-03 serve hardening. Implementation review found a real
-  pinned-snapshot blocker (`--snapshot 1` validated 1 but served active 2),
-  plus teardown, reindex-proof, and process-test gaps. Corrections are on disk:
-  exact snapshot threading/no rotation, repository+FK validation, failure-safe
-  cleanup, non-vacuous reindex proof, and always-run real signal assertions.
-  Focused correction suite: 35/35; independent correction re-review PASS;
-  fresh full gate ALL PASS (283/283, fixtures 5/5 exact, benchmark and diff
-  flow pass). Stage: final diff/staging audit → commit/push/PR/two-OS CI.
-- Environment fact: `.npmrc` pins `use-node-version=22.14.0` (machine Node
-  25 has no better-sqlite3 prebuilds/toolchain). Always run tests via
+- Live Git branch/SHA: **verify at session start**; this file cannot prove
+  the current working tree.
+- Machine-readable scheduler: `blueprints/TASK_GRAPH.json`.
+- Execution protocol: `blueprints/GRAPH_ENGINEERING.md`.
+- Environment fact: `.npmrc` pins `use-node-version=22.14.0` (a newer machine
+  Node has no better-sqlite3 prebuilds/toolchain). Always run tests via
   `pnpm`; bare `npx vitest` bypasses the pin and fails on native ABI.
-- Phase 0 (00-01A, 00-01, 00-02): fully validated and merged (PRs #4–#8;
-  see git history for evidence). CI LIVE on both OSes for main + PRs.
-- Next dependency root after 07-03 publication: 08-01 blueprint correction.
-  Its current `review` draft does not yet own layout materialization through
-  the server route and has unresolved empty-layout/input/benchmark contracts;
-  implementation must not start until those are corrected and reviewed.
 
-## Repository topology
+## Closed nodes observed in INDEX
 
-- `origin/main` = local `main` = `7865548` (07-02, PR #10).
-- Sprint4/5/6/7 branches remain on origin (merged content; not deleted);
-  all `bp/*` task branches deleted after merge.
+- Phase 0: `00-01`, `00-01A`, `00-02` validated.
+- Phase 7: `07-01`, `07-02`, `07-03` validated.
+- Phase 8: `08-01` validated 2026-07-19 (full gate green, 293/293, layout
+  benchmark within budget, independent validator PASS, no blocker/high).
 
-## Stashes (do not drop)
+Do not rediscover or rebuild these nodes unless live Git proves INDEX false.
 
-- `stash@{0}` "pre-autonomous-run unexplained headroom-ai changes" —
-  pre-existing `package.json`/`pnpm-lock.yaml` diffs adding
-  `headroom-ai@^0.22.4` (no blueprint or source uses it). Preserved
-  reversibly; excluded from all task commits.
+## Current frontier observed in INDEX
 
-## Adversarial-review residuals for 00-01A (documented, accepted)
+- `08-02` — `apps/viz` scaffold + package map; state `review`. Predecessor
+  `08-01` is validated, so `08-02` is dependency-ready.
+- Immediate action: read `execution/08-02.md`, confirm its contracts/completion
+  cut, then implement. It consumes layout coordinates only (never imports the
+  store, graphology, or a second layout implementation).
+- Next dependent node after `08-02`: `08-03`.
 
-- LOW: scan-vs-capture tsconfig TOCTOU narrows to error-quality only
-  (pre-existing non-atomic capture window; no invalid snapshot can publish).
-- LOW: `extends` base outside the repo (node_modules) flipping allowJs is
-  invisible to `configChanged` until any config/support change rebuilds —
-  pre-existing workspace-hash design boundary.
-- LOW: `parseTsconfig(...).options` also computes `fileNames` the scanner
-  discards (marginal cost on MCP freshness path; §8 mandates the shared
-  parser).
+Independent frontier nodes also exist (`11-01`, `12-01`, `12-02`, `12-03`),
+but parallel production work is allowed only with separate worktrees and
+disjoint write/contract sets.
+
+## Preserved external state
+
+- The earlier run reported a stash for unexplained `headroom-ai` dependency
+  changes. Verify with `git stash list`; do not apply, drop, or include it in
+  task PRs without owner direction.
+
+## Resume protocol
+
+1. `git fetch --all --prune`
+2. inspect branch, status, recent log, open PRs, and stash list;
+3. reconcile only this frontier section with live evidence;
+4. choose the next node from TASK_GRAPH;
+5. read its execution card, not the full dossier;
+6. execute slices and checkpoint after each coherent graph rewrite.
+
+## Last safe stop
+
+- 2026-07-19: `08-01` validated and delivered on branch
+  `bp/08-01-layout-engine-persistence` (two commits: graph substrate +
+  layout engine). Full gate + benchmark green; independent validator PASS.
+- Next frontier node: `08-02` (`apps/viz` scaffold + package map).

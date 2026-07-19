@@ -38,6 +38,7 @@ jobs:
       - run: pnpm fixtures:validate
       - run: pnpm fixtures:index
       - run: pnpm fixtures:typecheck
+      - run: pnpm benchmark:layout
       - run: pnpm tadori diff .
       - run: git diff --check
       # Tree-mutation guard: stages every modification and untracked file,

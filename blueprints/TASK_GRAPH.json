@@ -315,8 +315,8 @@
       "id": "08-01",
       "title": "Layout engine + persistence",
       "phase": "8",
-      "status": "built",
-      "status_detail": "built (2026-07-18; focused 33/33 and all layout benchmark gates green; final full gate/PR pending)",
+      "status": "validated",
+      "status_detail": "validated (2026-07-19; full gate green, 293/293, layout benchmark within budget, independent validator PASS, no blocker/high)",
       "depends_on": [
         "07-01",
         "07-02",
@@ -360,7 +360,7 @@
       "slice_count": 4,
       "dossier_estimated_tokens": 7662,
       "dependency_satisfied": true,
-      "frontier_state": "finish_completion_cut"
+      "frontier_state": "closed"
     },
     {
       "id": "08-02",
@@ -436,8 +436,8 @@
       ],
       "slice_count": 5,
       "dossier_estimated_tokens": 11150,
-      "dependency_satisfied": false,
-      "frontier_state": "waiting_on_predecessor"
+      "dependency_satisfied": true,
+      "frontier_state": "available"
     },
     {
       "id": "08-03",
