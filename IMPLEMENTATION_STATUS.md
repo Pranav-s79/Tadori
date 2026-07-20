@@ -2,11 +2,11 @@
 
 # Current State (always overwritten)
 
-Current node: 08-03 — Semantic zoom: file expansion
-Branch: bp/08-03-semantic-zoom-files (based on origin/main @ b3ffa07, PR #13/08-02 merged)
-Latest commit: (pending) 08-03 file-expansion implementation + tests
-Current PR: none yet — branch to be pushed and PR opened against main
-Next frontier: 08-04 (task-region symbol expansion, depends on 08-03); 08-05/08-06 also unblocked (depend on 08-02)
+Current node: 08-05 — Search & filters (next build; blueprint in `review`)
+Branch: bp/08-03-semantic-zoom-files delivered as PR #14 (open, awaiting owner merge)
+Latest commit: e6f215b feat(viz): semantic zoom file expansion [08-03]
+Current PR: #14 (08-03) open against main; #13 (08-02) merged @ b3ffa07
+Next frontier: 08-05 / 08-06 both unblocked now (depend only on 08-02, merged); 08-04 needs a blueprint first
 Known blocker: none
 
 ---
