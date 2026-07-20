@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { SearchPanel } from "./features/search/SearchPanel.tsx";
 import { PackageMapCanvas } from "./graph/PackageMapCanvas.tsx";
 import { usePackageGraph } from "./hooks/usePackageGraph.ts";
 import { useRefreshStatus } from "./hooks/useRefreshStatus.ts";
@@ -33,6 +34,10 @@ export function App() {
   return (
     <div className="app-shell">
       {snapshot?.stale === true && <StaleState staleReason={snapshot.staleReason} />}
+      {/* ASSUMPTION: 08-06 will pass real focusEntity/openInspectionPanel props
+          into SearchPanel once the camera-focus and inspection-panel APIs exist
+          (08-02/08-06 surface). Until then it mounts with no-op callbacks. */}
+      <SearchPanel />
       {isRefreshing ? <RefreshingBanner>{graphView}</RefreshingBanner> : graphView}
       <ProvenanceLegend />
     </div>
