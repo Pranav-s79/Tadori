@@ -90,6 +90,36 @@ export const mockRefreshStatus: RefreshStatus = {
   lastError: null
 };
 
+/**
+ * File-level fixtures for semantic zoom (08-03), keyed by owning package. Two
+ * packages carry file nodes/edges/positions so tests can expand each
+ * independently and assert cross-package aggregation.
+ */
+export const mockFileNodesByPackage: Record<string, ApiNode[]> = {
+  "pkg:core": [
+    { entityKey: "file:core/a.ts", kind: "file", qualifiedName: "core/a.ts", displayName: "a.ts", file: "core/a.ts", exported: true, fanIn: 2 },
+    { entityKey: "file:core/b.ts", kind: "file", qualifiedName: "core/b.ts", displayName: "b.ts", file: "core/b.ts", exported: false, fanIn: 1 }
+  ],
+  "pkg:store": [
+    { entityKey: "file:store/index.ts", kind: "file", qualifiedName: "store/index.ts", displayName: "index.ts", file: "store/index.ts", exported: true, fanIn: 3 }
+  ]
+};
+
+export const mockFileEdgesByPackage: Record<string, ApiEdge[]> = {
+  "pkg:core": [
+    { entityKey: "fedge:core:1", srcEntityKey: "file:core/a.ts", relation: "imports", dstEntityKey: "file:core/b.ts", origin: "compiler", confidence: "certain", resolution: "resolved" }
+  ],
+  "pkg:store": []
+};
+
+export const mockFileLayoutByPackage: Record<string, LayoutPositionDto[]> = {
+  "pkg:core": [
+    { entityKey: "file:core/a.ts", x: 5, y: 5, z: 0, pinned: false },
+    { entityKey: "file:core/b.ts", x: 15, y: 5, z: 0, pinned: false }
+  ],
+  "pkg:store": [{ entityKey: "file:store/index.ts", x: 105, y: 5, z: 0, pinned: false }]
+};
+
 export function mockNodesResponse(nodes: ApiNode[] = mockPackageNodes) {
   return { items: nodes, nextCursor: null, total: nodes.length };
 }
@@ -116,16 +146,28 @@ export function installMockFetch(overrides?: {
   const original = globalThis.fetch;
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : input.toString();
+    const params = new URLSearchParams(url.includes("?") ? url.slice(url.indexOf("?")) : "");
+    const level = params.get("level");
+    const pkg = params.get("packageName");
     if (url.includes("/api/v1/snapshot")) {
       return jsonResponse(overrides?.context ?? mockContext);
     }
     if (url.includes("/api/v1/nodes")) {
+      if (level === "file" && pkg !== null) {
+        return jsonResponse(mockNodesResponse(mockFileNodesByPackage[pkg] ?? []));
+      }
       return jsonResponse(mockNodesResponse(overrides?.nodes));
     }
     if (url.includes("/api/v1/edges")) {
+      if (level === "file" && pkg !== null) {
+        return jsonResponse(mockEdgesResponse(mockFileEdgesByPackage[pkg] ?? []));
+      }
       return jsonResponse(mockEdgesResponse(overrides?.edges));
     }
     if (url.includes("/api/v1/layout")) {
+      if (level === "file" && pkg !== null) {
+        return jsonResponse(mockLayoutResponse(mockFileLayoutByPackage[pkg] ?? []));
+      }
       return jsonResponse(mockLayoutResponse(overrides?.positions));
     }
     throw new Error(`installMockFetch: unhandled URL ${url}`);

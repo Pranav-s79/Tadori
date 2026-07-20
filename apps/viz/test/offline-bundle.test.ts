@@ -39,9 +39,9 @@ const built = existsSync(join(distDir, "index.html"));
 describe.skipIf(!built)("offline bundle", () => {
   it("index.html has no absolute external script/link references", () => {
     const html = readFileSync(join(distDir, "index.html"), "utf8");
-    const refs = [...html.matchAll(/(?:src|href)\s*=\s*["']([^"']+)["']/gi)].map(
-      (m) => m[1]
-    );
+    const refs = [...html.matchAll(/(?:src|href)\s*=\s*["']([^"']+)["']/gi)]
+      .map((m) => m[1])
+      .filter((ref): ref is string => ref !== undefined);
     const external = refs.filter((ref) => /^(?:https?:)?\/\//i.test(ref));
     expect(external, `external asset refs in index.html: ${external.join(", ")}`)
       .toEqual([]);
@@ -52,8 +52,8 @@ describe.skipIf(!built)("offline bundle", () => {
     for (const file of walk(distDir)) {
       const text = readFileSync(file, "utf8");
       for (const m of text.matchAll(/https?:\/\/([a-z0-9.-]+)/gi)) {
-        const host = m[1].toLowerCase();
-        if (!HOST_ALLOWLIST.has(host)) {
+        const host = m[1]?.toLowerCase();
+        if (host !== undefined && !HOST_ALLOWLIST.has(host)) {
           offenders.push(`${file}: ${m[0]}`);
         }
       }
