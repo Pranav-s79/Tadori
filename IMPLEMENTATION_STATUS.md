@@ -26,6 +26,34 @@ server-owned layout and persistence boundary required before the visualization
 app can be built. Weeks 1–7 remain complete and frozen; Phase 0 CI remains
 live on Linux and Windows.
 
+## 08-05 — search & filters (validated, 2026-07-20)
+
+- New `apps/viz/src/features/search/` feature: single search box wired to
+  `GET /api/v1/search`, debounced (250 ms) with a monotonic generation guard so
+  stale/out-of-order responses never overwrite newer results; multi-select
+  filter groups over the frozen kind/relation/origin/confidence/resolution
+  vocabularies; keyboard-first result listbox (roving tabindex, Arrow/Home/End/
+  Enter/Space, per-row accessible name = kind + qualified name); aria-live
+  status region with distinct idle/loading/ok/empty/ambiguous-adjacent/error
+  copy. HTTP-only; no `@tadori/*` import.
+- Filters are a pure render overlay: `applyFiltersToGraph` returns a new object
+  and never mutates fetched data; a filter toggle issues zero `/search`/`/nodes`
+  /`/edges` fetches (asserted by fetch-mock call count). Client clamps
+  `limit<=100` and `offset<=1_000_000`; result order is server order verbatim
+  (never re-sorted). Multi-kind narrowing is client-side (server `kind` param is
+  singular) preserving order.
+- ASSUMPTION: search rows (store `FtsMatchRow`) carry no `fanIn`/`freshness`/
+  `stale`; those §10 badge fields are omitted for search results (recorded in
+  `searchApi.ts`). ASSUMPTION: 08-02 camera-focus + 08-06 panel-open APIs do not
+  exist yet — `selectResult` calls injected `focusEntity`/`openInspectionPanel`
+  callbacks (no-op until 08-06 wires them). ASSUMPTION: no axe-core dep present,
+  so the §13 axe pre-check is deferred to 08-11's a11y sweep.
+- Focused evidence: `pnpm --filter @tadori/viz test` 130/130 (5 new suites:
+  filterState, searchApi, useSearchStore, ResultList, SearchPanel — 40 new
+  tests). `tsc --noEmit`, `eslint .`, `vite build` all exit 0; offline-bundle
+  assertion still passes. Also repaired two pre-existing `noUncheckedIndexedAccess`
+  tsc gaps in `test/offline-bundle.test.ts` to keep the app's `tsc` gate green.
+
 ## 08-03 — Semantic zoom: file expansion (validated, 2026-07-20)
 
 - Clicking or keyboard-activating (`Enter`/`Space`) a package hull expands it in
