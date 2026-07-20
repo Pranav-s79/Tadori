@@ -1,9 +1,22 @@
 # Tadori Implementation Status
 
-Last updated: 2026-07-20 (08-02 apps/viz scaffold + package map validated:
-viz 90/90 incl. offline-bundle assertion, root 315/315 unaffected, offline
-bundle verified, eslint import boundary present; 08-01 layout engine validated
-and merged as `99c205a` PR #12)
+# Current State (always overwritten)
+
+Current node: 08-05 — Search & filters (next build; blueprint in `review`)
+Branch: bp/08-03-semantic-zoom-files delivered as PR #14 (open, awaiting owner merge)
+Latest commit: e6f215b feat(viz): semantic zoom file expansion [08-03]
+Current PR: #14 (08-03) open against main; #13 (08-02) merged @ b3ffa07
+Next frontier: 08-05 / 08-06 both unblocked now (depend only on 08-02, merged); 08-04 needs a blueprint first
+Known blocker: none
+
+---
+
+# History (append only)
+
+Last updated: 2026-07-20 (08-03 semantic zoom file expansion validated: viz
+105/105, additive expand/collapse byte-stability, edge aggregation, ref-cached
+re-expand, root 315/315 unaffected; 08-02 apps/viz scaffold validated, viz
+90/90, PR #13)
 
 ## Current milestone
 
@@ -12,6 +25,31 @@ serving is validated through 07-03 and merged. 08-01 supplies the deterministic
 server-owned layout and persistence boundary required before the visualization
 app can be built. Weeks 1–7 remain complete and frozen; Phase 0 CI remains
 live on Linux and Windows.
+
+## 08-03 — Semantic zoom: file expansion (validated, 2026-07-20)
+
+- Clicking or keyboard-activating (`Enter`/`Space`) a package hull expands it in
+  place to its file-level nodes at deterministic `layout?level=file` positions.
+  Expansion mutates the existing graphology graph additively
+  (`addNode`/`addEdge`), never rebuilding — every other package's node `x`/`y`
+  and the expanded package's own anchor stay `Object.is`-unchanged; collapse
+  (`dropNode`/`dropEdge`) restores the exact prior node count and positions.
+- `computeAggregatedEdges` collapses cross-package edges into one summary per
+  `(srcPackage, dstPackage, relation)` with a provenance breakdown; two
+  relations across the same pair stay distinct; intra-expanded-package edges are
+  excluded from aggregation (rendered individually).
+- `usePackageExpansion` caches each package's fetched file data in a ref, so
+  collapse→re-expand in the same session issues zero additional fetches
+  (test-asserted via fetch call count).
+- File labels truncate at exactly 20 chars via the shared `truncate(text,
+  maxLen)` helper (package labels reuse it at 24 — no duplicated logic).
+- Focused evidence: `pnpm --filter @tadori/viz test` 105/105 (adds
+  `expansion.test.ts` aggregation + diff + truncate, `usePackageExpansion.test.ts`
+  ref-cache, `expand-collapse-canvas.test.tsx` byte-stability + keyboard).
+  `eslint .`, `tsc --noEmit`, `vite build` all exit 0; offline-bundle assertion
+  still passes on the fresh build.
+- Confined to `apps/viz`: no `packages/*` changed, so root `pnpm typecheck`
+  (exit 0) and `pnpm test` (315/315) remain unaffected.
 
 ## 08-02 — `apps/viz` scaffold + package map (validated, 2026-07-20)
 

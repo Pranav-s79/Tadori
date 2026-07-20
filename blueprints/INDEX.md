@@ -21,7 +21,7 @@ blueprint IDs. See `BACKLOG.md` for scope detail.
 | 07-03 | Serve hardening | 7 | validated (2026-07-18; independent validation and Linux/Windows CI green; merged PR #11) | 07-02 | O | M | `blueprints/07-03-serve-hardening.md` | `f0181c3` (PR #11) |
 | 08-01 | Layout engine + persistence | 8 | validated (2026-07-19; full gate green, 293/293, independent validator PASS) | 07-01, 07-02, 07-03 | S | M | `blueprints/08-01-layout-engine-persistence.md` | `cd1a7af` |
 | 08-02 | `apps/viz` scaffold + package map | 8 | validated (2026-07-20; viz 90/90 incl. offline-bundle assertion, root 315/315 unaffected, offline bundle verified, eslint import boundary present; committed + pushed, PR #13 open awaiting owner merge) | 08-01 | S | L | `blueprints/08-02-viz-package-map.md` | `65af9e5` (PR #13, branch) |
-| 08-03 | Semantic zoom: file expansion | 8 | review | 08-02 | S | M | `blueprints/08-03-semantic-zoom-files.md` | — |
+| 08-03 | Semantic zoom: file expansion | 8 | built (2026-07-20; viz 105/105, tsc/eslint/vite build exit 0, additive expand/collapse byte-stability, edge aggregation, ref-cached re-expand; committed `e6f215b`, pushed, PR #14 open against main) | 08-02 | S | M | `blueprints/08-03-semantic-zoom-files.md` | `e6f215b` (PR #14, branch) |
 | 08-04 | Task-region symbol expansion | 8 | pending | 08-03 | S | M | — | — |
 | 08-05 | Search & filters | 8 | review | 08-02 | S | M | `blueprints/08-05-search-and-filters.md` | — |
 | 08-06 | Inspection & evidence panels | 8 | review | 08-02 | S | M | `blueprints/08-06-inspection-evidence-panels.md` | — |

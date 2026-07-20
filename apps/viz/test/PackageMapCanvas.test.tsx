@@ -18,6 +18,12 @@ vi.mock("sigma", () => ({
     constructor(...args: unknown[]) {
       sigmaConstructorMock(...args);
     }
+    on() {
+      // event wiring (clickNode) is no-op in the mount/unmount smoke test
+    }
+    refresh() {
+      // redraw request is a no-op without a real WebGL renderer
+    }
     kill() {
       killMock();
     }

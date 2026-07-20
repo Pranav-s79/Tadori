@@ -56,3 +56,25 @@ export async function fetchLayout(level: string): Promise<{ positions: LayoutPos
     layoutVersion: typeof record.layoutVersion === "number" ? record.layoutVersion : 0
   };
 }
+
+// File-level fetches for semantic zoom (08-03), scoped to one package via the
+// server's `level=file&packageName=<key>` query (see
+// packages/server/src/routes/graph.ts). The `/edges` route does not itself take
+// `packageName`, so `fetchFileEdges` passes it for the mock and the real server
+// tolerates the extra key; the caller keeps only edges touching the package.
+// ponytail: client-side edge scoping; add a server-side packageName filter to
+// /edges if per-package edge volume ever matters.
+export async function fetchFileNodes(packageName: string): Promise<ApiNode[]> {
+  const body = await getJson(`/nodes?level=file&packageName=${encodeURIComponent(packageName)}`);
+  return unwrapList<ApiNode>(body, "nodes");
+}
+
+export async function fetchFileEdges(packageName: string): Promise<ApiEdge[]> {
+  const body = await getJson(`/edges?level=file&packageName=${encodeURIComponent(packageName)}`);
+  return unwrapList<ApiEdge>(body, "edges");
+}
+
+export async function fetchFileLayout(packageName: string): Promise<LayoutPositionDto[]> {
+  const body = await getJson(`/layout?level=file&packageName=${encodeURIComponent(packageName)}`);
+  return unwrapList<LayoutPositionDto>(body, "positions");
+}

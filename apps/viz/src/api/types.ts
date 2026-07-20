@@ -64,3 +64,26 @@ export interface RefreshStatus {
   snapshotId: number | null;
   lastError: string | null;
 }
+
+/**
+ * One summary edge per `(srcPackage, dstPackage, relation)` triple, produced
+ * by collapsing every individual cross-package edge of that relation into a
+ * single rendered edge. `provenance` breaks the aggregated count down by
+ * `(origin, confidence, resolution)` so the legend/inspection can still show
+ * what the summary is made of. Two different relations across the same package
+ * pair are two distinct AggregatedEdges — they never merge.
+ */
+export interface AggregatedEdge {
+  srcPackage: string;
+  dstPackage: string;
+  relation: string;
+  count: number;
+  provenance: AggregatedProvenance[];
+}
+
+export interface AggregatedProvenance {
+  origin: Origin;
+  confidence: Confidence;
+  resolution: Resolution;
+  count: number;
+}
