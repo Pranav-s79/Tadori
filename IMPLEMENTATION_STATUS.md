@@ -1,8 +1,9 @@
 # Tadori Implementation Status
 
-Last updated: 2026-07-19 (08-01 layout engine/persistence validated: full gate
-green, independent validator PASS with no blocker/high; 07-03 validated and
-merged as `f0181c3` PR #11)
+Last updated: 2026-07-20 (08-02 apps/viz scaffold + package map validated:
+viz 90/90 incl. offline-bundle assertion, root 315/315 unaffected, offline
+bundle verified, eslint import boundary present; 08-01 layout engine validated
+and merged as `99c205a` PR #12)
 
 ## Current milestone
 
@@ -11,6 +12,33 @@ serving is validated through 07-03 and merged. 08-01 supplies the deterministic
 server-owned layout and persistence boundary required before the visualization
 app can be built. Weeks 1–7 remain complete and frozen; Phase 0 CI remains
 live on Linux and Windows.
+
+## 08-02 — `apps/viz` scaffold + package map (validated, 2026-07-20)
+
+- New workspace member `apps/viz`: React 19 + Vite 8 + Sigma.js 3 single-page
+  app rendering the active snapshot's package-level graph as convex hulls with
+  labels and a data-driven provenance edge legend. Talks to `packages/server`
+  only over `fetch`/`WebSocket` against `/api/v1/*` — no `@tadori/*` import, no
+  CDN script, no external font/asset fetch at runtime.
+- Import boundary enforced by `apps/viz/eslint.config.js` `no-restricted-imports`
+  (`@tadori/*`, `fs`, `better-sqlite3`); grep confirms zero `@tadori/*` imports
+  under `apps/viz/src`.
+- Legend UI and canvas edge renderer both call the single `edgeVisualStyle`
+  from `src/legend.ts` (no duplicated mapping). Package labels truncate at
+  exactly 24 chars + ellipsis (`truncateLabel`, unit-tested).
+- Offline-bundle assertion (`test/offline-bundle.test.ts`) runs against the real
+  `vite build` output: `index.html` has no absolute external script/link ref,
+  and no `dist/` file references an external host (only loopback + the
+  non-fetch library literals `www.w3.org`, `react.dev` are allowed). Verified to
+  fail on an injected CDN URL; skips cleanly when `dist/` is absent.
+- Focused evidence: `pnpm --filter @tadori/viz test` 90/90 (legend table,
+  convex-hull cases, WS reconnect backoff 500/1000/2000/4000/5000-cap + refetch,
+  three named empty/loading/stale states, package-map mount/unmount smoke,
+  offline-bundle). `vite build` exits 0 → `dist/index.html` + bundled JS.
+  `eslint .` clean.
+- Root Node suite unaffected: `pnpm typecheck` exit 0 (root tsconfig scopes to
+  `packages/*`, excludes `apps/viz`), `pnpm test` 315/315. `pnpm skills:check`
+  verified 4 canonical skills.
 
 ## 08-01 — deterministic layout engine + persistence (validated, 2026-07-19)
 
