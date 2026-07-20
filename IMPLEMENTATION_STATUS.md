@@ -2,21 +2,42 @@
 
 # Current State (always overwritten)
 
-Current node: 08-05 — Search & filters (next build; blueprint in `review`)
-Branch: bp/08-03-semantic-zoom-files delivered as PR #14 (open, awaiting owner merge)
-Latest commit: e6f215b feat(viz): semantic zoom file expansion [08-03]
-Current PR: #14 (08-03) open against main; #13 (08-02) merged @ b3ffa07
-Next frontier: 08-05 / 08-06 both unblocked now (depend only on 08-02, merged); 08-04 needs a blueprint first
+Current node: 08-06 — Inspection & evidence panels (build in progress via subagent); 08-05 delivered awaiting merge
+Branch: bp/status-refresh (docs); code branches bp/08-05-search-and-filters (PR #16), bp/08-06-inspection-evidence-panels (pending)
+Latest commit: 77594f0 main (PR #15 merged) — 08-05 tip bad47d8, rebased on main
+Current PR: #16 (08-05) open, MERGEABLE, CI running. Merged: #14 (08-03), #15 (08-04 blueprint), #13 (08-02)
+Next frontier: 08-06 in flight; then 08-07 (needs 08-04+08-06) and 08-04 build (blueprint now ready). 08-08/08-09 also open
 Known blocker: none
 
 ---
 
 # History (append only)
 
-Last updated: 2026-07-20 (08-03 semantic zoom file expansion validated: viz
-105/105, additive expand/collapse byte-stability, edge aggregation, ref-cached
-re-expand, root 315/315 unaffected; 08-02 apps/viz scaffold validated, viz
-90/90, PR #13)
+Last updated: 2026-07-20 (08-04 blueprint authored + merged PR #15; 08-05
+search & filters delivered PR #16, viz 145/145, rebased on main after #14/#15
+merged; 08-03 file expansion merged PR #14; 08-02 scaffold PR #13)
+
+## 08-05 — search & filters (delivered PR #16, 2026-07-20)
+
+- New `apps/viz/src/features/search/`: single search box → `GET /api/v1/search`,
+  250 ms debounce + monotonic generation guard (stale responses never overwrite
+  newer). Multi-select kind/relation/origin/confidence/resolution filters as a
+  pure render overlay (`applyFiltersToGraph` returns a new object; a toggle
+  issues zero fetches). `limit<=100`/`offset<=1_000_000` clamped; result order
+  is server order verbatim. Keyboard-first listbox + aria-live status; distinct
+  idle/loading/ok/empty/ambiguous-adjacent/error copy.
+- Deviations (ASSUMPTIONs in code): search rows carry no fanIn/freshness/stale
+  (omitted, not fabricated); camera-focus + inspection-open are injected
+  callbacks (08-02/08-06 not yet wired); axe check deferred to 08-11.
+- Validation: viz 145/145 (+40 new), `tsc`/`eslint`/`vite build` exit 0,
+  offline-bundle assertion passes. Rebased onto main after #14/#15 merged.
+
+## 08-04 — task-region symbol expansion (blueprint ready, merged PR #15, 2026-07-20)
+
+- Blueprint authored for the third/final zoom level (file → exported symbols).
+  Verified the server already serves `level=symbol` (graph.ts `LEVELS`), so it is
+  a reuse of 08-03's expand/collapse machinery, not new backend work. Scope:
+  exported-only by default with an honest omitted-count; no fourth level.
 
 ## Current milestone
 
