@@ -1,4 +1,6 @@
 import { useCallback } from "react";
+import { InspectionPanel } from "./features/inspect/InspectionPanel.tsx";
+import { useInspectionStore } from "./features/inspect/useInspectionStore.ts";
 import { SearchPanel } from "./features/search/SearchPanel.tsx";
 import { PackageMapCanvas } from "./graph/PackageMapCanvas.tsx";
 import { usePackageGraph } from "./hooks/usePackageGraph.ts";
@@ -15,6 +17,14 @@ function wsUrl(): string {
 export function App() {
   const { snapshot, loading: snapshotLoading } = useSnapshot();
   const { data, loading: graphLoading, refetch: refetchGraph } = usePackageGraph();
+  const inspection = useInspectionStore();
+
+  const openInspectionPanel = useCallback(
+    (entityKey: string) => {
+      inspection.openEntity({ entityKey, entityType: "node" });
+    },
+    [inspection]
+  );
 
   const onReconnected = useCallback(() => {
     refetchGraph();
@@ -34,12 +44,15 @@ export function App() {
   return (
     <div className="app-shell">
       {snapshot?.stale === true && <StaleState staleReason={snapshot.staleReason} />}
-      {/* ASSUMPTION: 08-06 will pass real focusEntity/openInspectionPanel props
-          into SearchPanel once the camera-focus and inspection-panel APIs exist
-          (08-02/08-06 surface). Until then it mounts with no-op callbacks. */}
-      <SearchPanel />
+      {/* Search results now open the 08-06 inspection panel. focusEntity (camera
+          pan/zoom) is still 08-02's surface and remains a no-op until wired.
+          ASSUMPTION: no absolute repo root is exposed client-side (snapshot has
+          only the repository name), so deep links are disabled (repoRoot=null)
+          until a root is surfaced by the server context. */}
+      <SearchPanel openInspectionPanel={openInspectionPanel} />
       {isRefreshing ? <RefreshingBanner>{graphView}</RefreshingBanner> : graphView}
       <ProvenanceLegend />
+      <InspectionPanel store={inspection} repoRoot={null} />
     </div>
   );
 }
