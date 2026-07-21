@@ -76,8 +76,32 @@ function flattenRows(store: ReviewDiffStore): DiffRow[] {
 }
 
 export function ReviewDiffView({ store: externalStore, onInspect }: ReviewDiffViewProps): ReactElement {
-  const ownStore = useReviewDiffStore();
-  const store = externalStore ?? ownStore;
+  // When no external store is supplied the view owns one. The hook must NOT run
+  // when an external store IS supplied, else it would fire a second mount fetch
+  // (App shares one store between the list and the overlay — one fetch, not two).
+  // Two components keep the hook-call count stable per render (rules of hooks).
+  if (externalStore !== undefined) {
+    return <ReviewDiffList store={externalStore} onInspect={onInspect} />;
+  }
+  return <ReviewDiffOwnStore onInspect={onInspect} />;
+}
+
+function ReviewDiffOwnStore({
+  onInspect
+}: {
+  onInspect?: (entityKey: string, entityType: "node") => void;
+}): ReactElement {
+  const store = useReviewDiffStore();
+  return <ReviewDiffList store={store} onInspect={onInspect} />;
+}
+
+function ReviewDiffList({
+  store,
+  onInspect
+}: {
+  store: ReviewDiffStore;
+  onInspect?: (entityKey: string, entityType: "node") => void;
+}): ReactElement {
   const rows = flattenRows(store);
 
   const [activeIndex, setActiveIndex] = useState(0);

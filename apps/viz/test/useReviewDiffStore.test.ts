@@ -196,4 +196,34 @@ describe("useReviewDiffStore cursor pagination dedupe", () => {
     act(() => result.current.loadMore());
     expect(pending.length).toBe(before);
   });
+
+  // Regression: the server's per-page omitted count = listTotal - thisPageLen,
+  // so it counts rows on OTHER pages (including earlier ones). Naively keeping
+  // the latest page's raw count left a stuck "N not shown" + "partial" after the
+  // last page. The store must reconcile against accumulated rows → 0 when fully
+  // paged.
+  it("reconciles omitted counts across pages; a fully-paged diff reports 0 omitted and status ok", async () => {
+    const { result } = renderHook(() => useReviewDiffStore());
+    // 3 total added nodes, page size 2. Page 1 shows a,b; server says omitted=1.
+    await resolveInitial(
+      pageBody({ nodesAdded: [node("a"), node("b")], nodesAddedOmitted: 1, nextCursor: "2" })
+    );
+    expect(result.current.page?.nodesAddedOmitted).toBe(1);
+    expect(result.current.status).toBe("partial");
+
+    act(() => result.current.loadMore());
+    await waitFor(() => expect(pending.some((p) => p.url.includes("cursor=2"))).toBe(true));
+    const page2 = pending.find((p) => p.url.includes("cursor=2"))!;
+    // Page 2 shows the last node c; server's per-page omitted = listTotal(3) - 1 = 2
+    // (a and b, already shown). The store must NOT surface 2 — everything is now
+    // shown, so the honest remaining-omitted is 0.
+    await act(async () =>
+      page2.resolve(pageBody({ nodesAdded: [node("c")], nodesAddedOmitted: 2, nextCursor: null }))
+    );
+
+    expect(result.current.page?.nodesAdded.map((n) => n.entityKey)).toEqual(["a", "b", "c"]);
+    expect(result.current.page?.nodesAddedOmitted).toBe(0);
+    expect(result.current.nextCursor).toBeNull();
+    expect(result.current.status).toBe("ok");
+  });
 });
