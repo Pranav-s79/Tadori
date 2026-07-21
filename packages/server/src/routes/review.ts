@@ -7,12 +7,23 @@ import type { ReviewDiffDto, SnapshotRowDto } from "../types.js";
 import type { SnapshotRow } from "@tadori/store";
 
 interface ReviewDiffQuery {
+  kind?: string;
   base?: string;
   head?: string;
   coalesce?: string;
   cursor?: string;
   limit?: string;
 }
+
+/**
+ * The three comparison kinds (ARCHITECTURE §review). `snapshot` (the default)
+ * diffs two explicit snapshot ids. `working_tree` and `staged` capture the
+ * current disk / git-index state and diff it against the active snapshot; their
+ * capture→index→diff wiring lands in the next 09-01 slice, so they return an
+ * honest 501 here rather than silently behaving like `snapshot`.
+ */
+const COMPARISON_KINDS = ["snapshot", "working_tree", "staged"] as const;
+type ComparisonKind = (typeof COMPARISON_KINDS)[number];
 
 function toSnapshotRowDto(row: SnapshotRow): SnapshotRowDto {
   return {
@@ -37,6 +48,19 @@ export async function registerReviewRoutes(app: FastifyInstance): Promise<void> 
       // 501 explicitly — never silently return the raw diff labeled coalesced.
       if (coalesce === "coalesced") {
         const { statusCode, payload } = notImplemented("coalesced_unsupported");
+        return reply.code(statusCode).send(payload);
+      }
+      const kind: ComparisonKind = (request.query.kind ?? "snapshot") as ComparisonKind;
+      if (!COMPARISON_KINDS.includes(kind)) {
+        const { statusCode, payload } = badRequest("bad_comparison_kind");
+        return reply.code(statusCode).send(payload);
+      }
+      // working_tree / staged capture the live disk / git-index and diff against
+      // the active snapshot. Their capture→index→diff path is the next slice; a
+      // 501 keeps the contract honest rather than silently falling through to a
+      // snapshot↔snapshot diff.
+      if (kind === "working_tree" || kind === "staged") {
+        const { statusCode, payload } = notImplemented(`${kind}_comparison_unimplemented`);
         return reply.code(statusCode).send(payload);
       }
       const offset = parseReviewCursor(request.query.cursor);

@@ -101,6 +101,52 @@ describe("review diff route", () => {
     expect(response.json().code).toBe("bad_page");
   });
 
+  it("returns 400 bad_comparison_kind for an unknown kind", async () => {
+    testDb = buildTestDb();
+    refresh = await ConcurrentRefreshController.start(testDb.db, testDb.repoRoot);
+    app = await createServerApp({ db: testDb.db, repoRoot: testDb.repoRoot, refresh });
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/review/diff?${new URLSearchParams({
+        base: String(testDb.snapshotId),
+        head: String(testDb.snapshotId),
+        kind: "bogus"
+      }).toString()}`
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe("bad_comparison_kind");
+  });
+
+  it("returns 501 for working_tree and staged kinds (honest, never a silent snapshot diff)", async () => {
+    testDb = buildTestDb();
+    refresh = await ConcurrentRefreshController.start(testDb.db, testDb.repoRoot);
+    app = await createServerApp({ db: testDb.db, repoRoot: testDb.repoRoot, refresh });
+    for (const kind of ["working_tree", "staged"]) {
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/review/diff?${new URLSearchParams({ kind }).toString()}`
+      });
+      expect(response.statusCode).toBe(501);
+      expect(response.json().code).toBe(`${kind}_comparison_unimplemented`);
+    }
+  });
+
+  it("kind=snapshot is the default and behaves as before", async () => {
+    testDb = buildTestDb();
+    refresh = await ConcurrentRefreshController.start(testDb.db, testDb.repoRoot);
+    app = await createServerApp({ db: testDb.db, repoRoot: testDb.repoRoot, refresh });
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/review/diff?${new URLSearchParams({
+        base: String(testDb.snapshotId),
+        head: String(testDb.snapshotId),
+        kind: "snapshot"
+      }).toString()}`
+    });
+    expect(response.statusCode).toBe(200);
+    expect((response.json() as ReviewDiffDto).presentation).toBe("raw");
+  });
+
   it("includes pagination fields; an empty diff reports zero omitted and a null cursor", async () => {
     testDb = buildTestDb();
     refresh = await ConcurrentRefreshController.start(testDb.db, testDb.repoRoot);
