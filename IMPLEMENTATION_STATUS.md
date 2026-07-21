@@ -2,12 +2,40 @@
 
 # Current State (always overwritten)
 
-Current node: 08-06 — Inspection & evidence panels (build in progress via subagent); 08-05 delivered awaiting merge
-Branch: bp/status-refresh (docs); code branches bp/08-05-search-and-filters (PR #16), bp/08-06-inspection-evidence-panels (pending)
-Latest commit: 77594f0 main (PR #15 merged) — 08-05 tip bad47d8, rebased on main
-Current PR: #16 (08-05) open, MERGEABLE, CI running. Merged: #14 (08-03), #15 (08-04 blueprint), #13 (08-02)
-Next frontier: 08-06 in flight; then 08-07 (needs 08-04+08-06) and 08-04 build (blueprint now ready). 08-08/08-09 also open
+Current node: 09-01 — Review-diff working_tree/staged data paths wired (backend slice); viz slice (ReviewDiffView + DiffBadgeOverlay) still pending
+Branch: bp/09-01-wt-staged-wiring (backend wiring)
+Latest commit: 0a4f7bc main (PR #22 merged) — branch tip adds live-comparison wiring on top
+Current PR: bp/09-01-wt-staged-wiring pending open. Merged: #19 (pagination), #20 (staged capture), #22 (comparison-kind contract + honest 501)
+Next frontier: 09-01 viz slice (typed reviewDiff client + ReviewDiffView list + non-moving DiffBadgeOverlay over /api/v1/layout, zero layout recompute); then 09-02 (coalesced) and the BehaviorStory product-direction slice
 Known blocker: none
+
+## 09-01 — review-diff working_tree/staged wiring (backend slice, 2026-07-21)
+
+- `GET /api/v1/review/diff?kind=working_tree|staged` now returns a real diff of
+  the live disk / git-index against the served ACTIVE snapshot, replacing the
+  honest 501 placeholders. Snapshot↔snapshot behavior unchanged; `snapshot`
+  remains the default.
+- New `packages/server/src/liveComparison.ts`: captures the live tree (working
+  tree directly, or `captureStagedTree`'s materialized git index for staged),
+  indexes it into an ISOLATED temporary SQLite DB (never the served DB, so the
+  active snapshot is never rotated and the working tree / git index are never
+  mutated), then diffs it in memory against `loadSnapshotGraph(servedDb,
+  activeId)` — the in-memory expression of the frozen §11 three-way edge
+  set-difference plus node add/remove, keyed on stable entity keys. Temp DB +
+  staged temp dir always disposed in `finally`.
+- Fix: `captureStagedTree` now materializes into a child dir named after the
+  real repo so the derived package identity matches the served snapshot (repos
+  without a root package.json name previously produced a spurious top-level
+  package add/remove in the staged diff).
+- Honest errors: git-unavailable → 501 `git_unavailable`; non-repo → 400
+  `not_a_git_repository`; staged/live capture failure → 400 `*_capture_failed`;
+  unexpected errors re-thrown (500), never mislabeled.
+- Tests: new `packages/server/test/reviewLive.test.ts` (9 real-git + real-SQLite
+  integration cases: working_tree add/remove/unchanged, staged
+  add/delete/partial-staging, working-tree-only change does NOT leak into
+  staged, non-git 400, no temp-dir leak + working tree/index unchanged after
+  comparison). `review.test.ts` 501 assertions updated to the wired behavior.
+  Server+indexer 159/159 green; `pnpm typecheck` + scoped `eslint` clean.
 
 ---
 

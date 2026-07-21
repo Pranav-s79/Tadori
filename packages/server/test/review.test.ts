@@ -117,18 +117,38 @@ describe("review diff route", () => {
     expect(response.json().code).toBe("bad_comparison_kind");
   });
 
-  it("returns 501 for working_tree and staged kinds (honest, never a silent snapshot diff)", async () => {
+  it("working_tree diffs the live disk against the active snapshot (empty for an unchanged tree)", async () => {
+    // The fixture repo is indexed straight from disk as the active snapshot, so
+    // an immediate working_tree comparison of that same disk is empty. (Full
+    // real-git behavior is covered in reviewLive.test.ts.)
     testDb = buildTestDb();
     refresh = await ConcurrentRefreshController.start(testDb.db, testDb.repoRoot);
     app = await createServerApp({ db: testDb.db, repoRoot: testDb.repoRoot, refresh });
-    for (const kind of ["working_tree", "staged"]) {
-      const response = await app.inject({
-        method: "GET",
-        url: `/api/v1/review/diff?${new URLSearchParams({ kind }).toString()}`
-      });
-      expect(response.statusCode).toBe(501);
-      expect(response.json().code).toBe(`${kind}_comparison_unimplemented`);
-    }
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/review/diff?${new URLSearchParams({ kind: "working_tree" }).toString()}`
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as ReviewDiffDto;
+    expect(body.nodesAdded).toEqual([]);
+    expect(body.nodesRemoved).toEqual([]);
+    expect(body.edges).toEqual([]);
+    expect(body.head.kind).toBe("working_tree");
+    expect(body.head.status).toBe("live");
+  });
+
+  it("staged returns 400 not_a_git_repository when the served repo is not a git repo", async () => {
+    // buildTestDb copies the fixture into a plain (non-git) temp dir, so a
+    // staged comparison has no git index to read and must fail honestly.
+    testDb = buildTestDb();
+    refresh = await ConcurrentRefreshController.start(testDb.db, testDb.repoRoot);
+    app = await createServerApp({ db: testDb.db, repoRoot: testDb.repoRoot, refresh });
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/review/diff?${new URLSearchParams({ kind: "staged" }).toString()}`
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe("not_a_git_repository");
   });
 
   it("kind=snapshot is the default and behaves as before", async () => {

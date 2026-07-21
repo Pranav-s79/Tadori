@@ -6,24 +6,30 @@ Tadori builds a provenance-typed graph of a TypeScript/JavaScript repository —
 packages, files, symbols, routes, tests, and ADR documents, where every edge
 carries its origin, confidence, resolution, and file:line evidence. Agents
 consume the graph through a frozen six-tool MCP context interface; a local
-visual supervision layer (`tadori serve .`) is the next milestone. Tadori is
-local-first: indexing and serving run entirely on your machine, the
-forthcoming visualization binds to `127.0.0.1` only, and there is no cloud
-dependency.
+visual supervision layer (`tadori serve .`) serves that graph over a
+`127.0.0.1`-only HTTP/WebSocket surface to a 2D visualization app. Tadori is
+local-first: indexing, serving, and visualization run entirely on your machine,
+with no cloud dependency and no external runtime fetch.
 
 ## Status
 
-Weeks 1–6 of the frozen v2.1 roadmap are complete and validated, plus the
-Phase 0 allowJs scanner correction (00-01A):
+The frozen v2.1 index/store/MCP core (Weeks 1–6) is complete and validated, and
+work has moved through local serving (Phase 7) into guided 2D visualization
+(Phase 8) and review-diff (Phase 9):
 
-- 178/178 tests across 25 files pass.
 - All five golden fixtures compare exactly — zero missing, unexpected, or
   mismatched nodes and edges.
-- Incremental refresh gates met: single-file refresh p95 1257.685 ms
-  (< 2000 ms gate) on a 250,330-LOC corpus.
+- Phase 7 `tadori serve .` local server (graph/layout/search/source/inspection
+  HTTP APIs + WebSocket refresh) is merged and validated.
+- Phase 8 visualization (`apps/viz`): deterministic server-owned layout, guided
+  package→file→symbol zoom, search & filters, inspection & evidence panels.
+- Phase 9 review-diff in progress: `GET /api/v1/review/diff` compares two
+  snapshots, or the live working tree / git index against the active snapshot
+  (`kind=snapshot|working_tree|staged`), with pagination, omission accounting,
+  and honest errors — never a silent substitution of one comparison kind for
+  another. The on-map diff-badge visualization is the remaining slice.
 
-Next phase: local serving and 2D visualization (`tadori serve .`; contract in
-`docs/CLI_CONTRACT.md`).
+The frozen six-tool MCP interface, golden fixtures, and schemas are unchanged.
 
 ## Quick start
 
@@ -47,6 +53,14 @@ Captures and publishes a working-tree snapshot of this repository, then
 reports the graph diff against the previous head.
 
 ```bash
+pnpm tadori serve .
+```
+
+Indexes the repository and starts the local `127.0.0.1`-only server (graph,
+layout, search, source, inspection, and review-diff APIs plus a WebSocket
+refresh channel) that the `apps/viz` visualization consumes.
+
+```bash
 pnpm mcp:stdio --db .tadori/tadori.sqlite --repo .
 ```
 
@@ -66,13 +80,15 @@ Workspace packages:
 | `packages/indexer` | TypeScript LanguageService driver: repository scan, semantic extraction, incremental refresh, native watching |
 | `packages/harness` | Golden-fixture validation, indexing comparison, and fixture typecheck CLIs |
 | `packages/mcp` | The frozen six-tool MCP interface: snapshot queries, FTS5 search, explainable ranking, budgeting, stdio transport |
+| `packages/server` | `127.0.0.1`-only HTTP/WebSocket product surface: graph, layout, search, source, inspection, and review-diff APIs |
+| `packages/cli` | `tadori` CLI: `diff` (snapshot + edge diff) and `serve` (runs the local server) |
+| `apps/viz` | Local 2D visualization app consuming the server over HTTP/WS (no `@tadori/*` import; offline bundle) |
 
 `packages/fixtures/` is the golden-fixture corpus — it is a fixture data
 directory, not a workspace package (absent from `pnpm-workspace.yaml`); see
 `packages/fixtures/README.md`.
 
-Planned, not yet built: `packages/cli`, `packages/server`, `apps/viz`,
-`packages/hooks`, `packages/bench`.
+Planned, not yet built: `packages/hooks`, `packages/bench`.
 
 ## Frozen contracts
 
