@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -104,12 +104,20 @@ export async function captureStagedTree(rootPath: string): Promise<StagedTreeCap
   const root = path.resolve(rootPath);
   await assertGitRepository(root);
 
-  const dir = mkdtempSync(path.join(tmpdir(), "tadori-staged-"));
+  const parent = mkdtempSync(path.join(tmpdir(), "tadori-staged-"));
   const dispose = (): void => {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(parent, { recursive: true, force: true });
   };
 
   try {
+    // Materialize INTO a child directory named after the real repo, so the
+    // indexer derives the same package identity as the served snapshot. A repo
+    // with a root package.json `name` is already directory-independent, but one
+    // without falls back to the root basename (indexer extract.ts); a mismatched
+    // temp-dir basename would otherwise fabricate a spurious top-level package
+    // add/remove in the staged diff.
+    const dir = path.join(parent, path.basename(root));
+    mkdirSync(dir);
     // checkout-index writes each indexed path under `<prefix><path>`. The
     // prefix MUST end with the platform path separator, else git concatenates
     // it directly onto the filename (writing siblings of `dir`, not children).
