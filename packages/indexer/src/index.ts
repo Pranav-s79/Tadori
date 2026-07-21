@@ -7,3 +7,4 @@ export * from "./indexRepository.js";
 export * from "./watcher.js";
 export * from "./incremental.js";
 export * from "./diffWorkingTree.js";
+export * from "./captureStagedTree.js";
