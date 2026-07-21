@@ -31,3 +31,7 @@ export function notFound(code: string, detail?: string): ApiErrorResult {
 export function conflict(code: string, detail?: string): ApiErrorResult {
   return build(409, code, detail);
 }
+
+export function notImplemented(code: string, detail?: string): ApiErrorResult {
+  return build(501, code, detail);
+}

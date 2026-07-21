@@ -68,4 +68,55 @@ describe("review diff route", () => {
     expect(response.statusCode).toBe(404);
     expect(response.json().code).toBe("unknown_snapshot");
   });
+
+  it("returns 501 coalesced_unsupported for coalesce=coalesced (never a silent raw substitution)", async () => {
+    testDb = buildTestDb();
+    refresh = await ConcurrentRefreshController.start(testDb.db, testDb.repoRoot);
+    app = await createServerApp({ db: testDb.db, repoRoot: testDb.repoRoot, refresh });
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/review/diff?${new URLSearchParams({
+        base: String(testDb.snapshotId),
+        head: String(testDb.snapshotId),
+        coalesce: "coalesced"
+      }).toString()}`
+    });
+    expect(response.statusCode).toBe(501);
+    expect(response.json().code).toBe("coalesced_unsupported");
+  });
+
+  it("returns 400 bad_page for an invalid cursor", async () => {
+    testDb = buildTestDb();
+    refresh = await ConcurrentRefreshController.start(testDb.db, testDb.repoRoot);
+    app = await createServerApp({ db: testDb.db, repoRoot: testDb.repoRoot, refresh });
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/review/diff?${new URLSearchParams({
+        base: String(testDb.snapshotId),
+        head: String(testDb.snapshotId),
+        cursor: "-5"
+      }).toString()}`
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe("bad_page");
+  });
+
+  it("includes pagination fields; an empty diff reports zero omitted and a null cursor", async () => {
+    testDb = buildTestDb();
+    refresh = await ConcurrentRefreshController.start(testDb.db, testDb.repoRoot);
+    app = await createServerApp({ db: testDb.db, repoRoot: testDb.repoRoot, refresh });
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/review/diff?${new URLSearchParams({
+        base: String(testDb.snapshotId),
+        head: String(testDb.snapshotId)
+      }).toString()}`
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as ReviewDiffDto;
+    expect(body.nodesAddedOmitted).toBe(0);
+    expect(body.nodesRemovedOmitted).toBe(0);
+    expect(body.edgesOmitted).toBe(0);
+    expect(body.nextCursor).toBeNull();
+  });
 });

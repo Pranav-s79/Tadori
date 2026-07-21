@@ -1,7 +1,8 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { diffSnapshotEdges, getSnapshot, loadSnapshotGraph } from "@tadori/store";
-import { badRequest, notFound } from "../errors.js";
+import { badRequest, notFound, notImplemented } from "../errors.js";
 import { toToolNode } from "./graph.js";
+import { paginateReviewDiff, parseReviewCursor, parseReviewLimit } from "../reviewDiffAssembly.js";
 import type { ReviewDiffDto, SnapshotRowDto } from "../types.js";
 import type { SnapshotRow } from "@tadori/store";
 
@@ -9,6 +10,8 @@ interface ReviewDiffQuery {
   base?: string;
   head?: string;
   coalesce?: string;
+  cursor?: string;
+  limit?: string;
 }
 
 function toSnapshotRowDto(row: SnapshotRow): SnapshotRowDto {
@@ -29,7 +32,19 @@ export async function registerReviewRoutes(app: FastifyInstance): Promise<void> 
     "/review/diff",
     async (request: FastifyRequest<{ Querystring: ReviewDiffQuery }>, reply: FastifyReply) => {
       const service = app.graphState.current();
-      const { base, head } = request.query;
+      const { base, head, coalesce } = request.query;
+      // Coalesced (rename/move) presentation is 09-02's job. Until then it must
+      // 501 explicitly — never silently return the raw diff labeled coalesced.
+      if (coalesce === "coalesced") {
+        const { statusCode, payload } = notImplemented("coalesced_unsupported");
+        return reply.code(statusCode).send(payload);
+      }
+      const offset = parseReviewCursor(request.query.cursor);
+      const limit = parseReviewLimit(request.query.limit);
+      if (offset === null || limit === null) {
+        const { statusCode, payload } = badRequest("bad_page");
+        return reply.code(statusCode).send(payload);
+      }
       if (base === undefined || head === undefined) {
         const { statusCode, payload } = badRequest("bad_snapshot_ref");
         return reply.code(statusCode).send(payload);
@@ -61,6 +76,16 @@ export async function registerReviewRoutes(app: FastifyInstance): Promise<void> 
       const nodesAdded = headGraph.nodes.filter((node) => !baseKeys.has(node.entityKey));
       const nodesRemoved = baseGraph.nodes.filter((node) => !headKeys.has(node.entityKey));
 
+      const page = paginateReviewDiff(
+        {
+          nodesAdded: nodesAdded.map((node) => toToolNode(app, node)),
+          nodesRemoved: nodesRemoved.map((node) => toToolNode(app, node)),
+          edges
+        },
+        offset,
+        limit
+      );
+
       const snapshotFreshness = service.snapshotFreshness();
       const refreshState = app.graphState.refreshState();
       const body: ReviewDiffDto = {
@@ -77,9 +102,13 @@ export async function registerReviewRoutes(app: FastifyInstance): Promise<void> 
         },
         base: toSnapshotRowDto(baseSnapshot),
         head: toSnapshotRowDto(headSnapshot),
-        nodesAdded: nodesAdded.map((node) => toToolNode(app, node)),
-        nodesRemoved: nodesRemoved.map((node) => toToolNode(app, node)),
-        edges,
+        nodesAdded: page.nodesAdded,
+        nodesRemoved: page.nodesRemoved,
+        edges: page.edges,
+        nodesAddedOmitted: page.nodesAddedOmitted,
+        nodesRemovedOmitted: page.nodesRemovedOmitted,
+        edgesOmitted: page.edgesOmitted,
+        nextCursor: page.nextCursor,
         presentation: "raw"
       };
       return reply.send(body);

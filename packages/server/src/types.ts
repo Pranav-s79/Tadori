@@ -138,6 +138,12 @@ export interface ReviewDiffDto {
   nodesAdded: ToolNode[];
   nodesRemoved: ToolNode[];
   edges: EdgeDiffRow[];
+  /** Rows of each list not included on this page (see cursor). Never silently dropped. */
+  nodesAddedOmitted: number;
+  nodesRemovedOmitted: number;
+  edgesOmitted: number;
+  /** Offset cursor for the next page, or null when the diff is exhausted. */
+  nextCursor: string | null;
   presentation: "raw";
 }
 
