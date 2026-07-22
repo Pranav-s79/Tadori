@@ -1,4 +1,5 @@
-import type { GraphNode } from "@tadori/core";
+import type { GraphNode, Relation } from "@tadori/core";
+import type { EdgeDiffRow } from "@tadori/store";
 
 /**
  * Rename/move coalescing — Stage A / Stage B node matchers (09-02).
@@ -165,6 +166,145 @@ export function stageBMatch(
     residualRemoved: remainingRemoved.filter((n) => !pairedRemoved.has(n)),
     residualAdded: remainingAdded.filter((n) => !pairedAdded.has(n))
   };
+}
+
+/**
+ * A raw added+removed edge pair that collapses because its endpoints are
+ * covered by node pairs (a moved/renamed endpoint). Indexes reference the raw
+ * `edges` array positions so the UI can expand back to the underlying rows.
+ */
+export interface EdgePair {
+  removedRowIndex: number;
+  addedRowIndex: number;
+  relation: Relation;
+}
+
+/**
+ * One coalesced presentation row (ARCHITECTURE.md §9). Additive over the raw
+ * `edges` array — never a replacement. `rawRowIndexes` always point into that
+ * same raw array.
+ */
+export interface CoalescedChange {
+  kind: "rename" | "move";
+  fromKey: string | null;
+  toKey: string | null;
+  rawRowIndexes: number[];
+}
+
+/**
+ * Coalesce raw added/removed edge rows using the node pairs. A removed edge and
+ * an added edge pair when applying the node-pair (removed→added qualifiedName)
+ * substitution to the removed edge's endpoints yields the added edge's
+ * (source, relation, destination). At least one endpoint must be a paired node
+ * — an edge with no moved endpoint is a genuine add/remove, never coalesced.
+ * Residual indexes are the added/removed rows not absorbed by any edge pair.
+ */
+export function coalesceEdges(
+  rawEdges: readonly EdgeDiffRow[],
+  nodePairs: readonly NodePairCandidate[]
+): {
+  edgePairs: EdgePair[];
+  residualAddedRowIndexes: number[];
+  residualRemovedRowIndexes: number[];
+} {
+  // removed-qualifiedName → added-qualifiedName endpoint substitution.
+  const rename = new Map<string, string>();
+  for (const pair of nodePairs) {
+    rename.set(pair.removed.qualifiedName, pair.added.qualifiedName);
+  }
+  const subst = (name: string): string => rename.get(name) ?? name;
+
+  // Index added edges by their (src|relation|dst) key → row indexes.
+  const addedByKey = new Map<string, number[]>();
+  rawEdges.forEach((edge, index) => {
+    if (edge.change_kind !== "added") {
+      return;
+    }
+    const key = `${edge.source} ${edge.relation} ${edge.destination}`;
+    const group = addedByKey.get(key) ?? [];
+    group.push(index);
+    addedByKey.set(key, group);
+  });
+
+  const edgePairs: EdgePair[] = [];
+  const consumedAdded = new Set<number>();
+  const consumedRemoved = new Set<number>();
+
+  rawEdges.forEach((edge, removedIndex) => {
+    if (edge.change_kind !== "removed") {
+      return;
+    }
+    const newSrc = subst(edge.source);
+    const newDst = subst(edge.destination);
+    // No endpoint moved → not a coalescing candidate; stays a genuine removal.
+    if (newSrc === edge.source && newDst === edge.destination) {
+      return;
+    }
+    const key = `${newSrc} ${edge.relation} ${newDst}`;
+    const candidates = addedByKey.get(key);
+    const addedIndex = candidates?.find((i) => !consumedAdded.has(i));
+    if (addedIndex === undefined) {
+      return;
+    }
+    consumedAdded.add(addedIndex);
+    consumedRemoved.add(removedIndex);
+    edgePairs.push({ removedRowIndex: removedIndex, addedRowIndex: addedIndex, relation: edge.relation });
+  });
+
+  const residualAddedRowIndexes: number[] = [];
+  const residualRemovedRowIndexes: number[] = [];
+  rawEdges.forEach((edge, index) => {
+    if (edge.change_kind === "added" && !consumedAdded.has(index)) {
+      residualAddedRowIndexes.push(index);
+    } else if (edge.change_kind === "removed" && !consumedRemoved.has(index)) {
+      residualRemovedRowIndexes.push(index);
+    }
+  });
+
+  return { edgePairs, residualAddedRowIndexes, residualRemovedRowIndexes };
+}
+
+/**
+ * Build the coalesced presentation rows: one per node pair (rename vs. move by
+ * whether the unqualified name changed), each carrying the raw edge-row indexes
+ * that pair references it as an endpoint. Node pairs come first (the headline
+ * "moved/renamed" rows), each collecting its absorbing edge-pair row indexes.
+ */
+export function buildCoalescedChanges(
+  nodePairs: readonly NodePairCandidate[],
+  edgePairs: readonly EdgePair[],
+  rawEdges: readonly EdgeDiffRow[]
+): CoalescedChange[] {
+  return nodePairs.map((pair) => {
+    const removedName = pair.removed.qualifiedName;
+    const addedName = pair.added.qualifiedName;
+    // Rename = the trailing name changed; move = only the path changed.
+    const kind: "rename" | "move" =
+      unqualifiedName(pair.removed) === unqualifiedName(pair.added) ? "move" : "rename";
+
+    // Raw edge rows whose endpoints touch this node pair (either side).
+    const rawRowIndexes: number[] = [];
+    for (const ep of edgePairs) {
+      const removedEdge = rawEdges[ep.removedRowIndex];
+      const addedEdge = rawEdges[ep.addedRowIndex];
+      const touches =
+        removedEdge !== undefined &&
+        (removedEdge.source === removedName || removedEdge.destination === removedName);
+      const touchesAdded =
+        addedEdge !== undefined &&
+        (addedEdge.source === addedName || addedEdge.destination === addedName);
+      if (touches || touchesAdded) {
+        rawRowIndexes.push(ep.removedRowIndex, ep.addedRowIndex);
+      }
+    }
+
+    return {
+      kind,
+      fromKey: pair.removed.entityKey,
+      toKey: pair.added.entityKey,
+      rawRowIndexes: [...new Set(rawRowIndexes)].sort((a, b) => a - b)
+    };
+  });
 }
 
 /** Group nodes by a string key, skipping any whose key is null. */
