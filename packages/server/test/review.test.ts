@@ -69,7 +69,7 @@ describe("review diff route", () => {
     expect(response.json().code).toBe("unknown_snapshot");
   });
 
-  it("returns 501 coalesced_unsupported for coalesce=coalesced (never a silent raw substitution)", async () => {
+  it("coalesce=coalesced returns 200 with presentation:coalesced (empty on a self-diff)", async () => {
     testDb = buildTestDb();
     refresh = await ConcurrentRefreshController.start(testDb.db, testDb.repoRoot);
     app = await createServerApp({ db: testDb.db, repoRoot: testDb.repoRoot, refresh });
@@ -81,8 +81,14 @@ describe("review diff route", () => {
         coalesce: "coalesced"
       }).toString()}`
     });
-    expect(response.statusCode).toBe(501);
-    expect(response.json().code).toBe("coalesced_unsupported");
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.presentation).toBe("coalesced");
+    // Self-diff: nothing added/removed, so no pairs and no ambiguity, but the
+    // additive coalesced/ambiguousGroups arrays are present (never 501).
+    expect(body.coalesced).toEqual([]);
+    expect(body.ambiguousGroups).toEqual([]);
+    expect(Array.isArray(body.edges)).toBe(true);
   });
 
   it("returns 400 bad_page for an invalid cursor", async () => {
