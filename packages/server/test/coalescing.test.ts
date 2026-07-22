@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { GraphNode, NodeKind } from "@tadori/core";
-import { stageAMatch, stageBMatch, unqualifiedName } from "../src/coalescing.js";
+import type { GraphNode, NodeKind, Relation } from "@tadori/core";
+import type { EdgeDiffRow } from "@tadori/store";
+import {
+  buildCoalescedChanges,
+  coalesceEdges,
+  stageAMatch,
+  stageBMatch,
+  unqualifiedName,
+  type NodePairCandidate
+} from "../src/coalescing.js";
 
 const AV = "analyzer-v1";
 
@@ -135,5 +143,98 @@ describe("stageBMatch (body-hash-only among Stage-A residuals + uniqueCandidate)
     expect(pairs).toHaveLength(0);
     expect(residualRemoved).toHaveLength(1);
     expect(residualAdded).toHaveLength(1);
+  });
+});
+
+function edge(
+  change_kind: EdgeDiffRow["change_kind"],
+  source: string,
+  relation: Relation,
+  destination: string
+): EdgeDiffRow {
+  return {
+    change_kind,
+    source,
+    relation,
+    destination,
+    before_origin: null,
+    before_confidence: null,
+    before_resolution: null,
+    after_origin: null,
+    after_confidence: null,
+    after_resolution: null
+  };
+}
+
+function pair(removed: GraphNode, added: GraphNode): NodePairCandidate {
+  return { removed, added, basis: [], stage: "A" };
+}
+
+describe("coalesceEdges", () => {
+  it("absorbs an added+removed edge that differ only by a moved endpoint (fixture-04 imports shape)", () => {
+    // task.ts imports helper.ts, which moved legacy→helpers.
+    const removedHelper = node("file", "src/legacy/helper.ts", "h");
+    const addedHelper = node("file", "src/helpers/helper.ts", "h");
+    const rawEdges = [
+      edge("removed", "src/task.ts", "imports", "src/legacy/helper.ts"),
+      edge("added", "src/task.ts", "imports", "src/helpers/helper.ts")
+    ];
+    const { edgePairs, residualAddedRowIndexes, residualRemovedRowIndexes } = coalesceEdges(rawEdges, [
+      pair(removedHelper, addedHelper)
+    ]);
+    expect(edgePairs).toHaveLength(1);
+    expect(edgePairs[0]).toMatchObject({ removedRowIndex: 0, addedRowIndex: 1, relation: "imports" });
+    expect(residualAddedRowIndexes).toEqual([]);
+    expect(residualRemovedRowIndexes).toEqual([]);
+  });
+
+  it("leaves a genuinely new edge as residual added (no moved endpoint)", () => {
+    const removedHelper = node("file", "src/legacy/helper.ts", "h");
+    const addedHelper = node("file", "src/helpers/helper.ts", "h");
+    const rawEdges = [
+      edge("removed", "src/task.ts", "imports", "src/legacy/helper.ts"),
+      edge("added", "src/task.ts", "imports", "src/helpers/helper.ts"),
+      edge("added", "src/task.ts", "calls", "src/notifier.ts.Notifier.send") // genuinely new
+    ];
+    const { edgePairs, residualAddedRowIndexes } = coalesceEdges(rawEdges, [pair(removedHelper, addedHelper)]);
+    expect(edgePairs).toHaveLength(1);
+    expect(residualAddedRowIndexes).toEqual([2]);
+  });
+
+  it("does not coalesce an edge whose endpoints did not move", () => {
+    const rawEdges = [
+      edge("removed", "src/a.ts", "calls", "src/b.ts.foo"),
+      edge("added", "src/a.ts", "calls", "src/c.ts.bar")
+    ];
+    const { edgePairs, residualAddedRowIndexes, residualRemovedRowIndexes } = coalesceEdges(rawEdges, []);
+    expect(edgePairs).toHaveLength(0);
+    expect(residualAddedRowIndexes).toEqual([1]);
+    expect(residualRemovedRowIndexes).toEqual([0]);
+  });
+});
+
+describe("buildCoalescedChanges", () => {
+  it("emits a move row for a pure path change with its absorbing edge indexes", () => {
+    const removedHelper = node("file", "src/legacy/helper.ts", "h");
+    const addedHelper = node("file", "src/helpers/helper.ts", "h");
+    const rawEdges = [
+      edge("removed", "src/task.ts", "imports", "src/legacy/helper.ts"),
+      edge("added", "src/task.ts", "imports", "src/helpers/helper.ts")
+    ];
+    const nodePairs = [pair(removedHelper, addedHelper)];
+    const { edgePairs } = coalesceEdges(rawEdges, nodePairs);
+    const changes = buildCoalescedChanges(nodePairs, edgePairs, rawEdges);
+    expect(changes).toHaveLength(1);
+    expect(changes[0]?.kind).toBe("move"); // basename helper.ts unchanged → move
+    expect(changes[0]?.fromKey).toBe(removedHelper.entityKey);
+    expect(changes[0]?.toKey).toBe(addedHelper.entityKey);
+    expect(changes[0]?.rawRowIndexes).toEqual([0, 1]);
+  });
+
+  it("emits a rename row when the trailing name changed", () => {
+    const removedM = node("method", "src/formatter.ts.Formatter.formatValue", "m");
+    const addedM = node("method", "src/formatter.ts.Formatter.renderValue", "m");
+    const changes = buildCoalescedChanges([pair(removedM, addedM)], [], []);
+    expect(changes[0]?.kind).toBe("rename");
   });
 });
