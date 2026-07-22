@@ -2,14 +2,14 @@
 
 # Current State (always overwritten)
 
-Current node: 09-02 — Rename/move coalescing views (started; branch bp/09-02-coalescing). 08-07A BehaviorStory backend delivered + merged.
-Branch: bp/09-02-coalescing
-Latest commit: 3869295 main (PR #26 merged — BehaviorStory backend [08-07A])
-Recently merged: #24 (09-01 viz review-diff slice, incl. NUL-byte fix 1f35ac2), #25 (docs + frozen BehaviorStory contract), #26 (08-07A BehaviorStory backend: story.ts + GET /api/v1/story/route/:entityKey). All CI-green both OSes; lead-reviewed.
-Next frontier: 09-02 coalescing (server coalescing.ts stageA/stageB + coalesceEdges/buildCoalescedChanges, replace review.ts:98 501 stub, harness compareDiff.ts vs fixture-04 oracle, ReviewDiffView raw/coalesced toggle). Then BehaviorStory frontend (StoryView) — BLOCKED on 08-07 viz path/route/test/doc displays (not built).
-Open PR: #(pending push) bp/claude-md-lead-approval — governance line: lead (not owner) approves architectural/contract merges.
+Current node: 09-02 — Rename/move coalescing views (implementation complete; viz PR #32 open, rest merged). 08-07A BehaviorStory backend merged.
+Branch: bp/09-02-viz-coalesce
+Latest commit: a796660 main (PR #31 merged — harness coalescing check + store relocation)
+Recently merged: #27 (coalescing Stage A/B matchers), #29 (coalesceEdges + buildCoalescedChanges), #30 (coalesce=coalesced route wiring), #31 (harness compareFixtureDiff + relocation of coalescing to @tadori/store + fixtures:index wiring). Earlier: #24/#25/#26 (09-01 viz, frozen BehaviorStory contract, 08-07A backend), #28 (governance). All CI-green both OSes; lead-reviewed.
+Open PR: #32 (viz raw/coalesced toggle + expand-to-raw) — CI pending.
+Next frontier: merge #32, then 09-03 (boundary rules & violations, depends on 09-01) OR the BehaviorStory frontend StoryView — BLOCKED on 08-07 viz path/route/test/doc displays (not built).
 Known blocker: none
-09-02 grounding (live-verified 2026-07-21): CoalescedChange declared in blueprints/ARCHITECTURE.md:457 (spec, not code yet) = {kind:"rename"|"move"|"modify"; fromKey; toKey; rawRowIndexes:number[]}. 501 stub at packages/server/src/routes/review.ts:98 (`coalesce==="coalesced"` → notImplemented("coalesced_unsupported")). Fixture oracle: packages/fixtures/04-diff-coalescing/expected/{coalesced,raw}-diff.json + {before,after}-graph.json. Recursive-self-reference Stage-B miss must be PRESERVED (tadori-indexer SKILL.md lines 18-20), never disguised as a match.
+09-02 documented divergence (verified 2026-07-21): fixture-04's coalesced-diff.json was authored against a BODY-ONLY bodyHash, but the frozen indexer hashes DECLARATION TEXT incl. the method name — so the formatValue→renderValue method rename changes its bodyHash and honestly falls to raw (0 Stage-B pairs, 5 edge pairs, not the authored 1/8). Same failure mode as the fixture's own recursive-rename note, generalized. Fixture files UNTOUCHED; forcing a match would violate "unresolved stays visibly unresolved". compareFixtureDiff asserts the real pipeline (2 Stage-A pairs). Coalescing lives in @tadori/store (shared by server route + harness, no harness→server dep; server re-exports).
 
 ## 09-01 — review-diff working_tree/staged wiring (backend slice, 2026-07-21)
 
@@ -793,8 +793,13 @@ after 17/37.
 
 - Relation: `changed_with` (Week 9 review mode).
 - Node kind: `doc_section` (no fixture covers it yet).
-- Checks: seeded boundary violations, non-variable excluded candidates,
-  raw/coalesced diff artifacts of fixture 04 (Week 9).
+- Checks: seeded boundary violations, non-variable excluded candidates.
+- (Un-deferred 09-02) The raw/coalesced diff artifacts of fixture 04 are now an
+  EXECUTED harness check (`compareFixtureDiff`, wired into `pnpm fixtures:index`),
+  not merely schema-shape validation. See the 09-02 section for the documented
+  bodyHash divergence (the frozen indexer hashes declaration text incl. the
+  method name, so a method rename honestly falls to raw — the fixture files are
+  untouched).
 
 ## Performance observations
 
