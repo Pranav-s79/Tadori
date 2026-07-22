@@ -27,3 +27,4 @@
 - After finishing one slice, continue directly to the next dependency-ready task.
 - Stop only for missing credentials, unavoidable destructive risk, genuinely incompatible architectural directions, or usage limits.
 - Project-local Tadori rules and skills override conflicting general-purpose guidance.
+- Architectural contracts, database migrations, security-sensitive changes, frozen interface changes, and major dependencies require review and approval by the main Claude lead before merge; they do not require repository-owner approval unless explicitly stated.
