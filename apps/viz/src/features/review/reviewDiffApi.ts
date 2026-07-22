@@ -71,6 +71,24 @@ export interface SnapshotRow {
   createdAt: string | null;
 }
 
+/**
+ * One coalesced rename/move row (09-02), served verbatim. `rawRowIndexes` point
+ * into the same `edges` array, so the UI expands back to raw with zero refetch.
+ * Always "likely" — never certain.
+ */
+export interface CoalescedChange {
+  kind: "rename" | "move";
+  fromKey: string | null;
+  toKey: string | null;
+  rawRowIndexes: number[];
+}
+
+/** A group of nodes that could not be disambiguated → honest raw fallback. */
+export interface AmbiguousNodeGroup {
+  candidateKeys: string[];
+  reason: string;
+}
+
 /** One page of a review diff, plus the generation the caller handed us. */
 export interface ReviewDiffPage {
   context: ApiContext;
@@ -83,6 +101,11 @@ export interface ReviewDiffPage {
   nodesRemovedOmitted: number;
   edgesOmitted: number;
   nextCursor: string | null;
+  /** "raw" or "coalesced"; "coalesced" only when the request asked for it. */
+  presentation: "raw" | "coalesced";
+  /** Present only for presentation === "coalesced" (additive over `edges`). */
+  coalesced?: CoalescedChange[];
+  ambiguousGroups?: AmbiguousNodeGroup[];
   generation: number;
 }
 
@@ -92,6 +115,8 @@ export interface ReviewDiffParams {
   head?: string;
   cursor?: string;
   limit?: number;
+  /** When true, request the coalesced (rename/move) presentation. */
+  coalesce?: boolean;
 }
 
 /**
@@ -139,6 +164,9 @@ export async function fetchReviewDiff(params: ReviewDiffParams, generation: numb
   }
   if (params.limit !== undefined) {
     query.set("limit", String(params.limit));
+  }
+  if (params.coalesce === true) {
+    query.set("coalesce", "coalesced");
   }
 
   const response = await fetch(`${API_BASE}/review/diff?${query.toString()}`);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
-import type { EdgeDiffRow, ReviewDiffKind, ReviewDiffNode } from "./reviewDiffApi.ts";
-import { useReviewDiffStore, type ReviewDiffStore } from "./useReviewDiffStore.ts";
+import type { CoalescedChange, EdgeDiffRow, ReviewDiffKind, ReviewDiffNode } from "./reviewDiffApi.ts";
+import { useReviewDiffStore, type AccumulatedDiff, type ReviewDiffStore } from "./useReviewDiffStore.ts";
 
 /** A flattened, ordered row spanning the three diff sections (added/removed/edges). */
 type DiffRow =
@@ -177,8 +177,11 @@ function ReviewDiffList({
   return (
     <section className="review-diff" aria-label="Review diff">
       <KindSwitcher kind={store.kind} onChange={store.setKind} />
+      <CoalesceToggle coalesced={store.coalesced} onChange={store.setCoalesced} />
 
       <StatusRegion store={store} />
+
+      {store.coalesced && store.page !== null && <CoalescedSection page={store.page} />}
 
       {rows.length > 0 && (
         <ul role="listbox" aria-label="Review diff changes" className="review-diff-list" onKeyDown={onKeyDown}>
@@ -242,6 +245,91 @@ function KindSwitcher({
         </label>
       ))}
     </div>
+  );
+}
+
+function CoalesceToggle({
+  coalesced,
+  onChange
+}: {
+  coalesced: boolean;
+  onChange: (coalesced: boolean) => void;
+}): ReactElement {
+  return (
+    <button
+      type="button"
+      className="review-diff-coalesce-toggle"
+      aria-pressed={coalesced}
+      onClick={() => onChange(!coalesced)}
+    >
+      {coalesced ? "Showing rename/move (coalesced)" : "Group renames & moves"}
+    </button>
+  );
+}
+
+/**
+ * Renders the coalesced rename/move rows. Each row is expandable to the raw
+ * edge rows it collapses (looked up in the already-fetched `page.edges` — no
+ * refetch). Ambiguous groups are surfaced with their honest reason text, never
+ * presented as equal-confidence to a resolved pair.
+ */
+function CoalescedSection({ page }: { page: AccumulatedDiff }): ReactElement | null {
+  const coalesced = page.coalesced ?? [];
+  const ambiguous = page.ambiguousGroups ?? [];
+  if (coalesced.length === 0 && ambiguous.length === 0) {
+    return (
+      <p className="review-diff-coalesced-empty" role="note">
+        No renames or moves detected — all changes are genuine additions or removals.
+      </p>
+    );
+  }
+  return (
+    <section className="review-diff-coalesced" aria-label="Renames and moves (likely)">
+      <ul className="review-diff-coalesced-list">
+        {coalesced.map((change, index) => (
+          <CoalescedRow key={`${change.fromKey ?? "?"}:${change.toKey ?? "?"}:${index}`} change={change} edges={page.edges} />
+        ))}
+      </ul>
+      {ambiguous.length > 0 && (
+        <ul className="review-diff-ambiguous-list" aria-label="Ambiguous groups (shown raw)">
+          {ambiguous.map((group, index) => (
+            <li key={`ambiguous:${index}`} className="review-diff-ambiguous">
+              {group.reason}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function CoalescedRow({
+  change,
+  edges
+}: {
+  change: CoalescedChange;
+  edges: EdgeDiffRow[];
+}): ReactElement {
+  const [expanded, setExpanded] = useState(false);
+  const rawRows = change.rawRowIndexes.map((i) => edges[i]).filter((e): e is EdgeDiffRow => e !== undefined);
+  const verb = change.kind === "rename" ? "Renamed" : "Moved";
+  return (
+    <li className={`review-diff-coalesced-row review-diff-${change.kind}`}>
+      <button type="button" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
+        {/* Always "likely", never certain — matches the frozen label spirit. */}
+        {verb} — likely: {change.fromKey ?? "unresolved"} → {change.toKey ?? "unresolved"} ({rawRows.length} raw row
+        {rawRows.length === 1 ? "" : "s"})
+      </button>
+      {expanded && (
+        <ul className="review-diff-coalesced-raw">
+          {rawRows.map((edge, i) => (
+            <li key={`${change.fromKey ?? "?"}:raw:${i}`} className="review-diff-edge">
+              <EdgeRow edge={edge} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }
 

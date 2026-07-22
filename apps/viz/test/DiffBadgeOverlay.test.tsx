@@ -44,6 +44,9 @@ function diff(over: Partial<AccumulatedDiff> = {}): AccumulatedDiff {
     nodesAddedOmitted: 0,
     nodesRemovedOmitted: 0,
     edgesOmitted: 0,
+    presentation: "raw",
+    coalesced: undefined,
+    ambiguousGroups: undefined,
     ...over
   };
 }
