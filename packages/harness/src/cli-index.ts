@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { compareFixtureSnapshot, formatComparison } from "./compare.js";
+import { compareFixtureDiff } from "./compareDiff.js";
 import { fixtureSnapshotTargets } from "./expected.js";
 
 const repoRoot = path.resolve(fileURLToPath(new URL(".", import.meta.url)), "../../..");
@@ -14,6 +15,22 @@ for (const target of fixtureSnapshotTargets(repoRoot)) {
     failed = true;
   }
 }
+
+// Executed fixture-04 rename/move coalescing check (09-02): the concrete
+// "un-defer" of the previously schema-only raw/coalesced diff artifacts.
+const diff = compareFixtureDiff(repoRoot);
+console.log(
+  `Fixture ${diff.fixtureId} coalescing: ${diff.ok ? "PASS" : "FAIL"} — ` +
+    `${diff.observed.stageAPairs} Stage-A + ${diff.observed.stageBPairs} Stage-B node pairs, ` +
+    `${diff.observed.edgePairs} edge pairs, ${diff.observed.ambiguousGroups} ambiguous`
+);
+if (!diff.ok) {
+  for (const failure of diff.failures) {
+    console.error(`  - ${failure}`);
+  }
+  failed = true;
+}
+console.log("");
 
 if (failed) {
   console.error("One or more fixture comparisons failed.");
