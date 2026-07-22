@@ -2,11 +2,12 @@
 
 # Current State (always overwritten)
 
-Current node: 09-01 — Review-diff working_tree/staged data paths wired (backend slice); viz slice (ReviewDiffView + DiffBadgeOverlay) still pending
-Branch: bp/09-01-wt-staged-wiring (backend wiring)
-Latest commit: 0a4f7bc main (PR #22 merged) — branch tip adds live-comparison wiring on top
-Current PR: bp/09-01-wt-staged-wiring pending open. Merged: #19 (pagination), #20 (staged capture), #22 (comparison-kind contract + honest 501)
-Next frontier: 09-01 viz slice (typed reviewDiff client + ReviewDiffView list + non-moving DiffBadgeOverlay over /api/v1/layout, zero layout recompute); then 09-02 (coalesced) and the BehaviorStory product-direction slice
+Current node: 09-01 — viz slice (reviewDiff client + ReviewDiffView + non-moving DiffBadgeOverlay) in review as PR #24; backend wiring merged
+Branch: bp/09-01-viz-review-diff (viz slice)
+Latest commit: 2f78f95 main (PR #23 merged — working_tree/staged wiring)
+Current PR: #24 (viz slice) open + MERGEABLE, CI re-running after fix 1f35ac2. Merged: #19 (pagination), #20 (staged capture), #22 (comparison-kind contract), #23 (working_tree/staged wiring)
+Fix on #24: slice-B re-encode had left one embedded NUL byte as the edgeId() join delimiter, making useReviewDiffStore.ts binary to git; replaced with "|" (canonical pipe delimiter). Re-verified viz 230/230, tsc/eslint/vite build exit 0.
+Next frontier: merge #24 (pending CI green), then 09-02 (coalesced diff) and the BehaviorStory product-direction slice
 Known blocker: none
 
 ## 09-01 — review-diff working_tree/staged wiring (backend slice, 2026-07-21)

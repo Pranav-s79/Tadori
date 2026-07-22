@@ -1,13 +1,29 @@
 # Tadori project instructions
 
-- Tadori v2.1 is frozen.
-- Use the relevant project-local skill under `.claude/skills`.
-- Golden fixtures and schemas must not be weakened.
-- Run the validation skill after changes.
-- Maintain `IMPLEMENTATION_STATUS.md`.
-- Do not start a later milestone without explicit instruction.
-- Do not blindly apply global third-party skills.
-- Project-local Tadori rules override conflicting general-purpose skill guidance.
-- Pushing branches, opening/updating PRs, and creating remotes are pre-approved — do them as needed without pausing to ask. (Merging into `main` remains the owner's action.)
-
-Read the frozen specification and corrections before making architecture or scope decisions.
+- Treat `IMPLEMENTATION_STATUS.md` as the source of truth for current state, completed work, active milestone, and next dependency-ready task.
+- Read only the relevant current-state sections, current execution card, newest result, and applicable project-local skill before starting.
+- Do not reread historical documentation unless resolving a contradiction or validating an architectural decision.
+- Continue autonomously from the highest dependency-ready task. Do not stop for routine implementation, naming, UI, sequencing, or tooling decisions.
+- Use the recommended implementation based on repository evidence and existing architecture.
+- Reuse existing index, graph, evidence, snapshot, diff, layout, API, and visualization systems before creating new abstractions.
+- Avoid parallel implementations of the same concern, including duplicate graph models, evidence models, diff systems, layout engines, or repository databases.
+- Prefer coherent vertical slices over broad speculative refactors.
+- Keep one primary owner per file area and one branch or worktree per coherent slice.
+- Use focused subagents when they improve speed, including implementation, read-only review, and GitHub operations agents.
+- Shared contracts must be reviewed and frozen before parallel agents implement against them.
+- Preserve deterministic behavior, stable identifiers, snapshot correctness, truthful provenance, and explicit unresolved states.
+- Never present inferred static behavior as runtime-observed behavior.
+- Preserve local-first operation, accessibility, Linux support, Windows support, and the frozen MCP interface unless the active milestone explicitly changes it.
+- Golden fixtures, schemas, contracts, and validation gates must not be weakened to make work pass.
+- Every production change must include focused tests and run the relevant validation, typecheck, lint, build, and package-level gates.
+- Fix real failures. Do not silently skip unavailable checks or classify reproducible failures as flaky.
+- Pushing branches, opening or updating PRs, requesting reviews, rerunning CI, and creating remotes are pre-approved.
+- Never push directly to `main`.
+- A GitHub operations agent may verify scope, monitor CI, detect duplicate commits, squash-merge green implementation PRs, delete merged remote branches, and report the new `main` SHA.
+- Do not merge failing PRs, bypass branch protection, dismiss valid blocking findings, or weaken required checks.
+- Architectural contracts, database migrations, security-sensitive changes, frozen interface changes, and major dependencies require lead review before merge.
+- After each merged slice, update local `main`, record concise evidence, and update only the current state, frontier, and newest result sections of `IMPLEMENTATION_STATUS.md`.
+- Do not rewrite historical status entries unless correcting a proven factual error.
+- After finishing one slice, continue directly to the next dependency-ready task.
+- Stop only for missing credentials, unavoidable destructive risk, genuinely incompatible architectural directions, or usage limits.
+- Project-local Tadori rules and skills override conflicting general-purpose guidance.
