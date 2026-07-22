@@ -1,7 +1,10 @@
-import type { Evidence } from "@tadori/core";
+import type { Confidence, Evidence, Origin, Relation, Resolution } from "@tadori/core";
 import type { EdgeDiffRow } from "@tadori/store";
 import type { FreshnessStatus } from "@tadori/mcp";
 import type { ToolEdge, ToolNode } from "@tadori/mcp";
+
+/** Tool-shaped evidence, exactly as emitted by toToolNode/toToolEdge. */
+type StoryEvidence = ToolNode["evidence"];
 
 export interface ApiContext {
   repository: string;
@@ -105,6 +108,63 @@ export interface RoutesDto {
 
 export interface DocsDto {
   docs: { node: ToolNode; body: string | null }[];
+}
+
+// --- BehaviorStory (08-07A, frozen contract blueprints/09-behavior-story-contract.md) ---
+// Static behavior story only: runtimeObserved is always false, no coverage claim.
+
+export type StoryStepLabel =
+  | "statically-resolved"
+  | "test-backed"
+  | "documented"
+  | "inferred"
+  | "ambiguous"
+  | "unresolved";
+
+export interface StoryStep {
+  /** `step:${index}:${entityKey ?? "unresolved"}` */
+  id: string;
+  /** null only for kind:"unresolved" destinations */
+  entityKey: string | null;
+  /** NodeKind of the reached node */
+  kind: string;
+  /** dst.kind !== "unresolved" && reaching edge.resolution !== "unresolved" */
+  resolved: boolean;
+  label: StoryStepLabel;
+  /** origin/confidence/resolution from the edge that reached this step */
+  origin: Origin;
+  confidence: Confidence;
+  resolution: Resolution;
+  /** reached node.evidence via toToolNode */
+  evidence: StoryEvidence;
+}
+
+export interface StoryTransition {
+  from: string;
+  to: string | null;
+  relation: Relation; // "routes_to" | "calls" | "references"
+  origin: Origin;
+  confidence: Confidence;
+  resolution: Resolution;
+  resolved: boolean; // resolution !== "unresolved"
+  evidence: StoryEvidence; // edge.evidence verbatim
+}
+
+export interface BehaviorStory {
+  /** `story:route:${entityKey}:${snapshotId}` */
+  id: string;
+  title: string; // route node displayName (e.g. "GET /users/:id")
+  trigger: string; // route displayName (HTTP trigger)
+  entryPoint: string; // the route node's entityKey
+  steps: StoryStep[];
+  transitions: StoryTransition[];
+  tests: string[]; // test nodes with a `tests` edge into any step (sorted by entityKey)
+  unresolvedTransitions: StoryTransition[]; // subset, resolution === "unresolved"
+  branches: []; // v1: always empty (DEFER control-flow branching)
+  evidenceOmittedCount: number; // 0 today (mirrors toToolNode/toToolEdge)
+  snapshotId: number;
+  confidence: Confidence; // weakest across transitions (inferred < likely < certain)
+  runtimeObserved: false; // invariant: static analysis only
 }
 
 export interface LayoutPositionDto {

@@ -9,6 +9,22 @@ const FIXTURE_REPO_ROOT = fileURLToPath(
   new URL("../../../fixtures/01-core-symbols/repo", import.meta.url)
 );
 
+function fixtureRepoRoot(fixtureDir: string): string {
+  return fileURLToPath(new URL(`../../../fixtures/${fixtureDir}/repo`, import.meta.url));
+}
+
+/** Like buildTestDb but indexes an arbitrary fixture repo (e.g. 02-express-routes). */
+export function buildFixtureTestDb(fixtureDir: string): TestDb {
+  const tempDir = mkdtempSync(path.join(tmpdir(), "tadori-server-test-"));
+  const repoRoot = path.join(tempDir, "repo");
+  cpSync(fixtureRepoRoot(fixtureDir), repoRoot, { recursive: true });
+  const dbPath = path.join(tempDir, "tadori.sqlite");
+  const db = openDatabase(dbPath);
+  runMigrations(db);
+  const result = indexRepositoryIntoStore(db, repoRoot, { kind: "working_tree" });
+  return { dbPath, db, repoRoot: repoRoot.split(path.sep).join("/"), tempDir, snapshotId: result.snapshotId };
+}
+
 export interface TestDb {
   dbPath: string;
   db: Database;
