@@ -55,6 +55,9 @@ function diff(over: Partial<AccumulatedDiff> = {}): AccumulatedDiff {
     nodesAddedOmitted: 0,
     nodesRemovedOmitted: 0,
     edgesOmitted: 0,
+    presentation: "raw",
+    coalesced: undefined,
+    ambiguousGroups: undefined,
     ...over
   };
 }
@@ -62,11 +65,13 @@ function diff(over: Partial<AccumulatedDiff> = {}): AccumulatedDiff {
 function fakeStore(over: Partial<ReviewDiffStore> = {}): ReviewDiffStore {
   return {
     kind: "snapshot",
+    coalesced: false,
     page: null,
     status: "idle" as ReviewDiffStatus,
     errorCode: null,
     nextCursor: null,
     setKind: vi.fn(),
+    setCoalesced: vi.fn(),
     loadMore: vi.fn(),
     ...over
   };
@@ -134,6 +139,48 @@ describe("ReviewDiffView kind switcher", () => {
     render(<ReviewDiffView store={fakeStore({ status: "empty", page: diff(), setKind })} />);
     fireEvent.click(screen.getByRole("radio", { name: "Working tree" }));
     expect(setKind).toHaveBeenCalledWith("working_tree");
+  });
+});
+
+describe("ReviewDiffView coalesce toggle", () => {
+  it("calls setCoalesced(true) when the toggle is pressed", () => {
+    const setCoalesced = vi.fn();
+    render(<ReviewDiffView store={fakeStore({ status: "empty", page: diff(), setCoalesced })} />);
+    fireEvent.click(screen.getByRole("button", { name: /group renames/i }));
+    expect(setCoalesced).toHaveBeenCalledWith(true);
+  });
+
+  it("renders coalesced rows (likely, never certain) and expands to the referenced raw rows", () => {
+    const edgeRows = [
+      edge({ change_kind: "removed", source: "src/task.ts", relation: "imports", destination: "src/legacy/helper.ts" }),
+      edge({ change_kind: "added", source: "src/task.ts", relation: "imports", destination: "src/helpers/helper.ts" })
+    ];
+    const page = diff({
+      edges: edgeRows,
+      presentation: "coalesced",
+      coalesced: [{ kind: "move", fromKey: "keyA", toKey: "keyB", rawRowIndexes: [0, 1] }],
+      ambiguousGroups: []
+    });
+    render(<ReviewDiffView store={fakeStore({ status: "ok", coalesced: true, page })} />);
+    // The coalesced row is present and labeled "likely", not certain.
+    const row = screen.getByRole("button", { name: /Moved — likely/ });
+    expect(row).toBeTruthy();
+    // Before expanding, the endpoint text appears once (in the raw rows list).
+    const before = screen.getAllByText(/src\/legacy\/helper\.ts/).length;
+    // Expanding renders the underlying raw rows again (no refetch) → count grows.
+    fireEvent.click(row);
+    const after = screen.getAllByText(/src\/legacy\/helper\.ts/).length;
+    expect(after).toBeGreaterThan(before);
+  });
+
+  it("surfaces an ambiguous group's honest reason text", () => {
+    const page = diff({
+      presentation: "coalesced",
+      coalesced: [],
+      ambiguousGroups: [{ candidateKeys: ["k1", "k2"], reason: "2 removed share bodyHash abc; cannot disambiguate" }]
+    });
+    render(<ReviewDiffView store={fakeStore({ status: "ok", coalesced: true, page })} />);
+    expect(screen.getByText(/cannot disambiguate/)).toBeTruthy();
   });
 });
 

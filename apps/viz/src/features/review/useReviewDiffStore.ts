@@ -28,10 +28,15 @@ export interface AccumulatedDiff {
   nodesAddedOmitted: number;
   nodesRemovedOmitted: number;
   edgesOmitted: number;
+  presentation: ReviewDiffPage["presentation"];
+  /** Present only when the coalesced presentation was requested and succeeded. */
+  coalesced: ReviewDiffPage["coalesced"];
+  ambiguousGroups: ReviewDiffPage["ambiguousGroups"];
 }
 
 export interface ReviewDiffState {
   kind: ReviewDiffKind;
+  coalesced: boolean;
   page: AccumulatedDiff | null;
   status: ReviewDiffStatus;
   errorCode: string | null;
@@ -40,6 +45,8 @@ export interface ReviewDiffState {
 
 export interface ReviewDiffStore extends ReviewDiffState {
   setKind(kind: ReviewDiffKind): void;
+  /** Toggle the coalesced (rename/move) presentation and refetch. */
+  setCoalesced(coalesced: boolean): void;
   loadMore(): void;
 }
 
@@ -129,7 +136,12 @@ function mergePage(prev: AccumulatedDiff | null, next: ReviewDiffPage): Accumula
       next.nodesRemoved.length,
       nodesRemoved.length
     ),
-    edgesOmitted: remainingOmitted(next.edgesOmitted, next.edges.length, edges.length)
+    edgesOmitted: remainingOmitted(next.edgesOmitted, next.edges.length, edges.length),
+    // Coalesced view is computed server-side over the full diff (not paginated),
+    // so keep the first page's arrays; later pages carry the same presentation.
+    presentation: prev?.presentation ?? next.presentation,
+    coalesced: prev?.coalesced ?? next.coalesced,
+    ambiguousGroups: prev?.ambiguousGroups ?? next.ambiguousGroups
   };
 }
 
@@ -172,12 +184,15 @@ export function useReviewDiffStore(
   callbacks: { onError?: (err: unknown) => void } = {}
 ): ReviewDiffStore {
   const [kind, setKindState] = useState<ReviewDiffKind>("snapshot");
+  const [coalesced, setCoalescedState] = useState<boolean>(false);
   const [page, setPage] = useState<AccumulatedDiff | null>(null);
   const [status, setStatus] = useState<ReviewDiffStatus>("idle");
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
 
   const generationRef = useRef(0);
+  const coalescedRef = useRef<boolean>(false);
+  coalescedRef.current = coalesced;
   // Live mirror of accumulated page/cursor so loadMore reads them without
   // re-creating the callback on every append (stable identity like search's).
   const pageRef = useRef<AccumulatedDiff | null>(null);
@@ -200,9 +215,11 @@ export function useReviewDiffStore(
   }, []);
 
   const load = useCallback(
-    (targetKind: ReviewDiffKind) => {
+    (targetKind: ReviewDiffKind, targetCoalesced: boolean) => {
       const generation = ++generationRef.current;
       setKindState(targetKind);
+      setCoalescedState(targetCoalesced);
+      coalescedRef.current = targetCoalesced;
       setPage(null);
       pageRef.current = null;
       setNextCursor(null);
@@ -210,7 +227,7 @@ export function useReviewDiffStore(
       setErrorCode(null);
       setStatus("loading");
       loadingMoreRef.current = false;
-      fetchReviewDiff({ kind: targetKind, limit: DEFAULT_LIMIT }, generation)
+      fetchReviewDiff({ kind: targetKind, limit: DEFAULT_LIMIT, coalesce: targetCoalesced }, generation)
         .then((result) => {
           if (result.generation !== generationRef.current) {
             return; // stale — a newer kind change superseded this request
@@ -234,7 +251,14 @@ export function useReviewDiffStore(
 
   const setKind = useCallback(
     (next: ReviewDiffKind) => {
-      load(next);
+      load(next, coalescedRef.current);
+    },
+    [load]
+  );
+
+  const setCoalesced = useCallback(
+    (next: boolean) => {
+      load(kindRef.current, next);
     },
     [load]
   );
@@ -246,7 +270,10 @@ export function useReviewDiffStore(
     }
     loadingMoreRef.current = true;
     const generation = generationRef.current; // same generation — appending to current kind
-    fetchReviewDiff({ kind: kindRef.current, cursor, limit: DEFAULT_LIMIT }, generation)
+    fetchReviewDiff(
+      { kind: kindRef.current, cursor, limit: DEFAULT_LIMIT, coalesce: coalescedRef.current },
+      generation
+    )
       .then((result) => {
         loadingMoreRef.current = false;
         if (result.generation !== generationRef.current) {
@@ -272,8 +299,8 @@ export function useReviewDiffStore(
   // (its only dep, applyError, is memoized), so depending on it is a no-op —
   // the effect still runs exactly once.
   useEffect(() => {
-    load("snapshot");
+    load("snapshot", false);
   }, [load]);
 
-  return { kind, page, status, errorCode, nextCursor, setKind, loadMore };
+  return { kind, coalesced, page, status, errorCode, nextCursor, setKind, setCoalesced, loadMore };
 }
