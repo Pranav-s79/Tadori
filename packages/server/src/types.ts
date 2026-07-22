@@ -1,5 +1,5 @@
 import type { Confidence, Evidence, Origin, Relation, Resolution } from "@tadori/core";
-import type { EdgeDiffRow } from "@tadori/store";
+import type { BoundaryViolation, EdgeDiffRow } from "@tadori/store";
 import type { FreshnessStatus } from "@tadori/mcp";
 import type { ToolEdge, ToolNode } from "@tadori/mcp";
 
@@ -108,6 +108,13 @@ export interface RoutesDto {
 
 export interface DocsDto {
   docs: { node: ToolNode; body: string | null }[];
+}
+
+/** Boundary violations over the active snapshot (09-03). */
+export interface BoundariesDto {
+  /** True when a repository-root tadori.rules.json was found and parsed. */
+  rulesPresent: boolean;
+  violations: BoundaryViolation[];
 }
 
 // --- BehaviorStory (08-07A, frozen contract blueprints/09-behavior-story-contract.md) ---
