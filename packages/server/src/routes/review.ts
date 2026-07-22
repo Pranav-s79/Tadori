@@ -9,8 +9,15 @@ import { badRequest, notFound, notImplemented, type ApiErrorResult } from "../er
 import { toToolNode } from "./graph.js";
 import { paginateReviewDiff, parseReviewCursor, parseReviewLimit } from "../reviewDiffAssembly.js";
 import { computeLiveComparison, LiveCaptureFailedError } from "../liveComparison.js";
-import type { ReviewDiffDto, SnapshotRowDto } from "../types.js";
+import {
+  buildCoalescedChanges,
+  coalesceEdges,
+  stageAMatch,
+  stageBMatch
+} from "../coalescing.js";
+import type { AmbiguousNodeGroupDto, CoalescedChangeDto, ReviewDiffDto, SnapshotRowDto } from "../types.js";
 import type { EdgeDiffRow, SnapshotRow } from "@tadori/store";
+import type { GraphNode } from "@tadori/core";
 import type { ToolNode } from "@tadori/mcp";
 
 interface ReviewDiffQuery {
@@ -93,12 +100,7 @@ export async function registerReviewRoutes(app: FastifyInstance): Promise<void> 
     async (request: FastifyRequest<{ Querystring: ReviewDiffQuery }>, reply: FastifyReply) => {
       const service = app.graphState.current();
       const { base, head, coalesce } = request.query;
-      // Coalesced (rename/move) presentation is 09-02's job. Until then it must
-      // 501 explicitly — never silently return the raw diff labeled coalesced.
-      if (coalesce === "coalesced") {
-        const { statusCode, payload } = notImplemented("coalesced_unsupported");
-        return reply.code(statusCode).send(payload);
-      }
+      const wantCoalesced = coalesce === "coalesced";
       const kind: ComparisonKind = (request.query.kind ?? "snapshot") as ComparisonKind;
       if (!COMPARISON_KINDS.includes(kind)) {
         const { statusCode, payload } = badRequest("bad_comparison_kind");
@@ -123,6 +125,11 @@ export async function registerReviewRoutes(app: FastifyInstance): Promise<void> 
       let edges: EdgeDiffRow[];
       let baseDto: SnapshotRowDto;
       let headDto: SnapshotRowDto;
+      // Raw GraphNodes (carry bodyHash — ToolNode does not) + analyzerVersion,
+      // captured for coalescing when coalesce=coalesced.
+      let rawNodesAdded: GraphNode[];
+      let rawNodesRemoved: GraphNode[];
+      let analyzerVersion: string;
 
       if (kind === "working_tree" || kind === "staged") {
         let result;
@@ -137,9 +144,12 @@ export async function registerReviewRoutes(app: FastifyInstance): Promise<void> 
           const mapped = mapLiveComparisonError(err);
           return reply.code(mapped.statusCode).send(mapped.payload);
         }
+        rawNodesAdded = result.nodesAdded;
+        rawNodesRemoved = result.nodesRemoved;
         nodesAdded = result.nodesAdded.map((node) => toToolNode(app, node));
         nodesRemoved = result.nodesRemoved.map((node) => toToolNode(app, node));
         edges = result.edges;
+        analyzerVersion = service.graph.analyzerVersion;
         baseDto = toSnapshotRowDto(service.snapshot);
         headDto = liveHeadDto(kind);
       } else {
@@ -172,17 +182,46 @@ export async function registerReviewRoutes(app: FastifyInstance): Promise<void> 
           headId === service.snapshot.id ? service.graph : loadSnapshotGraph(db, headId);
         const baseKeys = new Set(baseGraph.nodes.map((node) => node.entityKey));
         const headKeys = new Set(headGraph.nodes.map((node) => node.entityKey));
-        nodesAdded = headGraph.nodes
-          .filter((node) => !baseKeys.has(node.entityKey))
-          .map((node) => toToolNode(app, node));
-        nodesRemoved = baseGraph.nodes
-          .filter((node) => !headKeys.has(node.entityKey))
-          .map((node) => toToolNode(app, node));
+        rawNodesAdded = headGraph.nodes.filter((node) => !baseKeys.has(node.entityKey));
+        rawNodesRemoved = baseGraph.nodes.filter((node) => !headKeys.has(node.entityKey));
+        nodesAdded = rawNodesAdded.map((node) => toToolNode(app, node));
+        nodesRemoved = rawNodesRemoved.map((node) => toToolNode(app, node));
+        // Head graph defines the diff's analyzer version.
+        analyzerVersion = headGraph.analyzerVersion;
         baseDto = toSnapshotRowDto(baseSnapshot);
         headDto = toSnapshotRowDto(headSnapshot);
       }
 
       const page = paginateReviewDiff({ nodesAdded, nodesRemoved, edges }, offset, limit);
+
+      // Coalesced (rename/move) presentation is additive over the raw diff. It
+      // is computed over the FULL raw node/edge sets (indexes into `edges` stay
+      // stable). Any failure falls back to the raw view — coalescing is a
+      // presentation enhancement and must never make the diff unavailable (§17).
+      let coalesced: CoalescedChangeDto[] | undefined;
+      let ambiguousGroups: AmbiguousNodeGroupDto[] | undefined;
+      if (wantCoalesced) {
+        try {
+          const stageA = stageAMatch(rawNodesRemoved, rawNodesAdded, analyzerVersion);
+          const stageB = stageBMatch(stageA.remainingRemoved, stageA.remainingAdded, analyzerVersion);
+          const nodePairs = [...stageA.pairs, ...stageB.pairs];
+          const { edgePairs } = coalesceEdges(edges, nodePairs);
+          coalesced = buildCoalescedChanges(nodePairs, edgePairs, edges).map((change) => ({
+            kind: change.kind,
+            fromKey: change.fromKey,
+            toKey: change.toKey,
+            rawRowIndexes: change.rawRowIndexes
+          }));
+          ambiguousGroups = stageB.ambiguousGroups.map((group) => ({
+            candidateKeys: group.candidates.map((node) => node.entityKey),
+            reason: group.reason
+          }));
+        } catch (err) {
+          app.log.error({ err }, "review-diff coalescing failed; falling back to raw");
+          coalesced = undefined;
+          ambiguousGroups = undefined;
+        }
+      }
 
       const snapshotFreshness = service.snapshotFreshness();
       const refreshState = app.graphState.refreshState();
@@ -207,7 +246,10 @@ export async function registerReviewRoutes(app: FastifyInstance): Promise<void> 
         nodesRemovedOmitted: page.nodesRemovedOmitted,
         edgesOmitted: page.edgesOmitted,
         nextCursor: page.nextCursor,
-        presentation: "raw"
+        // If coalescing was requested and succeeded, present as coalesced;
+        // otherwise (not requested, or fell back on failure) present as raw.
+        presentation: coalesced !== undefined ? "coalesced" : "raw",
+        ...(coalesced !== undefined ? { coalesced, ambiguousGroups } : {})
       };
       return reply.send(body);
     }

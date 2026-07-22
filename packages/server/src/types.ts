@@ -191,6 +191,24 @@ export interface TourProgressDto {
   updatedAt: string;
 }
 
+/**
+ * One coalesced rename/move row (09-02). Additive over the raw `edges` array —
+ * `rawRowIndexes` point into that same array so the UI can expand back to raw.
+ * Always presented as "likely", never certain.
+ */
+export interface CoalescedChangeDto {
+  kind: "rename" | "move";
+  fromKey: string | null;
+  toKey: string | null;
+  rawRowIndexes: number[];
+}
+
+/** A group of add/remove nodes that could not be disambiguated → raw fallback. */
+export interface AmbiguousNodeGroupDto {
+  candidateKeys: string[];
+  reason: string;
+}
+
 export interface ReviewDiffDto {
   context: ApiContext;
   base: SnapshotRowDto;
@@ -204,7 +222,10 @@ export interface ReviewDiffDto {
   edgesOmitted: number;
   /** Offset cursor for the next page, or null when the diff is exhausted. */
   nextCursor: string | null;
-  presentation: "raw";
+  presentation: "raw" | "coalesced";
+  /** Present only when presentation === "coalesced" (additive over `edges`). */
+  coalesced?: CoalescedChangeDto[];
+  ambiguousGroups?: AmbiguousNodeGroupDto[];
 }
 
 export interface SnapshotSummaryDto {
