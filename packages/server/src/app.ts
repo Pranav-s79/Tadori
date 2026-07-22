@@ -13,6 +13,7 @@ import { registerReviewRoutes } from "./routes/review.js";
 import { registerSearchRoutes } from "./routes/search.js";
 import { registerSnapshotRoutes } from "./routes/snapshots.js";
 import { registerSourceRoutes } from "./routes/source.js";
+import { registerStoryRoutes } from "./routes/story.js";
 import { registerWebSocket } from "./ws.js";
 
 export interface ServerAppOptions {
@@ -62,6 +63,7 @@ export async function createServerApp(options: ServerAppOptions): Promise<Fastif
   await app.register(registerRefreshRoutes, { prefix: "/api/v1" });
   await app.register(registerLayoutRoutes, { prefix: "/api/v1" });
   await app.register(registerReviewRoutes, { prefix: "/api/v1" });
+  await app.register(registerStoryRoutes, { prefix: "/api/v1" });
   await app.register(registerObservationRoutes, { prefix: "/api/v1" });
   await app.register(registerWebSocket, { prefix: "/api/v1" });
 
