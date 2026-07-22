@@ -2,13 +2,14 @@
 
 # Current State (always overwritten)
 
-Current node: 09-01 — viz slice (reviewDiff client + ReviewDiffView + non-moving DiffBadgeOverlay) in review as PR #24; backend wiring merged
-Branch: bp/09-01-viz-review-diff (viz slice)
-Latest commit: 2f78f95 main (PR #23 merged — working_tree/staged wiring)
-Current PR: #24 (viz slice) open + MERGEABLE, CI re-running after fix 1f35ac2. Merged: #19 (pagination), #20 (staged capture), #22 (comparison-kind contract), #23 (working_tree/staged wiring)
-Fix on #24: slice-B re-encode had left one embedded NUL byte as the edgeId() join delimiter, making useReviewDiffStore.ts binary to git; replaced with "|" (canonical pipe delimiter). Re-verified viz 230/230, tsc/eslint/vite build exit 0.
-Next frontier: merge #24 (pending CI green), then 09-02 (coalesced diff) and the BehaviorStory product-direction slice
+Current node: 09-02 — Rename/move coalescing views (started; branch bp/09-02-coalescing). 08-07A BehaviorStory backend delivered + merged.
+Branch: bp/09-02-coalescing
+Latest commit: 3869295 main (PR #26 merged — BehaviorStory backend [08-07A])
+Recently merged: #24 (09-01 viz review-diff slice, incl. NUL-byte fix 1f35ac2), #25 (docs + frozen BehaviorStory contract), #26 (08-07A BehaviorStory backend: story.ts + GET /api/v1/story/route/:entityKey). All CI-green both OSes; lead-reviewed.
+Next frontier: 09-02 coalescing (server coalescing.ts stageA/stageB + coalesceEdges/buildCoalescedChanges, replace review.ts:98 501 stub, harness compareDiff.ts vs fixture-04 oracle, ReviewDiffView raw/coalesced toggle). Then BehaviorStory frontend (StoryView) — BLOCKED on 08-07 viz path/route/test/doc displays (not built).
+Open PR: #(pending push) bp/claude-md-lead-approval — governance line: lead (not owner) approves architectural/contract merges.
 Known blocker: none
+09-02 grounding (live-verified 2026-07-21): CoalescedChange declared in blueprints/ARCHITECTURE.md:457 (spec, not code yet) = {kind:"rename"|"move"|"modify"; fromKey; toKey; rawRowIndexes:number[]}. 501 stub at packages/server/src/routes/review.ts:98 (`coalesce==="coalesced"` → notImplemented("coalesced_unsupported")). Fixture oracle: packages/fixtures/04-diff-coalescing/expected/{coalesced,raw}-diff.json + {before,after}-graph.json. Recursive-self-reference Stage-B miss must be PRESERVED (tadori-indexer SKILL.md lines 18-20), never disguised as a match.
 
 ## 09-01 — review-diff working_tree/staged wiring (backend slice, 2026-07-21)
 
