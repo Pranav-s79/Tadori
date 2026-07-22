@@ -132,6 +132,23 @@ export function mockLayoutResponse(positions: LayoutPositionDto[] = mockLayoutPo
   return { positions, layoutVersion: 1 };
 }
 
+/** Minimal empty ReviewDiffDto so App-level review fetches resolve in tests. */
+export function mockReviewDiffResponse() {
+  return {
+    context: mockContext,
+    base: { id: 1, kind: "snapshot", label: "base", baseCommitSha: null, workspaceHash: "", pinned: false, status: "active", createdAt: "" },
+    head: { id: 1, kind: "snapshot", label: "head", baseCommitSha: null, workspaceHash: "", pinned: false, status: "active", createdAt: "" },
+    nodesAdded: [],
+    nodesRemoved: [],
+    edges: [],
+    nodesAddedOmitted: 0,
+    nodesRemovedOmitted: 0,
+    edgesOmitted: 0,
+    nextCursor: null,
+    presentation: "raw"
+  };
+}
+
 /**
  * Installs a `fetch` stub on `globalThis` that answers the /api/v1/*
  * endpoints this app calls, using the mock fixtures above. Returns a
@@ -169,6 +186,9 @@ export function installMockFetch(overrides?: {
         return jsonResponse(mockLayoutResponse(mockFileLayoutByPackage[pkg] ?? []));
       }
       return jsonResponse(mockLayoutResponse(overrides?.positions));
+    }
+    if (url.includes("/api/v1/review/diff")) {
+      return jsonResponse(mockReviewDiffResponse());
     }
     throw new Error(`installMockFetch: unhandled URL ${url}`);
   }) as typeof fetch;
