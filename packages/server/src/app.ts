@@ -11,6 +11,7 @@ import { registerPathRoutes } from "./routes/path.js";
 import { registerRefreshRoutes } from "./routes/refresh.js";
 import { registerReviewRoutes } from "./routes/review.js";
 import { registerSearchRoutes } from "./routes/search.js";
+import { registerBoundaryRoutes } from "./routes/boundaries.js";
 import { registerSnapshotRoutes } from "./routes/snapshots.js";
 import { registerSourceRoutes } from "./routes/source.js";
 import { registerStoryRoutes } from "./routes/story.js";
@@ -64,6 +65,7 @@ export async function createServerApp(options: ServerAppOptions): Promise<Fastif
   await app.register(registerLayoutRoutes, { prefix: "/api/v1" });
   await app.register(registerReviewRoutes, { prefix: "/api/v1" });
   await app.register(registerStoryRoutes, { prefix: "/api/v1" });
+  await app.register(registerBoundaryRoutes, { prefix: "/api/v1" });
   await app.register(registerObservationRoutes, { prefix: "/api/v1" });
   await app.register(registerWebSocket, { prefix: "/api/v1" });
 

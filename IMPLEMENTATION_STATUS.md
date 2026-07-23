@@ -2,12 +2,12 @@
 
 # Current State (always overwritten)
 
-Current node: 09-02 — Rename/move coalescing views (implementation complete; viz PR #32 open, rest merged). 08-07A BehaviorStory backend merged.
-Branch: bp/09-02-viz-coalesce
-Latest commit: a796660 main (PR #31 merged — harness coalescing check + store relocation)
-Recently merged: #27 (coalescing Stage A/B matchers), #29 (coalesceEdges + buildCoalescedChanges), #30 (coalesce=coalesced route wiring), #31 (harness compareFixtureDiff + relocation of coalescing to @tadori/store + fixtures:index wiring). Earlier: #24/#25/#26 (09-01 viz, frozen BehaviorStory contract, 08-07A backend), #28 (governance). All CI-green both OSes; lead-reviewed.
-Open PR: #32 (viz raw/coalesced toggle + expand-to-raw) — CI pending.
-Next frontier: merge #32, then 09-03 (boundary rules & violations, depends on 09-01) OR the BehaviorStory frontend StoryView — BLOCKED on 08-07 viz path/route/test/doc displays (not built).
+Current node: 09-03 — Boundary rules & violations (backend delivered on PR #33; viz badges remaining). 09-02 fully merged (#27/#29/#30/#31/#32).
+Branch: bp/09-03-boundary-rules
+Latest commit: fd1d08c main (PR #32 merged — 09-02 viz raw/coalesced toggle)
+Open PR: #33 (09-03 backend: @tadori/store/boundaries.ts compute + GET /api/v1/boundaries + harness compareFixtureBoundaries wired into fixtures:index) — CI running.
+09-03 backend done: tadori.rules.json {boundaries:[{id,from,deny[],severity?}]} parsed at serve; computeBoundaryViolations over import/call edges, deduped one-per-file-pair (imports wins over calls), evidence verbatim; seeded fixture-01/02 violations now EXECUTED (core-symbols 1/1, express-routes 1/1). Remaining: viz violation badges/warning glyphs on affected nodes.
+Next frontier: viz boundary badges (finish 09-03), then 09-04 (changed_with extraction) or the BehaviorStory frontend StoryView — BLOCKED on 08-07 viz path/route/test/doc displays (not built).
 Known blocker: none
 09-02 documented divergence (verified 2026-07-21): fixture-04's coalesced-diff.json was authored against a BODY-ONLY bodyHash, but the frozen indexer hashes DECLARATION TEXT incl. the method name — so the formatValue→renderValue method rename changes its bodyHash and honestly falls to raw (0 Stage-B pairs, 5 edge pairs, not the authored 1/8). Same failure mode as the fixture's own recursive-rename note, generalized. Fixture files UNTOUCHED; forcing a match would violate "unresolved stays visibly unresolved". compareFixtureDiff asserts the real pipeline (2 Stage-A pairs). Coalescing lives in @tadori/store (shared by server route + harness, no harness→server dep; server re-exports).
 
@@ -793,13 +793,19 @@ after 17/37.
 
 - Relation: `changed_with` (Week 9 review mode).
 - Node kind: `doc_section` (no fixture covers it yet).
-- Checks: seeded boundary violations, non-variable excluded candidates.
+- Checks: non-variable excluded candidates.
 - (Un-deferred 09-02) The raw/coalesced diff artifacts of fixture 04 are now an
   EXECUTED harness check (`compareFixtureDiff`, wired into `pnpm fixtures:index`),
   not merely schema-shape validation. See the 09-02 section for the documented
   bodyHash divergence (the frozen indexer hashes declaration text incl. the
   method name, so a method rename honestly falls to raw — the fixture files are
   untouched).
+- (Un-deferred 09-03) The seeded boundary violations of fixtures 01/02 are now an
+  EXECUTED harness check (`compareFixtureBoundaries`, wired into
+  `pnpm fixtures:index`): each `tadori.rules.json` fixture is indexed, violations
+  computed by the real store algorithm, and asserted set-equal to its
+  `expectedBoundaryViolations` (core-symbols 1/1, express-routes 1/1). Served at
+  `GET /api/v1/boundaries`.
 
 ## Performance observations
 
