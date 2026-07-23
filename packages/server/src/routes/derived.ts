@@ -2,8 +2,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { badRequest } from "../errors.js";
+import { deriveTestLinks } from "../tests.js";
 import { toToolNode } from "./graph.js";
-import type { DocsDto, NotYetImplementedDto, RoutesDto, TestsDto, TourProgressDto } from "../types.js";
+import type { DocsDto, NotYetImplementedDto, RoutesDto, TestLink, TestsDto, TourProgressDto } from "../types.js";
 
 interface TestsQuery {
   for?: string;
@@ -23,15 +24,37 @@ function progressFilePath(repoRoot: string): string {
 }
 
 export async function registerDerivedRoutes(app: FastifyInstance): Promise<void> {
-  // Route #11: GET /tests — thin honest stub until 08-07 lands the engine.
+  // Route #11: GET /tests. With `for=<entity>`, returns that target's
+  // likely-relevant tests WITH their linkage kind (derived from the tests-edge
+  // origin — static/heuristic/historical/evidence). Without `for`, returns the
+  // whole-snapshot test listing with linkage:null (no target to link against).
+  // `observed:false` + the note keep the honesty invariant: linkage is a static
+  // claim, never observed runtime coverage.
   app.get("/tests", async (request: FastifyRequest<{ Querystring: TestsQuery }>, reply: FastifyReply) => {
     const service = app.graphState.current();
-    const testNodes = service.graph.nodes.filter((node) => node.kind === "test");
-    const body: TestsDto = {
-      tests: testNodes.map((node) => toToolNode(app, node)),
-      observed: false,
-      note: "not observed inspected"
-    };
+    const forRef = request.query.for;
+
+    if (forRef !== undefined && forRef.length > 0) {
+      const resolution = service.resolveEntity(forRef);
+      if (!resolution.node) {
+        // Unresolved target: honest empty result, not a fabricated listing.
+        const body: TestsDto = { target: null, tests: [], observed: false, note: "not observed inspected" };
+        return reply.send(body);
+      }
+      const body: TestsDto = {
+        target: toToolNode(app, resolution.node),
+        tests: deriveTestLinks(app, service, resolution.node),
+        observed: false,
+        note: "not observed inspected"
+      };
+      return reply.send(body);
+    }
+
+    // No target: the whole-snapshot test listing carries no linkage.
+    const tests: TestLink[] = service.graph.nodes
+      .filter((node) => node.kind === "test")
+      .map((node) => ({ node: toToolNode(app, node), linkage: null, edge: null }));
+    const body: TestsDto = { target: null, tests, observed: false, note: "not observed inspected" };
     return reply.send(body);
   });
 
