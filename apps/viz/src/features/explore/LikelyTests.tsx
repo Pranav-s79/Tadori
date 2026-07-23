@@ -1,5 +1,21 @@
 import { useEffect, useState, type ReactElement } from "react";
-import { fetchLikelyTests, type TestsResult } from "./exploreApi.ts";
+import { fetchLikelyTests, type TestLinkage, type TestsResult } from "./exploreApi.ts";
+
+/** Human, honesty-preserving label for a linkage kind — never a coverage claim. */
+function linkageLabel(linkage: TestLinkage): string {
+  switch (linkage) {
+    case "statically_linked":
+      return "Statically linked (compiler-verified reference)";
+    case "naming_associated":
+      return "Naming-associated (heuristic match)";
+    case "package_associated":
+      return "Package-associated (same package, no direct link)";
+    case "historically_associated":
+      return "Historically associated (co-change pattern)";
+    case "evidence_associated":
+      return "Evidence-associated (documented or annotated link)";
+  }
+}
 
 interface LikelyTestsProps {
   /** Optional entity to scope the query to (from a row pivot); all tests otherwise. */
@@ -57,12 +73,15 @@ export function LikelyTests({ forEntity, onInspect }: LikelyTestsProps): ReactEl
           <p role="status">No likely-relevant tests found.</p>
         ) : (
           <ul role="list">
-            {state.result.tests.map((test) => (
-              <li key={test.entityKey}>
-                <button type="button" onClick={() => onInspect?.(test.entityKey)}>
-                  {test.displayName}
+            {state.result.tests.map(({ node, linkage }) => (
+              <li key={node.entityKey}>
+                <button type="button" onClick={() => onInspect?.(node.entityKey)}>
+                  {node.displayName}
                 </button>
-                {test.file !== null && <span className="explore-tests-file"> {test.file}</span>}
+                {node.file !== null && <span className="explore-tests-file"> {node.file}</span>}
+                {linkage !== null && (
+                  <span className="explore-tests-linkage">{linkageLabel(linkage)}</span>
+                )}
               </li>
             ))}
           </ul>

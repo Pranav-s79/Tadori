@@ -96,8 +96,29 @@ export interface PathResultDto {
   found: boolean;
 }
 
+/**
+ * How a test is linked to the queried target, derived from the `tests`-edge
+ * origin (same mapping as the MCP find_tests tool). A static/heuristic/git link
+ * is NEVER a runtime-coverage claim — see the `observed`/`note` honesty fields.
+ */
+export type TestLinkage =
+  | "statically_linked"
+  | "naming_associated"
+  | "package_associated"
+  | "historically_associated"
+  | "evidence_associated";
+
+/** One likely-relevant test. `linkage`/`edge` are null when the query had no target. */
+export interface TestLink {
+  node: ToolNode;
+  linkage: TestLinkage | null;
+  edge: ToolEdge | null;
+}
+
 export interface TestsDto {
-  tests: ToolNode[];
+  /** The queried target (when `for` resolved), else null (whole-snapshot listing). */
+  target: ToolNode | null;
+  tests: TestLink[];
   observed: false;
   note: "not observed inspected";
 }

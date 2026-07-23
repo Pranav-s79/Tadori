@@ -52,13 +52,32 @@ export interface RoutesResult {
 }
 
 /**
+ * How a test links to the queried target (mirrors server TestLinkage). A
+ * static/heuristic/git link is NEVER a runtime-coverage claim.
+ */
+export type TestLinkage =
+  | "statically_linked"
+  | "naming_associated"
+  | "package_associated"
+  | "historically_associated"
+  | "evidence_associated";
+
+/** One likely-relevant test; `linkage` is null when the query had no target. */
+export interface TestLink {
+  node: ExploreNode;
+  linkage: TestLinkage | null;
+  edge: ExploreEdge | null;
+}
+
+/**
  * GET /api/v1/tests response (server TestsDto). `observed:false` +
  * `note:"not observed inspected"` are frozen honesty fields: a static/heuristic
- * link is never a claim the test was run. The server stub does NOT yet carry
- * per-test linkage kind / run hints, so this UI renders the honest node list.
+ * link is never a claim the test was run. When queried with a target, each test
+ * carries its linkage kind; the whole-snapshot listing has linkage:null.
  */
 export interface TestsResult {
-  tests: ExploreNode[];
+  target: ExploreNode | null;
+  tests: TestLink[];
   observed: false;
   note: string;
 }

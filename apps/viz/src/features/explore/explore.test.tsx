@@ -29,16 +29,22 @@ describe("LikelyTests honesty wording", () => {
     await waitFor(() => expect(screen.getByText("No likely-relevant tests found.")).toBeTruthy());
   });
 
-  it("never renders a runtime-coverage claim", async () => {
+  it("renders the linkage badge but never a runtime-coverage claim", async () => {
     stubFetch({
+      target: { entityKey: "tgt", kind: "function", qualifiedName: "f", displayName: "f", file: "f.ts" },
       tests: [
-        { entityKey: "t1", kind: "test", qualifiedName: "a.test", displayName: "a.test", file: "a.test.ts" }
+        {
+          node: { entityKey: "t1", kind: "test", qualifiedName: "a.test", displayName: "a.test", file: "a.test.ts" },
+          linkage: "statically_linked",
+          edge: null
+        }
       ],
       observed: false,
       note: "not observed inspected"
     });
-    const { container } = render(<LikelyTests />);
+    const { container } = render(<LikelyTests forEntity="tgt" />);
     await waitFor(() => expect(screen.getByText("a.test")).toBeTruthy());
+    expect(screen.getByText(/Statically linked/)).toBeTruthy();
     const text = container.textContent ?? "";
     expect(text).not.toMatch(/passing|covers|verified running/i);
   });

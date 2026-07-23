@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ConcurrentRefreshController } from "@tadori/mcp";
 import type { FastifyInstance } from "fastify";
 import { createServerApp } from "../src/app.js";
+import { testLinkageFor } from "../src/tests.js";
 import type { DocsDto, NotYetImplementedDto, RoutesDto, TestsDto, TourProgressDto } from "../src/types.js";
 import { buildTestDb, cleanupTestDb, type TestDb } from "./fixtures/buildTestDb.js";
 
@@ -32,13 +33,38 @@ async function setup(): Promise<FastifyInstance> {
 }
 
 describe("derived routes", () => {
-  it("GET /tests returns 200 with observed:false and the honest note", async () => {
+  it("GET /tests returns the whole-snapshot listing with observed:false, no target, linkage:null", async () => {
     const instance = await setup();
     const response = await instance.inject({ method: "GET", url: "/api/v1/tests" });
     expect(response.statusCode).toBe(200);
     const body = response.json() as TestsDto;
     expect(body.observed).toBe(false);
     expect(body.note).toBe("not observed inspected");
+    expect(body.target).toBeNull();
+    // No target ⇒ no linkage claimed for any listed test.
+    expect(body.tests.every((t) => t.linkage === null && t.edge === null)).toBe(true);
+  });
+
+  it("GET /tests?for=<unresolved> returns an honest empty result, not a fabricated listing", async () => {
+    const instance = await setup();
+    const response = await instance.inject({
+      method: "GET",
+      url: "/api/v1/tests?for=definitely-not-an-entity"
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as TestsDto;
+    expect(body.target).toBeNull();
+    expect(body.tests).toEqual([]);
+    expect(body.observed).toBe(false);
+  });
+
+  it("testLinkageFor maps each origin to its static linkage kind", () => {
+    expect(testLinkageFor("compiler")).toBe("statically_linked");
+    expect(testLinkageFor("heuristic")).toBe("naming_associated");
+    expect(testLinkageFor("git")).toBe("historically_associated");
+    expect(testLinkageFor("doc")).toBe("evidence_associated");
+    expect(testLinkageFor("human")).toBe("evidence_associated");
+    expect(testLinkageFor("llm")).toBe("evidence_associated");
   });
 
   it("GET /routes returns 200 with a routes array", async () => {
