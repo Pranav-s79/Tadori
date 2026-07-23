@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { badRequest } from "../errors.js";
+import { deriveRouteRows } from "../routeRows.js";
 import { deriveTestLinks } from "../tests.js";
 import { toToolNode } from "./graph.js";
 import type { DocsDto, NotYetImplementedDto, RoutesDto, TestLink, TestsDto, TourProgressDto } from "../types.js";
@@ -58,11 +59,12 @@ export async function registerDerivedRoutes(app: FastifyInstance): Promise<void>
     return reply.send(body);
   });
 
-  // Route #12: GET /routes — thin honest stub until 08-07 lands the engine.
+  // Route #12: GET /routes — each route with its path-source origin, read from
+  // the route's outgoing `routes_to` edge (compiler = direct/literal path,
+  // heuristic = derived; null when no such edge exists, rendered explicitly).
   app.get("/routes", async (_request: FastifyRequest, reply: FastifyReply) => {
     const service = app.graphState.current();
-    const routeNodes = service.graph.nodes.filter((node) => node.kind === "route");
-    const body: RoutesDto = { routes: routeNodes.map((node) => toToolNode(app, node)) };
+    const body: RoutesDto = { routes: deriveRouteRows(app, service) };
     return reply.send(body);
   });
 
