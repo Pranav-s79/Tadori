@@ -1,4 +1,6 @@
 import { useCallback, useMemo } from "react";
+import { BoundaryBadgeOverlay, type BadgePosition as BoundaryBadgePosition } from "./features/boundaries/BoundaryBadgeOverlay.tsx";
+import { useBoundaries } from "./features/boundaries/useBoundaries.ts";
 import { InspectionPanel } from "./features/inspect/InspectionPanel.tsx";
 import { useInspectionStore } from "./features/inspect/useInspectionStore.ts";
 import { DiffBadgeOverlay, type BadgePosition } from "./features/review/DiffBadgeOverlay.tsx";
@@ -24,6 +26,7 @@ export function App() {
   // One review-diff store shared between the list view and the badge overlay so
   // a single kind switch / page load drives both (no duplicate fetch).
   const reviewStore = useReviewDiffStore();
+  const boundaries = useBoundaries();
 
   const openInspectionPanel = useCallback(
     (entityKey: string) => {
@@ -42,9 +45,22 @@ export function App() {
     return map;
   }, [data?.positions]);
 
+  // Boundary badges are placed at the repo-wide file-level layout coordinates
+  // (fetched by useBoundaries only when violations exist), keyed by entityKey —
+  // the same layout-engine coordinates the canvas uses, never recomputed here.
+  const boundaryPositions = useMemo<ReadonlyMap<string, BoundaryBadgePosition>>(() => {
+    const map = new Map<string, BoundaryBadgePosition>();
+    for (const pos of boundaries.filePositions) {
+      map.set(pos.entityKey, { x: pos.x, y: pos.y });
+    }
+    return map;
+  }, [boundaries.filePositions]);
+
+  const refetchBoundaries = boundaries.refetch;
   const onReconnected = useCallback(() => {
     refetchGraph();
-  }, [refetchGraph]);
+    refetchBoundaries();
+  }, [refetchGraph, refetchBoundaries]);
   const refreshStatus = useRefreshStatus(wsUrl(), onReconnected);
 
   if (snapshotLoading || graphLoading) {
@@ -73,6 +89,17 @@ export function App() {
         <DiffBadgeOverlay
           page={reviewStore.page}
           positions={badgePositions}
+          onInspect={openInspectionPanel}
+        />
+        {/* Boundary-violation glyphs over the file-level layout coordinates —
+            placed only for files whose node is on the current file layout;
+            others are listed honestly as "unplaced" (09-03). */}
+        <BoundaryBadgeOverlay
+          violations={boundaries.data?.violations ?? []}
+          nodes={boundaries.fileNodes}
+          positions={boundaryPositions}
+          rulesPresent={boundaries.data?.rulesPresent ?? false}
+          error={boundaries.error}
           onInspect={openInspectionPanel}
         />
       </div>

@@ -57,6 +57,21 @@ export async function fetchLayout(level: string): Promise<{ positions: LayoutPos
   };
 }
 
+// Repo-wide file-level fetches (09-03 boundary placement). The layout engine
+// already materializes a deterministic file-level layout (level=file); boundary
+// badges reuse those coordinates verbatim rather than recomputing anything. No
+// packageName scoping — one fetch covers every file so a violation in any file
+// can be placed whether or not its package is expanded.
+export async function fetchAllFileNodes(): Promise<ApiNode[]> {
+  const body = await getJson("/nodes?level=file");
+  return unwrapList<ApiNode>(body, "nodes");
+}
+
+export async function fetchAllFileLayout(): Promise<LayoutPositionDto[]> {
+  const body = await getJson("/layout?level=file");
+  return unwrapList<LayoutPositionDto>(body, "positions");
+}
+
 // File-level fetches for semantic zoom (08-03), scoped to one package via the
 // server's `level=file&packageName=<key>` query (see
 // packages/server/src/routes/graph.ts). The `/edges` route does not itself take
