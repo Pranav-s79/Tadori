@@ -1,9 +1,10 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { BoundaryBadgeOverlay, type BadgePosition as BoundaryBadgePosition } from "./features/boundaries/BoundaryBadgeOverlay.tsx";
 import { useBoundaries } from "./features/boundaries/useBoundaries.ts";
 import { InspectionPanel } from "./features/inspect/InspectionPanel.tsx";
 import { useInspectionStore } from "./features/inspect/useInspectionStore.ts";
 import { ExploreTabs } from "./features/explore/ExploreTabs.tsx";
+import { StoryView } from "./features/story/StoryView.tsx";
 import { DiffBadgeOverlay, type BadgePosition } from "./features/review/DiffBadgeOverlay.tsx";
 import { ReviewDiffView } from "./features/review/ReviewDiffView.tsx";
 import { useReviewDiffStore } from "./features/review/useReviewDiffStore.ts";
@@ -28,6 +29,9 @@ export function App() {
   // a single kind switch / page load drives both (no duplicate fetch).
   const reviewStore = useReviewDiffStore();
   const boundaries = useBoundaries();
+  // The route whose behavior story is open, or null. Routes are the story
+  // trigger; the StoryView fetches on demand and reads the DTO only.
+  const [storyEntityKey, setStoryEntityKey] = useState<string | null>(null);
 
   const openInspectionPanel = useCallback(
     (entityKey: string) => {
@@ -85,7 +89,14 @@ export function App() {
       <SearchPanel openInspectionPanel={openInspectionPanel} />
       {/* Explore panel (08-07): Path / Routes / Tests / Docs as mutually
           exclusive tabs, each row pivoting into the existing inspection panel. */}
-      <ExploreTabs onInspect={openInspectionPanel} />
+      <ExploreTabs onInspect={openInspectionPanel} onShowStory={setStoryEntityKey} />
+      {/* Behavior story (08-07A): a static story of a route trigger, opened from
+          a route row. Reads /story/route/:key only; each step links to inspect. */}
+      <StoryView
+        entityKey={storyEntityKey}
+        onInspect={openInspectionPanel}
+        onClose={() => setStoryEntityKey(null)}
+      />
       <div className="app-graph-stage" style={{ position: "relative" }}>
         {isRefreshing ? <RefreshingBanner>{graphView}</RefreshingBanner> : graphView}
         {/* Non-moving diff badges over the existing package layout coordinates —
