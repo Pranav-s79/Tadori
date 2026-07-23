@@ -4,11 +4,16 @@ import type { FastifyInstance } from "fastify";
 import { createServerApp } from "../src/app.js";
 import { testLinkageFor } from "../src/tests.js";
 import type { DocsDto, NotYetImplementedDto, RoutesDto, TestsDto, TourProgressDto } from "../src/types.js";
-import { buildTestDb, cleanupTestDb, type TestDb } from "./fixtures/buildTestDb.js";
+import { buildFixtureTestDb, buildTestDb, cleanupTestDb, type TestDb } from "./fixtures/buildTestDb.js";
 
 let testDb: TestDb | null = null;
 let refresh: ConcurrentRefreshController | null = null;
 let app: FastifyInstance | null = null;
+
+// A second lifecycle for tests that need a non-default fixture repo.
+let fixtureDb: TestDb | null = null;
+let fixtureRefresh: ConcurrentRefreshController | null = null;
+let fixtureApp: FastifyInstance | null = null;
 
 afterEach(async () => {
   if (app) {
@@ -22,6 +27,18 @@ afterEach(async () => {
   if (testDb) {
     cleanupTestDb(testDb);
     testDb = null;
+  }
+  if (fixtureApp) {
+    await fixtureApp.close();
+    fixtureApp = null;
+  }
+  if (fixtureRefresh) {
+    await fixtureRefresh.stop();
+    fixtureRefresh = null;
+  }
+  if (fixtureDb) {
+    cleanupTestDb(fixtureDb);
+    fixtureDb = null;
   }
 });
 
@@ -67,12 +84,35 @@ describe("derived routes", () => {
     expect(testLinkageFor("llm")).toBe("evidence_associated");
   });
 
-  it("GET /routes returns 200 with a routes array", async () => {
+  it("GET /routes returns each route with a node and a path-source origin (null or an Origin)", async () => {
     const instance = await setup();
     const response = await instance.inject({ method: "GET", url: "/api/v1/routes" });
     expect(response.statusCode).toBe(200);
     const body = response.json() as RoutesDto;
     expect(Array.isArray(body.routes)).toBe(true);
+    // Every row carries its route node and an explicit path-source origin field
+    // (null when there is no routes_to edge — never omitted, never guessed).
+    for (const row of body.routes) {
+      expect(row.node.kind).toBe("route");
+      expect("pathSourceOrigin" in row).toBe(true);
+    }
+  });
+
+  it("GET /routes on the express fixture resolves a compiler path-source origin", async () => {
+    // fixture 02 has literal Express routes → routes_to edges with origin=compiler.
+    fixtureDb = buildFixtureTestDb("02-express-routes");
+    fixtureRefresh = await ConcurrentRefreshController.start(fixtureDb.db, fixtureDb.repoRoot);
+    const instance = await createServerApp({
+      db: fixtureDb.db,
+      repoRoot: fixtureDb.repoRoot,
+      refresh: fixtureRefresh
+    });
+    fixtureApp = instance;
+    const response = await instance.inject({ method: "GET", url: "/api/v1/routes" });
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as RoutesDto;
+    expect(body.routes.length).toBeGreaterThan(0);
+    expect(body.routes.some((r) => r.pathSourceOrigin === "compiler")).toBe(true);
   });
 
   it("GET /docs returns 200 with a docs array", async () => {

@@ -46,9 +46,18 @@ export interface PathResult {
   found: boolean;
 }
 
+/**
+ * One route with the origin of its path (mirrors server RouteRow).
+ * `pathSourceOrigin` is null when the route has no `routes_to` edge.
+ */
+export interface RouteRow {
+  node: ExploreNode;
+  pathSourceOrigin: Origin | null;
+}
+
 /** GET /api/v1/routes response (server RoutesDto). */
 export interface RoutesResult {
-  routes: ExploreNode[];
+  routes: RouteRow[];
 }
 
 /**

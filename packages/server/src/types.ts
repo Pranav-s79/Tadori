@@ -123,8 +123,20 @@ export interface TestsDto {
   note: "not observed inspected";
 }
 
+/**
+ * One route with the provenance of its path. `pathSourceOrigin` is the origin of
+ * the route node's outgoing `routes_to` edge — `compiler` means the path was read
+ * directly from a route registration, `heuristic` means it was derived (e.g. a
+ * file-route convention). null when the route has no `routes_to` edge (rendered
+ * explicitly, never guessed).
+ */
+export interface RouteRow {
+  node: ToolNode;
+  pathSourceOrigin: Origin | null;
+}
+
 export interface RoutesDto {
-  routes: ToolNode[];
+  routes: RouteRow[];
 }
 
 export interface DocsDto {

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactElement } from "react";
-import { fetchRoutes, type ExploreNode } from "./exploreApi.ts";
-import { deriveMethodLabel } from "./routeLabels.ts";
+import { fetchRoutes, type RouteRow } from "./exploreApi.ts";
+import { deriveMethodLabel, pathSourceLabel } from "./routeLabels.ts";
 
 interface RouteTableProps {
   onInspect?: (entityKey: string) => void;
@@ -10,17 +10,14 @@ interface RouteTableProps {
 
 type RoutesState =
   | { status: "loading" }
-  | { status: "ready"; routes: ExploreNode[] }
+  | { status: "ready"; routes: RouteRow[] }
   | { status: "error"; message: string };
 
 /**
- * Route table: every `route`-kind node, with a best-effort HTTP method label.
- *
- * Path-source honesty note: the live /routes endpoint returns only the route
- * nodes, NOT their `routes_to` edge origin, so this table cannot yet show the
- * direct-vs-derived path-source label the way the blueprint envisions — it says
- * "unavailable from this endpoint" rather than guessing. Wiring the edge origin
- * through /routes is the documented follow-up.
+ * Route table: every `route`-kind node, with a best-effort HTTP method label and
+ * its path-source origin — read from the route's `routes_to` edge (compiler =
+ * direct/literal path, heuristic = derived). A route with no such edge shows an
+ * explicit "no route-registration edge" cell, never a guessed source.
  */
 export function RouteTable({ onInspect, onShowStory }: RouteTableProps): ReactElement {
   const [state, setState] = useState<RoutesState>({ status: "loading" });
@@ -65,21 +62,27 @@ export function RouteTable({ onInspect, onShowStory }: RouteTableProps): ReactEl
         </tr>
       </thead>
       <tbody>
-        {state.routes.map((route) => (
-          <tr key={route.entityKey}>
-            <td>{deriveMethodLabel(route)}</td>
+        {state.routes.map(({ node, pathSourceOrigin }) => (
+          <tr key={node.entityKey}>
+            <td>{deriveMethodLabel(node)}</td>
             <td>
-              <button type="button" onClick={() => onInspect?.(route.entityKey)}>
-                {route.displayName}
+              <button type="button" onClick={() => onInspect?.(node.entityKey)}>
+                {node.displayName}
               </button>
             </td>
-            <td>{route.file ?? "—"}</td>
-            <td className="explore-routes-source-unavailable">unavailable from this endpoint</td>
+            <td>{node.file ?? "—"}</td>
+            <td>
+              {pathSourceOrigin !== null ? (
+                pathSourceLabel(pathSourceOrigin)
+              ) : (
+                <span className="explore-routes-source-none">no route-registration edge</span>
+              )}
+            </td>
             <td>
               <button
                 type="button"
                 className="explore-routes-story"
-                onClick={() => onShowStory?.(route.entityKey)}
+                onClick={() => onShowStory?.(node.entityKey)}
               >
                 Story
               </button>

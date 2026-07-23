@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ExploreTabs } from "./ExploreTabs.tsx";
 import { LikelyTests } from "./LikelyTests.tsx";
+import { RouteTable } from "./RouteTable.tsx";
 
 function stubFetch(body: unknown, status = 200): void {
   vi.stubGlobal(
@@ -47,6 +48,35 @@ describe("LikelyTests honesty wording", () => {
     expect(screen.getByText(/Statically linked/)).toBeTruthy();
     const text = container.textContent ?? "";
     expect(text).not.toMatch(/passing|covers|verified running/i);
+  });
+});
+
+describe("RouteTable path source", () => {
+  it("renders the real path-source label from the route's origin", async () => {
+    stubFetch({
+      routes: [
+        {
+          node: { entityKey: "r1", kind: "route", qualifiedName: "GET /u", displayName: "GET /u", file: "r.ts", signature: 'app.get("/u")' },
+          pathSourceOrigin: "compiler"
+        }
+      ]
+    });
+    render(<RouteTable />);
+    await waitFor(() => expect(screen.getByText("GET /u")).toBeTruthy());
+    expect(screen.getByText("path source: direct")).toBeTruthy();
+  });
+
+  it("shows an explicit cell, not a guess, when a route has no routes_to edge", async () => {
+    stubFetch({
+      routes: [
+        {
+          node: { entityKey: "r2", kind: "route", qualifiedName: "orphan", displayName: "orphan", file: null },
+          pathSourceOrigin: null
+        }
+      ]
+    });
+    render(<RouteTable />);
+    await waitFor(() => expect(screen.getByText("no route-registration edge")).toBeTruthy());
   });
 });
 
