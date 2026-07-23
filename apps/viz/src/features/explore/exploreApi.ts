@@ -91,9 +91,16 @@ export interface TestsResult {
   note: string;
 }
 
+/** One doc/ADR with its body and the `documents` edges it grounds (mirrors server DocEntry). */
+export interface DocEntry {
+  node: ExploreNode;
+  body: string | null;
+  documents: ExploreEdge[];
+}
+
 /** GET /api/v1/docs response (server DocsDto). */
 export interface DocsResult {
-  docs: { node: ExploreNode; body: string | null }[];
+  docs: DocEntry[];
 }
 
 async function getJson(path: string): Promise<unknown> {

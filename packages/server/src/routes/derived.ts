@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { badRequest } from "../errors.js";
+import { deriveDocEntries } from "../docs.js";
 import { deriveRouteRows } from "../routeRows.js";
 import { deriveTestLinks } from "../tests.js";
 import { toToolNode } from "./graph.js";
@@ -68,15 +69,20 @@ export async function registerDerivedRoutes(app: FastifyInstance): Promise<void>
     return reply.send(body);
   });
 
-  // Route #13: GET /docs — thin honest stub until 08-07 lands the engine.
-  app.get("/docs", async (_request: FastifyRequest<{ Querystring: DocsQuery }>, reply: FastifyReply) => {
+  // Route #13: GET /docs. Each doc/ADR carries its `documents` edges (what it
+  // grounds). With ?for=<entity>, returns only docs that ground that entity —
+  // which is what fetchLinkedDoc relies on; an unresolved `for` yields an empty
+  // list, never the whole-snapshot dump.
+  app.get("/docs", async (request: FastifyRequest<{ Querystring: DocsQuery }>, reply: FastifyReply) => {
     const service = app.graphState.current();
-    const docNodes = service.graph.nodes.filter((node) => node.kind === "doc_section" || node.kind === "adr");
-    const docs = docNodes.map((node) => {
-      const read = service.readBody(node);
-      return { node: toToolNode(app, node), body: read.body };
-    });
-    const body: DocsDto = { docs };
+    const forRef = request.query.for;
+    if (forRef !== undefined && forRef.length > 0) {
+      const resolution = service.resolveEntity(forRef);
+      const docs = resolution.node ? deriveDocEntries(app, service, resolution.node.entityKey) : [];
+      const body: DocsDto = { docs };
+      return reply.send(body);
+    }
+    const body: DocsDto = { docs: deriveDocEntries(app, service) };
     return reply.send(body);
   });
 

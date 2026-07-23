@@ -115,12 +115,31 @@ describe("derived routes", () => {
     expect(body.routes.some((r) => r.pathSourceOrigin === "compiler")).toBe(true);
   });
 
-  it("GET /docs returns 200 with a docs array", async () => {
+  it("GET /docs returns each doc with its `documents` edges (fixture 01 ADR grounds an entity)", async () => {
     const instance = await setup();
     const response = await instance.inject({ method: "GET", url: "/api/v1/docs" });
     expect(response.statusCode).toBe(200);
     const body = response.json() as DocsDto;
     expect(Array.isArray(body.docs)).toBe(true);
+    // Every entry carries a documents array (empty for an ungrounded doc, never omitted).
+    expect(body.docs.every((d) => Array.isArray(d.documents))).toBe(true);
+    // fixture 01 has adr:math -documents-> file:src/math.ts, so at least one doc grounds an entity.
+    expect(body.docs.some((d) => d.documents.length > 0)).toBe(true);
+  });
+
+  it("GET /docs?for=<unresolved> returns an empty list, not the whole-snapshot dump", async () => {
+    const instance = await setup();
+    const all = await instance.inject({ method: "GET", url: "/api/v1/docs" });
+    const allBody = all.json() as DocsDto;
+    const response = await instance.inject({
+      method: "GET",
+      url: "/api/v1/docs?for=definitely-not-an-entity"
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as DocsDto;
+    expect(body.docs).toEqual([]);
+    // Sanity: the whole-snapshot listing is non-empty, so [] is real filtering.
+    expect(allBody.docs.length).toBeGreaterThan(0);
   });
 
   it("GET /overview returns 200 with available:false not_yet_implemented", async () => {
