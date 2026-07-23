@@ -4,6 +4,8 @@ import { deriveMethodLabel } from "./routeLabels.ts";
 
 interface RouteTableProps {
   onInspect?: (entityKey: string) => void;
+  /** Open the behavior story for a route (routes are the story trigger). */
+  onShowStory?: (entityKey: string) => void;
 }
 
 type RoutesState =
@@ -20,7 +22,7 @@ type RoutesState =
  * "unavailable from this endpoint" rather than guessing. Wiring the edge origin
  * through /routes is the documented follow-up.
  */
-export function RouteTable({ onInspect }: RouteTableProps): ReactElement {
+export function RouteTable({ onInspect, onShowStory }: RouteTableProps): ReactElement {
   const [state, setState] = useState<RoutesState>({ status: "loading" });
 
   useEffect(() => {
@@ -59,6 +61,7 @@ export function RouteTable({ onInspect }: RouteTableProps): ReactElement {
           <th scope="col">Route</th>
           <th scope="col">File</th>
           <th scope="col">Path source</th>
+          <th scope="col">Story</th>
         </tr>
       </thead>
       <tbody>
@@ -72,6 +75,15 @@ export function RouteTable({ onInspect }: RouteTableProps): ReactElement {
             </td>
             <td>{route.file ?? "—"}</td>
             <td className="explore-routes-source-unavailable">unavailable from this endpoint</td>
+            <td>
+              <button
+                type="button"
+                className="explore-routes-story"
+                onClick={() => onShowStory?.(route.entityKey)}
+              >
+                Story
+              </button>
+            </td>
           </tr>
         ))}
       </tbody>

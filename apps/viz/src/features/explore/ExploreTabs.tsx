@@ -6,6 +6,8 @@ import { RouteTable } from "./RouteTable.tsx";
 
 interface ExploreTabsProps {
   onInspect?: (entityKey: string) => void;
+  /** Open a route's behavior story (routes are the story trigger). */
+  onShowStory?: (entityKey: string) => void;
 }
 
 type ExploreTab = "path" | "routes" | "tests" | "docs";
@@ -23,7 +25,7 @@ const TABS: { id: ExploreTab; label: string }[] = [
  * no-dual-dashboard rule). Standard ARIA tabs keyboard pattern: arrows move
  * between tabs, each panel is labelled by its tab.
  */
-export function ExploreTabs({ onInspect }: ExploreTabsProps): ReactElement {
+export function ExploreTabs({ onInspect, onShowStory }: ExploreTabsProps): ReactElement {
   const [active, setActive] = useState<ExploreTab>("path");
 
   function onTabKeyDown(event: KeyboardEvent, index: number): void {
@@ -71,7 +73,7 @@ export function ExploreTabs({ onInspect }: ExploreTabsProps): ReactElement {
 
       <div role="tabpanel" id={`explore-panel-${active}`} aria-labelledby={`explore-tab-${active}`}>
         {active === "path" && <PathFinder onInspect={onInspect} />}
-        {active === "routes" && <RouteTable onInspect={onInspect} />}
+        {active === "routes" && <RouteTable onInspect={onInspect} onShowStory={onShowStory} />}
         {active === "tests" && <LikelyTests onInspect={onInspect} />}
         {active === "docs" && <DocumentsPanel onInspect={onInspect} />}
       </div>
