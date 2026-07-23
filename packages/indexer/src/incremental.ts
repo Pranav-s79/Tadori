@@ -263,7 +263,11 @@ export class IncrementalRepositoryIndexer {
     if (!head) {
       const initial = indexRepositoryIntoStore(this.db, this.root, {
         kind: this.kind,
-        label: this.label
+        label: this.label,
+        // Co-change reflects committed history (stable between working-tree
+        // edits), so it is derived once at the initial full index; incremental
+        // re-extraction on file changes does not recompute it.
+        extractCoChange: true
       });
       if (initial.activationId === null) {
         throw new Error("Initial index completed without an activation");

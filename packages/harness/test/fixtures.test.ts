@@ -84,13 +84,17 @@ describe("golden fixture comparison (Week 3 milestone)", () => {
     }
   );
 
-  it("compares every Week 3 relation instead of deferring it", () => {
+  it("compares every relation instead of deferring it", () => {
     const core = comparisonFor(targets[0]!);
-    // Fixture 01 declares no changed_with edges, so nothing is deferred now.
     expect(core.deferredRelations).toEqual([]);
     expect(core.deferredNodeKinds).toEqual([]);
-    // The milestone still names its explicit deferrals (Week 9 material).
-    expect(core.deferredChecks.join("; ")).toContain("changed_with");
+    // 09-04 un-deferred changed_with: no relations remain deferred, so the
+    // milestone no longer names one. Fixture extraction still emits zero
+    // changed_with edges (co-change is a live-serve-only additive pass), so
+    // nothing shows up as unexpected.
+    expect(core.deferredChecks.join("; ")).not.toContain("changed_with");
+    expect(core.unexpectedEdges.filter((e) => e.includes("changed_with"))).toEqual([]);
+    // doc_section is still deferred (no fixture covers doc sections yet).
     expect(core.deferredChecks.join("; ")).toContain("doc_section");
   });
 

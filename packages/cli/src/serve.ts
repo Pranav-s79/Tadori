@@ -258,7 +258,10 @@ export async function runServe(argv: readonly string[], deps: RunServeDeps = {})
       if (flags.reindex) {
         await indexer.stop();
         indexer = null;
-        const full = indexRepositoryIntoStore(db, root, { kind: "working_tree" });
+        const full = indexRepositoryIntoStore(db, root, {
+          kind: "working_tree",
+          extractCoChange: true
+        });
         if (full.activationId === null) {
           stderr("Full reindex completed without a valid activation.\n");
           return await closeAndExit(EXIT_INVALID_SNAPSHOT);
