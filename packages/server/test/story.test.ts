@@ -36,14 +36,15 @@ async function setup(): Promise<FastifyInstance> {
 /** The entityKey of the first route node whose displayName matches, from /routes. */
 async function routeKey(instance: FastifyInstance, displayNameStartsWith: string): Promise<string> {
   const response = await instance.inject({ method: "GET", url: "/api/v1/routes" });
-  const body = response.json() as { routes: ToolNode[] };
-  const node = body.routes.find((r) => r.displayName.startsWith(displayNameStartsWith));
-  if (!node) {
+  // /routes returns RouteRow[] ({ node, pathSourceOrigin }) since 08-07C.
+  const body = response.json() as { routes: { node: ToolNode; pathSourceOrigin: string | null }[] };
+  const row = body.routes.find((r) => r.node.displayName.startsWith(displayNameStartsWith));
+  if (!row) {
     throw new Error(
-      `no route starting with ${displayNameStartsWith}; got ${body.routes.map((r) => r.displayName).join(", ")}`
+      `no route starting with ${displayNameStartsWith}; got ${body.routes.map((r) => r.node.displayName).join(", ")}`
     );
   }
-  return node.entityKey;
+  return row.node.entityKey;
 }
 
 /** A non-route entityKey (a function) from /nodes (a Page with `items`). */
