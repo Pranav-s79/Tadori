@@ -3,6 +3,7 @@ import { BoundaryBadgeOverlay, type BadgePosition as BoundaryBadgePosition } fro
 import { useBoundaries } from "./features/boundaries/useBoundaries.ts";
 import { InspectionPanel } from "./features/inspect/InspectionPanel.tsx";
 import { useInspectionStore } from "./features/inspect/useInspectionStore.ts";
+import { ExploreTabs } from "./features/explore/ExploreTabs.tsx";
 import { DiffBadgeOverlay, type BadgePosition } from "./features/review/DiffBadgeOverlay.tsx";
 import { ReviewDiffView } from "./features/review/ReviewDiffView.tsx";
 import { useReviewDiffStore } from "./features/review/useReviewDiffStore.ts";
@@ -82,6 +83,9 @@ export function App() {
           only the repository name), so deep links are disabled (repoRoot=null)
           until a root is surfaced by the server context. */}
       <SearchPanel openInspectionPanel={openInspectionPanel} />
+      {/* Explore panel (08-07): Path / Routes / Tests / Docs as mutually
+          exclusive tabs, each row pivoting into the existing inspection panel. */}
+      <ExploreTabs onInspect={openInspectionPanel} />
       <div className="app-graph-stage" style={{ position: "relative" }}>
         {isRefreshing ? <RefreshingBanner>{graphView}</RefreshingBanner> : graphView}
         {/* Non-moving diff badges over the existing package layout coordinates —
