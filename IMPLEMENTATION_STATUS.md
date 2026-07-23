@@ -2,12 +2,15 @@
 
 # Current State (always overwritten)
 
-Current node: 09-03 — Boundary rules & violations (backend delivered on PR #33; viz badges remaining). 09-02 fully merged (#27/#29/#30/#31/#32).
-Branch: bp/09-03-boundary-rules
-Latest commit: fd1d08c main (PR #32 merged — 09-02 viz raw/coalesced toggle)
-Open PR: #33 (09-03 backend: @tadori/store/boundaries.ts compute + GET /api/v1/boundaries + harness compareFixtureBoundaries wired into fixtures:index) — CI running.
-09-03 backend done: tadori.rules.json {boundaries:[{id,from,deny[],severity?}]} parsed at serve; computeBoundaryViolations over import/call edges, deduped one-per-file-pair (imports wins over calls), evidence verbatim; seeded fixture-01/02 violations now EXECUTED (core-symbols 1/1, express-routes 1/1). Remaining: viz violation badges/warning glyphs on affected nodes.
-Next frontier: viz boundary badges (finish 09-03), then 09-04 (changed_with extraction) or the BehaviorStory frontend StoryView — BLOCKED on 08-07 viz path/route/test/doc displays (not built).
+Current node: 09-04 — changed_with extraction: IMPLEMENTED on branch bp/09-04-changed-with, pending CI/merge. 09-03 FULLY MERGED (backend #33, viz #34).
+Branch: bp/09-04-changed-with (off main 4439497)
+Latest commit: 4439497 main (PR #34 merged — 09-03 viz boundary badges, CI green both OSes). Backend PR #33 = 32d45b7. 09-02 fully merged (#27/#29/#30/#31/#32).
+Open PR: 09-04 to be opened after push.
+09-04 done (branch): git co-change → `changed_with` file→file edges, origin git/confidence inferred, as an ADDITIVE pass (`computeCoChangeEdges` in @tadori/indexer). Gated by IndexOptions.extractCoChange (default OFF), turned on only at the live serve path (serve.ts reindex + IncrementalRepositoryIndexer initial index); fixture/harness extraction never emits it, so frozen golden edge diffs are untouched. `changed_with` un-deferred: DEFERRED_RELATIONS now []. No schema/migration/store change (enum, graph.json schema, edge_entities CHECK, and commitSha evidence all pre-existed). coChange.test.ts 6/6 (pairing/threshold/graph-filter/determinism/fail-closed), tsc+eslint 0. NOTE: local better-sqlite3 native binary is missing/uninstalled (build/Release empty; no VS toolchain to compile), so the SQLite-backed harness golden suite can't run locally — it runs on CI (Node 22 clean install). This is a pre-existing env issue, not a code defect.
+09-03 viz merged (PR #34): BoundaryBadgeOverlay places a warning glyph per violation at the file's level=file layout coord; unplaced violations listed honestly; malformed-rules → alert; wired beside DiffBadgeOverlay. viz 247/247 (+14), tsc/eslint/vite build 0, confined to apps/viz.
+09-03 backend done (merged): tadori.rules.json {boundaries:[{id,from,deny[],severity?}]} parsed at serve; computeBoundaryViolations over import/call edges, deduped one-per-file-pair (imports wins over calls), evidence verbatim; seeded fixture-01/02 violations EXECUTED (core-symbols 1/1, express-routes 1/1) via compareFixtureBoundaries. Served at GET /api/v1/boundaries.
+09-03 viz done (PR #34): the app fetches violations, reuses the level=file layout to place glyphs (no new layout), and pays for the file graph only when a violation exists. `tadori serve .` on any repo with a tadori.rules.json now shows boundary violations end-to-end — this is the iterative-refinement checkpoint.
+Next frontier: after 09-04 merges — the BehaviorStory frontend StoryView, BLOCKED on 08-07 viz path/route/test/doc displays (not built). A viz overlay for changed_with edges is possible but out of 09-04 scope (edges surface through GET /api/v1/edges as ordinary edges).
 Known blocker: none
 09-02 documented divergence (verified 2026-07-21): fixture-04's coalesced-diff.json was authored against a BODY-ONLY bodyHash, but the frozen indexer hashes DECLARATION TEXT incl. the method name — so the formatValue→renderValue method rename changes its bodyHash and honestly falls to raw (0 Stage-B pairs, 5 edge pairs, not the authored 1/8). Same failure mode as the fixture's own recursive-rename note, generalized. Fixture files UNTOUCHED; forcing a match would violate "unresolved stays visibly unresolved". compareFixtureDiff asserts the real pipeline (2 Stage-A pairs). Coalescing lives in @tadori/store (shared by server route + harness, no harness→server dep; server re-exports).
 

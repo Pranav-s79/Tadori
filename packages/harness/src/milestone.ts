@@ -14,7 +14,9 @@ export const SUPPORTED_RELATIONS: readonly Relation[] = [
   "extends",
   "tests",
   "routes_to",
-  "documents"
+  "documents",
+  // 09-04: git co-change is now extracted (additively, on the live serve path).
+  "changed_with"
 ];
 
 export const SUPPORTED_NODE_KINDS: readonly NodeKind[] = [
@@ -32,8 +34,8 @@ export const SUPPORTED_NODE_KINDS: readonly NodeKind[] = [
   "unresolved"
 ];
 
-/** Later-milestone relations (Week 9 review mode). */
-export const DEFERRED_RELATIONS: readonly Relation[] = ["changed_with"];
+/** No relations remain deferred — `changed_with` was un-deferred in 09-04. */
+export const DEFERRED_RELATIONS: readonly Relation[] = [];
 
 /** Node kinds no fixture covers yet (doc sections are later work). */
 export const DEFERRED_NODE_KINDS: readonly NodeKind[] = ["doc_section"];

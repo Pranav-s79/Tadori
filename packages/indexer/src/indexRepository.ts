@@ -4,6 +4,7 @@ import type { RepoStateKind, SnapshotGraph } from "@tadori/core";
 import { sha256Hex, sha256HexBytes } from "@tadori/core";
 import type { Database, InsertSnapshotOptions, InsertSnapshotResult } from "@tadori/store";
 import { insertSnapshotGraph } from "@tadori/store";
+import { computeCoChangeEdges } from "./coChange.js";
 import { extractGraph, type ExtractedGraph, type IndexDiagnostic } from "./extract.js";
 import { createProjectServices } from "./project.js";
 import { scanRepository, type ScanResult } from "./scan.js";
@@ -13,6 +14,13 @@ export interface IndexOptions {
   kind: RepoStateKind;
   label?: string | null;
   baseCommitSha?: string | null;
+  /**
+   * Additively derive `changed_with` (git co-change) edges over the static
+   * graph (09-04). OFF by default so fixture/harness extraction never emits
+   * `changed_with` and the frozen golden edge diffs stay intact; live serving
+   * turns it on. Fails closed (no git / no history → no edges).
+   */
+  extractCoChange?: boolean;
 }
 
 export class WorkspaceChangedDuringIndexError extends Error {
@@ -137,6 +145,16 @@ export function indexRepository(rootPath: string, options: IndexOptions): IndexR
     services.languageService.dispose();
   }
 
+  // Additive 09-04 pass: git co-change edges, only when explicitly requested
+  // (live serving). Fails closed, so a git-less repo yields the static graph
+  // unchanged. Fixture extraction never sets this, keeping golden diffs frozen.
+  const coChangeEdges = options.extractCoChange
+    ? computeCoChangeEdges(
+        root,
+        extracted.nodes.filter((n) => n.kind === "file")
+      )
+    : [];
+
   const graph: SnapshotGraph = {
     repoRootPath: root.split(path.sep).join("/"),
     kind: options.kind,
@@ -146,7 +164,7 @@ export function indexRepository(rootPath: string, options: IndexOptions): IndexR
     analyzerVersion: ANALYZER_VERSION,
     files: extracted.files,
     nodes: extracted.nodes,
-    edges: extracted.edges
+    edges: [...extracted.edges, ...coChangeEdges]
   };
 
   return {
