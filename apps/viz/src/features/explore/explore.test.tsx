@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { DocumentsPanel } from "./DocumentsPanel.tsx";
 import { ExploreTabs } from "./ExploreTabs.tsx";
 import { LikelyTests } from "./LikelyTests.tsx";
 import { RouteTable } from "./RouteTable.tsx";
@@ -77,6 +78,31 @@ describe("RouteTable path source", () => {
     });
     render(<RouteTable />);
     await waitFor(() => expect(screen.getByText("no route-registration edge")).toBeTruthy());
+  });
+});
+
+describe("DocumentsPanel grounding", () => {
+  it("shows a grounded doc's citation count and lists ungrounded docs explicitly", async () => {
+    stubFetch({
+      docs: [
+        {
+          node: { entityKey: "adr1", kind: "adr", qualifiedName: "ADR-1", displayName: "ADR-1", file: "docs/adr1.md" },
+          body: "Because reasons.",
+          documents: [{ entityKey: "e1", srcEntityKey: "adr1", relation: "documents", dstEntityKey: "f1", origin: "doc", confidence: "certain", resolution: "resolved" }]
+        },
+        {
+          node: { entityKey: "adr2", kind: "adr", qualifiedName: "ADR-2", displayName: "ADR-2", file: "docs/adr2.md" },
+          body: null,
+          documents: []
+        }
+      ]
+    });
+    render(<DocumentsPanel />);
+    await waitFor(() => expect(screen.getByText("ADR-1")).toBeTruthy());
+    expect(screen.getByText(/documents 1 entity/)).toBeTruthy();
+    // The ungrounded doc is never dropped — it appears under its own section.
+    expect(screen.getByText(/Ungrounded \(1\)/)).toBeTruthy();
+    expect(screen.getByText("ADR-2")).toBeTruthy();
   });
 });
 

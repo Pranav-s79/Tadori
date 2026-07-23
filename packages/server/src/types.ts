@@ -139,8 +139,20 @@ export interface RoutesDto {
   routes: RouteRow[];
 }
 
+/**
+ * One doc/ADR with its body and the `documents` edges it grounds. `documents`
+ * are the doc node's OUTGOING `documents` edges (the doc node is the edge source,
+ * pointing at the entity it documents); empty for an ungrounded doc. The
+ * `{node, body}` fields are unchanged so existing single-doc consumers still work.
+ */
+export interface DocEntry {
+  node: ToolNode;
+  body: string | null;
+  documents: ToolEdge[];
+}
+
 export interface DocsDto {
-  docs: { node: ToolNode; body: string | null }[];
+  docs: DocEntry[];
 }
 
 /** Boundary violations over the active snapshot (09-03). */

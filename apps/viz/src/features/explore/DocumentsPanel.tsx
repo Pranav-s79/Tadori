@@ -48,17 +48,46 @@ export function DocumentsPanel({ onInspect }: DocumentsPanelProps): ReactElement
     return <p role="status">No documents or ADRs in this snapshot.</p>;
   }
 
+  // Grounded docs cite at least one entity via a `documents` edge; ungrounded
+  // docs cite nothing. Both are shown — an ungrounded doc is never dropped.
+  const grounded = state.result.docs.filter((d) => d.documents.length > 0);
+  const ungrounded = state.result.docs.filter((d) => d.documents.length === 0);
+
   return (
-    <ul className="explore-docs" aria-label="Documents">
-      {state.result.docs.map(({ node, body }) => (
-        <li key={node.entityKey}>
-          <button type="button" onClick={() => onInspect?.(node.entityKey)}>
-            {node.displayName}
-          </button>
-          {node.file !== null && <span className="explore-docs-file"> {node.file}</span>}
-          {body !== null && <pre className="explore-docs-body">{body}</pre>}
-        </li>
-      ))}
-    </ul>
+    <div className="explore-docs" aria-label="Documents">
+      {grounded.length > 0 && (
+        <section aria-label="Documents that cite an entity">
+          <ul>
+            {grounded.map(({ node, body, documents }) => (
+              <li key={node.entityKey}>
+                <button type="button" onClick={() => onInspect?.(node.entityKey)}>
+                  {node.displayName}
+                </button>
+                {node.file !== null && <span className="explore-docs-file"> {node.file}</span>}
+                <span className="explore-docs-grounds">{` — documents ${documents.length} ${documents.length === 1 ? "entity" : "entities"}`}</span>
+                {body !== null && <pre className="explore-docs-body">{body}</pre>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {ungrounded.length > 0 && (
+        <section aria-label="Documents with no outgoing citation">
+          <h4>{`Ungrounded (${ungrounded.length}) — no entity cited`}</h4>
+          <ul>
+            {ungrounded.map(({ node, body }) => (
+              <li key={node.entityKey}>
+                <button type="button" onClick={() => onInspect?.(node.entityKey)}>
+                  {node.displayName}
+                </button>
+                {node.file !== null && <span className="explore-docs-file"> {node.file}</span>}
+                {body !== null && <pre className="explore-docs-body">{body}</pre>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
   );
 }
