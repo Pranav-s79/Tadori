@@ -30,16 +30,15 @@ function seedRepo(): { repoId: number; snapshotId: number; fileId: number } {
       )
       .run(repoId).lastInsertRowid
   );
+  // agent_event_targets.file_id references file_entities(id) directly, so a
+  // file_entities row is all the retention test needs — no snapshot_files row.
   const fileId = Number(
     db
       .prepare(
-        "INSERT INTO file_entities (repo_id, entity_key, canonical_identity) VALUES (?, 'fk', 'ci')"
+        "INSERT INTO file_entities (repo_id, file_key, origin_identity) VALUES (?, 'fk', 'oi')"
       )
       .run(repoId).lastInsertRowid
   );
-  db.prepare(
-    "INSERT INTO snapshot_files (snapshot_id, file_id, path, normalized_path) VALUES (?, ?, 'a.ts', 'a.ts')"
-  ).run(snapshotId, fileId);
   return { repoId, snapshotId, fileId };
 }
 
