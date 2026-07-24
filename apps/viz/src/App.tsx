@@ -5,6 +5,7 @@ import { InspectionPanel } from "./features/inspect/InspectionPanel.tsx";
 import { useInspectionStore } from "./features/inspect/useInspectionStore.ts";
 import { ExploreTabs } from "./features/explore/ExploreTabs.tsx";
 import { StoryView } from "./features/story/StoryView.tsx";
+import { AccessibleGraphTable } from "./features/a11y/AccessibleGraphTable.tsx";
 import { DiffBadgeOverlay, type BadgePosition } from "./features/review/DiffBadgeOverlay.tsx";
 import { ObservationOverlayBadges } from "./features/review/ObservationOverlayBadges.tsx";
 import { ReviewDiffView } from "./features/review/ReviewDiffView.tsx";
@@ -119,6 +120,15 @@ export function App() {
           onInspect={openInspectionPanel}
         />
       </div>
+      {/* WCAG-AA non-canvas alternative to the graph (08-11): the same nodes
+          and relations as a keyboard-navigable, screen-reader-friendly table. */}
+      {data !== null && (
+        <AccessibleGraphTable
+          nodes={data.nodes}
+          edges={data.edges}
+          onInspect={openInspectionPanel}
+        />
+      )}
       <ReviewDiffView store={reviewStore} onInspect={openInspectionPanel} />
       {/* Agent-change review overlay (09-05): honest per-file risk flags
           correlating the agent's planned/read/modified observations with the
