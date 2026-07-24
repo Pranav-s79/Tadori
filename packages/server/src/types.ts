@@ -90,11 +90,8 @@ export interface SourceSliceDto {
   staleReason: string;
 }
 
-export interface PathResultDto {
-  nodes: ToolNode[];
-  edges: ToolEdge[];
-  found: boolean;
-}
+// PathResultDto (narrow {nodes,edges,found}) removed in 08-07E: /path now
+// returns the full path-tool PathOutput (frozen pathOutputSchema, @tadori/mcp).
 
 /**
  * How a test is linked to the queried target, derived from the `tests`-edge

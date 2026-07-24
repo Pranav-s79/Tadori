@@ -33,17 +33,28 @@ export interface ExploreEdge {
   [key: string]: unknown;
 }
 
-/**
- * GET /api/v1/path response (server PathResultDto). NOTE: the live server today
- * returns the NARROW shape — a single BFS path as `{nodes, edges, found}`, not
- * the richer mcp `path`-tool output (status enum / multiple paths /
- * nearestApproach). These displays render exactly what the server sends; the
- * richer parity engine is a documented follow-up, not faked here.
- */
-export interface PathResult {
+/** One found path: an ordered node/edge sequence (mirrors the path-tool graphPath). */
+export interface PathSequence {
   nodes: ExploreNode[];
   edges: ExploreEdge[];
-  found: boolean;
+}
+
+/**
+ * GET /api/v1/path response — the FULL path-tool output (08-07 parity). `status`
+ * distinguishes ok / not_found / ambiguous / no_path / search_limit;
+ * `nearestApproach` is populated ONLY when no path was found; `from/to`
+ * Candidates carry the options for an ambiguous endpoint. Mirrors the frozen
+ * pathOutputSchema (extra tool fields like `context` are ignored here).
+ */
+export interface PathResult {
+  status: "ok" | "not_found" | "ambiguous" | "no_path" | "search_limit";
+  from: ExploreNode | null;
+  to: ExploreNode | null;
+  fromCandidates: ExploreNode[];
+  toCandidates: ExploreNode[];
+  paths: PathSequence[];
+  nearestApproach: ExploreNode[];
+  message: string;
 }
 
 /**
@@ -112,24 +123,26 @@ async function getJson(path: string): Promise<unknown> {
 }
 
 /**
- * Find a path between two entities. `from`/`to` are entity keys or names the
- * server resolves. The server returns 404 (unknown_endpoint) when a reference
- * does not resolve; we surface that as a distinct "unresolved" result rather
- * than a generic error, so the UI can tell "no path" apart from "no such node".
+ * Find paths between two entities. `from`/`to` are entity keys or names the
+ * server resolves. Returns the full path-tool output — its `status` field
+ * distinguishes an unresolved endpoint (`not_found`), an ambiguous one
+ * (`ambiguous`, with candidates), no path (`no_path`, with a nearestApproach
+ * hint), a safety-limited search (`search_limit`), and success (`ok`). Optional
+ * `relations` (comma-joined by the server default) and `k` refine the search.
  */
 export async function fetchPath(
   from: string,
   to: string,
-  maxDepth?: number
-): Promise<PathResult | "unresolved"> {
+  options?: { relations?: string[]; k?: number }
+): Promise<PathResult> {
   const params = new URLSearchParams({ from, to });
-  if (maxDepth !== undefined) {
-    params.set("maxDepth", String(maxDepth));
+  if (options?.relations !== undefined && options.relations.length > 0) {
+    params.set("relations", options.relations.join(","));
+  }
+  if (options?.k !== undefined) {
+    params.set("k", String(options.k));
   }
   const response = await fetch(`${API_BASE}/path?${params.toString()}`);
-  if (response.status === 404) {
-    return "unresolved";
-  }
   if (!response.ok) {
     throw new Error(`path failed: ${response.status}`);
   }

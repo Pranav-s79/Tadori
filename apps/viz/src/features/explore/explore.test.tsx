@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { DocumentsPanel } from "./DocumentsPanel.tsx";
 import { ExploreTabs } from "./ExploreTabs.tsx";
 import { LikelyTests } from "./LikelyTests.tsx";
+import { PathFinder } from "./PathFinder.tsx";
 import { RouteTable } from "./RouteTable.tsx";
 
 function stubFetch(body: unknown, status = 200): void {
@@ -106,9 +107,68 @@ describe("DocumentsPanel grounding", () => {
   });
 });
 
+describe("PathFinder status rendering", () => {
+  it("renders a found path (status ok) as an ordered sequence", async () => {
+    stubFetch({
+      status: "ok",
+      from: null,
+      to: null,
+      fromCandidates: [],
+      toCandidates: [],
+      paths: [
+        {
+          nodes: [
+            { entityKey: "a", kind: "method", qualifiedName: "A", displayName: "A", file: "a.ts" },
+            { entityKey: "b", kind: "method", qualifiedName: "B", displayName: "B", file: "b.ts" }
+          ],
+          edges: [{ entityKey: "e", srcEntityKey: "a", relation: "calls", dstEntityKey: "b", origin: "compiler", confidence: "certain", resolution: "resolved" }]
+        }
+      ],
+      nearestApproach: [],
+      message: "1 path"
+    });
+    render(<PathFinder />);
+    const inputs = screen.getAllByPlaceholderText("entity key or name");
+    fireEvent.change(inputs[0]!, { target: { value: "A" } });
+    fireEvent.change(inputs[1]!, { target: { value: "B" } });
+    fireEvent.click(screen.getByRole("button", { name: "Find path" }));
+    await waitFor(() => expect(screen.getByLabelText("Found paths")).toBeTruthy());
+    expect(screen.getByRole("button", { name: "A" })).toBeTruthy();
+  });
+
+  it("shows the nearestApproach hint on no_path, labelled as not a path", async () => {
+    stubFetch({
+      status: "no_path",
+      from: null,
+      to: null,
+      fromCandidates: [],
+      toCandidates: [],
+      paths: [],
+      nearestApproach: [{ entityKey: "n", kind: "method", qualifiedName: "N", displayName: "N", file: "n.ts" }],
+      message: "no path"
+    });
+    render(<PathFinder />);
+    const inputs = screen.getAllByPlaceholderText("entity key or name");
+    fireEvent.change(inputs[0]!, { target: { value: "X" } });
+    fireEvent.change(inputs[1]!, { target: { value: "Y" } });
+    fireEvent.click(screen.getByRole("button", { name: "Find path" }));
+    await waitFor(() => expect(screen.getByText("No path found between these two entities.")).toBeTruthy());
+    expect(screen.getByText(/not a path/)).toBeTruthy();
+  });
+});
+
 describe("ExploreTabs", () => {
   it("mounts only the active tab's view, never two at once", async () => {
-    stubFetch({ nodes: [], edges: [], found: false });
+    stubFetch({
+      status: "not_found",
+      from: null,
+      to: null,
+      fromCandidates: [],
+      toCandidates: [],
+      paths: [],
+      nearestApproach: [],
+      message: "not found"
+    });
     render(<ExploreTabs />);
     // Path tab is default: its from/to form is present, the routes table is not.
     expect(screen.getByLabelText("Path finder")).toBeTruthy();

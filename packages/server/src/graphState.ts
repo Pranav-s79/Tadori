@@ -2,7 +2,7 @@ import type { RepoStateKind } from "@tadori/core";
 import type { RefreshPhase } from "@tadori/indexer";
 import type { Database } from "@tadori/store";
 import type { ConcurrentRefreshController } from "@tadori/mcp";
-import { EventLog, GraphService } from "@tadori/mcp";
+import { EventLog, GraphService, TadoriTools } from "@tadori/mcp";
 import type { ObservationEvent } from "./types.js";
 
 /**
@@ -93,6 +93,16 @@ export class GraphState {
 
   current(): GraphService {
     return this.service;
+  }
+
+  /**
+   * A TadoriTools bound to the CURRENT service + eventLog. Routes that must be
+   * byte-for-byte identical to the MCP tool output (e.g. /path parity, 08-07)
+   * call the tool method through this rather than re-implementing the algorithm.
+   * A fresh instance per call is fine — TadoriTools holds no per-call state.
+   */
+  tools(): TadoriTools {
+    return new TadoriTools(this.service, this.eventLog);
   }
 
   /** The underlying store handle, for routes that need direct snapshot-list/pin queries. */
