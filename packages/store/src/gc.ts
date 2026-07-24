@@ -89,6 +89,42 @@ WHERE NOT EXISTS (SELECT 1 FROM snapshot_decisions WHERE snapshot_decisions.deci
 }
 
 /**
+ * Retention (12-01): delete agent observation events older than `cutoffIso`,
+ * for FINISHED tasks only. The active task's observations are live session data
+ * and are never pruned regardless of age — retention applies to completed /
+ * aborted / deleted tasks. `agent_event_targets` rows cascade with their event
+ * (ON DELETE CASCADE). Node/file entities that this frees become orphans that a
+ * subsequent `collectOrphanEntities` reclaims FK-safely.
+ *
+ * `cutoffIso` is compared as text against `agent_events.created_at` (SQLite UTC
+ * `'YYYY-MM-DD HH:MM:SS'`); the caller supplies the cutoff in the same
+ * lexically-ordered format. Parameterized; runs in one immediate transaction.
+ * Returns the number of events deleted.
+ */
+export function pruneAgentEventsOlderThan(db: Database, cutoffIso: string): number {
+  const run = db.transaction((): number => {
+    const deleted = db
+      .prepare(
+        `DELETE FROM agent_events
+          WHERE created_at < ?
+            AND task_id IN (SELECT id FROM tasks WHERE status <> 'active')`
+      )
+      .run(cutoffIso);
+    return deleted.changes;
+  });
+  const count = run.immediate();
+
+  const violations = foreignKeyCheck(db);
+  if (violations.length > 0) {
+    throw new Error(
+      `foreign_key_check reported ${violations.length} violation(s) after agent-event retention: ` +
+        JSON.stringify(violations.slice(0, 5))
+    );
+  }
+  return count;
+}
+
+/**
  * Snapshot pruning foundation: removes a snapshot's membership rows and marks
  * the snapshot pruned. Pinned snapshots are refused. Stable entities survive
  * (other snapshots may reference them); reclaim them with
