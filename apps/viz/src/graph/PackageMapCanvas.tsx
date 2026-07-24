@@ -4,8 +4,16 @@ import { useEffect, useRef } from "react";
 import type { ApiEdge, ApiNode, LayoutPositionDto } from "../api/types.ts";
 import { edgeVisualStyle } from "../legend.ts";
 import { usePackageExpansion } from "../hooks/usePackageExpansion.ts";
+import { useFileExpansion } from "../hooks/useFileExpansion.ts";
 import { buildGraphologyGraph } from "./buildGraphologyGraph.ts";
-import { applyCollapse, applyExpansion, diffExpandedNodes, truncate } from "./expansion.ts";
+import {
+  applyCollapse,
+  applyExpansion,
+  applySymbolCollapse,
+  applySymbolExpansion,
+  diffExpandedNodes,
+  truncate
+} from "./expansion.ts";
 import { convexHull, type Point } from "./convexHull.ts";
 
 const LABEL_MAX_LENGTH = 24;
@@ -38,11 +46,20 @@ export function PackageMapCanvas({ nodes, edges, positions, onGraphReady }: Pack
   const sigmaRef = useRef<Sigma | null>(null);
   const graphRef = useRef<Graph | null>(null);
   const prevExpandedRef = useRef<ReadonlySet<string>>(new Set());
+  const prevExpandedFilesRef = useRef<ReadonlySet<string>>(new Set());
   const { expandedPackages, fileData, expand, collapse } = usePackageExpansion();
+  const {
+    expandedFiles,
+    symbolData,
+    expand: expandFile,
+    collapse: collapseFile
+  } = useFileExpansion();
 
-  // Keep a ref of the current expanded set for the stable event handlers below.
+  // Keep refs of the current expanded sets for the stable event handlers below.
   const expandedPackagesRef = useRef<ReadonlySet<string>>(expandedPackages);
   expandedPackagesRef.current = expandedPackages;
+  const expandedFilesRef = useRef<ReadonlySet<string>>(expandedFiles);
+  expandedFilesRef.current = expandedFiles;
 
   // Build the base graph once per data input; expansion mutates it in place.
   useEffect(() => {
@@ -70,10 +87,27 @@ export function PackageMapCanvas({ nodes, edges, positions, onGraphReady }: Pack
 
     graphRef.current = graph;
     prevExpandedRef.current = new Set();
+    prevExpandedFilesRef.current = new Set();
     const renderer = new Sigma(graph, container);
     sigmaRef.current = renderer;
 
     const activate = (nodeKey: string): void => {
+      // A file node (surfaced by a package expansion) toggles the THIRD zoom
+      // level — its exported symbols. Any other node is a package node and
+      // toggles the file level. The file's repo-relative path scopes the
+      // symbol fetch; a file with no path cannot be symbol-expanded.
+      const kind = graph.hasNode(nodeKey) ? graph.getNodeAttribute(nodeKey, "kind") : undefined;
+      if (kind === "file") {
+        if (expandedFilesRef.current.has(nodeKey)) {
+          collapseFile(nodeKey);
+        } else {
+          const filePath = graph.getNodeAttribute(nodeKey, "file");
+          if (typeof filePath === "string" && filePath.length > 0) {
+            void expandFile(nodeKey, filePath);
+          }
+        }
+        return;
+      }
       if (expandedPackagesRef.current.has(nodeKey)) {
         collapse(nodeKey);
       } else {
@@ -129,13 +163,39 @@ export function PackageMapCanvas({ nodes, edges, positions, onGraphReady }: Pack
     onGraphReady?.(graph);
   }, [expandedPackages, fileData, onGraphReady]);
 
+  // Apply only the delta between the previous and current expanded-FILE sets
+  // (the third zoom level). Same additive-mutation contract as the package
+  // effect above — untouched nodes keep their exact positions.
+  useEffect(() => {
+    const graph = graphRef.current;
+    if (graph === null) {
+      return;
+    }
+    const { added, removed } = diffExpandedNodes(prevExpandedFilesRef.current, expandedFiles);
+    for (const fileKey of removed) {
+      const data = symbolData.get(fileKey);
+      if (data !== undefined) {
+        applySymbolCollapse(graph, fileKey, data);
+      }
+    }
+    for (const fileKey of added) {
+      const data = symbolData.get(fileKey);
+      if (data !== undefined) {
+        applySymbolExpansion(graph, fileKey, data);
+      }
+    }
+    prevExpandedFilesRef.current = expandedFiles;
+    sigmaRef.current?.refresh();
+    onGraphReady?.(graph);
+  }, [expandedFiles, symbolData, onGraphReady]);
+
   return (
     <div
       ref={containerRef}
       className="package-map-canvas"
       tabIndex={0}
       role="application"
-      aria-label="Package map; activate a package to expand its files"
+      aria-label="Package map; activate a package to expand its files, or a file to expand its symbols"
       style={{ width: "100%", height: "100%" }}
     />
   );
