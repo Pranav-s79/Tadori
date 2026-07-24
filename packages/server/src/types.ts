@@ -283,6 +283,33 @@ export interface SnapshotSummaryDto {
   counts: { files: number; nodes: number; edges: number };
 }
 
+/**
+ * One file's agent-change overlay (09-05): what the agent planned/read/modified
+ * vs. what the review-diff actually changed. Every flag is exactly what the
+ * observation/diff data supports — never an inference about intent. Carries the
+ * repo-relative path and typed booleans only; no agent free-text is exposed.
+ */
+export interface FileObservationOverlay {
+  file: string;
+  planned: boolean;
+  retrieved: boolean;
+  modifiedObserved: boolean;
+  modifiedActual: boolean;
+  /** modifiedActual && !retrieved — a change to a file the agent never read (blind edit). */
+  modifiedButNotRetrieved: boolean;
+  /** planned && !modifiedActual — a file the agent planned to touch but didn't. */
+  plannedNotModified: boolean;
+  /** modifiedActual && !planned — a file changed outside the declared plan. */
+  modifiedNotPlanned: boolean;
+}
+
+export interface ReviewObservationsOverlayDto {
+  /** False when the current task has no agent observations to correlate. */
+  taskPresent: boolean;
+  /** Sorted by `file`; each planned|retrieved|modifiedObserved|modifiedActual file once. */
+  files: FileObservationOverlay[];
+}
+
 export type ServerEvent =
   | {
       type: "snapshot_replaced";

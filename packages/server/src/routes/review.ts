@@ -9,6 +9,7 @@ import { badRequest, notFound, notImplemented, type ApiErrorResult } from "../er
 import { toToolNode } from "./graph.js";
 import { paginateReviewDiff, parseReviewCursor, parseReviewLimit } from "../reviewDiffAssembly.js";
 import { computeLiveComparison, LiveCaptureFailedError } from "../liveComparison.js";
+import { computeReviewObservationsOverlay } from "../reviewObservations.js";
 import {
   buildCoalescedChanges,
   coalesceEdges,
@@ -254,4 +255,44 @@ export async function registerReviewRoutes(app: FastifyInstance): Promise<void> 
       return reply.send(body);
     }
   );
+
+  // Agent-change review overlay (09-05): correlate this task's agent
+  // observations with the files the working-tree diff actually changed. The
+  // task scope is server-owned (currentTaskId) — never a client param — so no
+  // cross-task/cross-repo observation is reachable. Read-only; fails closed to
+  // an empty overlay if the live capture cannot be taken (git absent, etc.),
+  // since the overlay is an enhancement over the diff, never a hard dependency.
+  app.get("/review/observations-overlay", async (_request: FastifyRequest, reply: FastifyReply) => {
+    const service = app.graphState.current();
+    const db = app.graphState.currentDb();
+
+    let changedFiles: ReadonlySet<string>;
+    try {
+      const comparison = await computeLiveComparison(
+        db,
+        service.repoRoot,
+        service.snapshot.id,
+        "working_tree"
+      );
+      const files = new Set<string>();
+      for (const node of [...comparison.nodesAdded, ...comparison.nodesRemoved]) {
+        if (node.file !== null) {
+          files.add(node.file);
+        }
+      }
+      changedFiles = files;
+    } catch {
+      // No live diff available (e.g. not a git repo): correlate against an
+      // empty change set rather than failing the whole overlay.
+      changedFiles = new Set<string>();
+    }
+
+    const overlay = computeReviewObservationsOverlay(
+      db,
+      app.graphState.currentTaskId(),
+      service.snapshot.id,
+      changedFiles
+    );
+    return reply.send(overlay);
+  });
 }
