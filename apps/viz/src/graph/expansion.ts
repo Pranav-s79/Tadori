@@ -163,6 +163,83 @@ export function fileNodeId(packageKey: string, entityKey: string): string {
   return `${packageKey}::${entityKey}`;
 }
 
+const SYMBOL_LABEL_MAX = 18;
+
+/**
+ * Additively add one file's exported-symbol nodes + intra-file symbol edges to
+ * the graph (08-04, the third zoom level), WITHOUT touching any pre-existing
+ * node — `addNode`/`addEdge` only, so package hulls and other files' node
+ * positions stay `Object.is`-identical and a later collapse restores exactly.
+ * Symbol-node keys are namespaced by their FILE node key so the same symbol
+ * expanded under two different files never collides. Mirrors {@link applyExpansion}
+ * one level deeper; the `expandedFromFile` marker drives the inverse collapse.
+ */
+export function applySymbolExpansion(graph: Graph, fileKey: string, data: FileLevelData): void {
+  const positionByKey = new Map(data.positions.map((p) => [p.entityKey, p]));
+  for (const node of data.nodes) {
+    const nodeId = symbolNodeId(fileKey, node.entityKey);
+    if (graph.hasNode(nodeId)) {
+      continue;
+    }
+    const pos = positionByKey.get(node.entityKey);
+    graph.addNode(nodeId, {
+      kind: node.kind,
+      qualifiedName: node.qualifiedName,
+      displayName: node.displayName,
+      label: truncate(node.displayName, SYMBOL_LABEL_MAX),
+      file: node.file,
+      exported: node.exported,
+      fanIn: node.fanIn,
+      x: pos?.x ?? 0,
+      y: pos?.y ?? 0,
+      pinned: pos?.pinned ?? false,
+      expandedFromFile: fileKey,
+      size: 3,
+      color: "#fd9644"
+    });
+  }
+  for (const edge of data.edges) {
+    const src = symbolNodeId(fileKey, edge.srcEntityKey);
+    const dst = symbolNodeId(fileKey, edge.dstEntityKey);
+    const edgeId = `sym:${fileKey}:${edge.entityKey}`;
+    if (!graph.hasNode(src) || !graph.hasNode(dst) || graph.hasEdge(edgeId)) {
+      continue;
+    }
+    graph.addEdgeWithKey(edgeId, src, dst, {
+      relation: edge.relation,
+      origin: edge.origin,
+      confidence: edge.confidence,
+      resolution: edge.resolution,
+      expandedFromFile: fileKey
+    });
+  }
+}
+
+/**
+ * Inverse of {@link applySymbolExpansion}: remove exactly the symbol nodes/edges
+ * that expansion added for `fileKey`. Dropping the nodes drops incident edges;
+ * explicit edge removal covers expansion-only edges whose endpoints survive.
+ * No other node is touched, so the pre-symbol graph is restored byte-for-byte.
+ */
+export function applySymbolCollapse(graph: Graph, fileKey: string, data: FileLevelData): void {
+  for (const edge of data.edges) {
+    const edgeId = `sym:${fileKey}:${edge.entityKey}`;
+    if (graph.hasEdge(edgeId)) {
+      graph.dropEdge(edgeId);
+    }
+  }
+  for (const node of data.nodes) {
+    const nodeId = symbolNodeId(fileKey, node.entityKey);
+    if (graph.hasNode(nodeId)) {
+      graph.dropNode(nodeId);
+    }
+  }
+}
+
+export function symbolNodeId(fileKey: string, entityKey: string): string {
+  return `${fileKey}::${entityKey}`;
+}
+
 /** Truncate `text` at exactly `maxLen` chars, appending an ellipsis if longer. */
 export function truncate(text: string, maxLen: number): string {
   return text.length <= maxLen ? text : `${text.slice(0, maxLen)}…`;

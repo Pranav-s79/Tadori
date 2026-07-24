@@ -93,3 +93,22 @@ export async function fetchFileLayout(packageName: string): Promise<LayoutPositi
   const body = await getJson(`/layout?level=file&packageName=${encodeURIComponent(packageName)}`);
   return unwrapList<LayoutPositionDto>(body, "positions");
 }
+
+// Symbol level (08-04): the third and final zoom level — a single file's
+// exported symbols. Scoped by the file path via the server's
+// `level=symbol&file=<path>` query. As with the file level, /edges and /layout
+// tolerate the extra `file` key; the caller keeps only symbols/edges of that file.
+export async function fetchSymbolNodes(file: string): Promise<ApiNode[]> {
+  const body = await getJson(`/nodes?level=symbol&file=${encodeURIComponent(file)}`);
+  return unwrapList<ApiNode>(body, "nodes");
+}
+
+export async function fetchSymbolEdges(file: string): Promise<ApiEdge[]> {
+  const body = await getJson(`/edges?level=symbol&file=${encodeURIComponent(file)}`);
+  return unwrapList<ApiEdge>(body, "edges");
+}
+
+export async function fetchSymbolLayout(file: string): Promise<LayoutPositionDto[]> {
+  const body = await getJson(`/layout?level=symbol&file=${encodeURIComponent(file)}`);
+  return unwrapList<LayoutPositionDto>(body, "positions");
+}
