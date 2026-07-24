@@ -105,6 +105,15 @@ export class GraphState {
     return new TadoriTools(this.service, this.eventLog);
   }
 
+  /**
+   * The current serve session's task id. This is SERVER-OWNED — never derived
+   * from a client request — and is the scoping key for reading agent
+   * observations (09-05), so a client can never read another task's data.
+   */
+  currentTaskId(): number {
+    return this.eventLog.taskId;
+  }
+
   /** The underlying store handle, for routes that need direct snapshot-list/pin queries. */
   currentDb(): Database {
     return this.db;

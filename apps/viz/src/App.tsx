@@ -6,6 +6,7 @@ import { useInspectionStore } from "./features/inspect/useInspectionStore.ts";
 import { ExploreTabs } from "./features/explore/ExploreTabs.tsx";
 import { StoryView } from "./features/story/StoryView.tsx";
 import { DiffBadgeOverlay, type BadgePosition } from "./features/review/DiffBadgeOverlay.tsx";
+import { ObservationOverlayBadges } from "./features/review/ObservationOverlayBadges.tsx";
 import { ReviewDiffView } from "./features/review/ReviewDiffView.tsx";
 import { useReviewDiffStore } from "./features/review/useReviewDiffStore.ts";
 import { SearchPanel } from "./features/search/SearchPanel.tsx";
@@ -119,6 +120,11 @@ export function App() {
         />
       </div>
       <ReviewDiffView store={reviewStore} onInspect={openInspectionPanel} />
+      {/* Agent-change review overlay (09-05): honest per-file risk flags
+          correlating the agent's planned/read/modified observations with the
+          files the diff actually changed. Renders nothing when there are no
+          observations for this session. */}
+      <ObservationOverlayBadges />
       <ProvenanceLegend />
       <InspectionPanel store={inspection} repoRoot={null} />
     </div>
