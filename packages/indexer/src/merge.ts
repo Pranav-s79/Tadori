@@ -11,6 +11,7 @@ export type SnapshotGraphMetadata = Pick<
   | "baseCommitSha"
   | "workspaceHash"
   | "analyzerVersion"
+  | "extractors"
 >;
 
 export interface MergeSnapshotRegionOptions {

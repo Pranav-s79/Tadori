@@ -139,10 +139,10 @@ describe("incremental refresh coordinator", () => {
     );
     state = await indexer.refresh([{ path: "src/value.ts", kind: "change" }]);
     expect(state.lastRefresh?.mode).toBe("full");
-    expect(state.lastRefresh?.reason).toMatch(/regional proof failed/);
+    expect(state.lastRefresh?.reason).toMatch(/full extraction|regional proof failed/);
   });
 
-  it("never publishes an invalid TypeScript edit and recovers deterministically", async () => {
+  it("publishes recovery-capable TypeScript edits with diagnostics and recovers deterministically", async () => {
     const indexer = await controller();
     const validSnapshot = activeSnapshotId();
     writeFileSync(
@@ -150,10 +150,12 @@ describe("incremental refresh coordinator", () => {
       "export function value(: number { return 2; }\n"
     );
     let state = await indexer.refresh([{ path: "src/value.ts", kind: "change" }]);
-    expect(state.phase).toBe("failed");
-    expect(state.lastError?.name).toBe("InvalidChangedSourceError");
-    expect(activeSnapshotId()).toBe(validSnapshot);
-    expect(listSnapshots(db, repositoryId())).toHaveLength(1);
+    expect(state.phase).toBe("idle");
+    expect(state.lastError).toBeNull();
+    expect(activeSnapshotId()).not.toBe(validSnapshot);
+    expect(state.lastRefresh?.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ file: "src/value.ts" })
+    ]));
 
     writeFileSync(
       path.join(repo, "src", "value.ts"),
@@ -165,7 +167,7 @@ describe("incremental refresh coordinator", () => {
     expect(foreignKeyCheck(db)).toEqual([]);
   });
 
-  it("refuses to activate syntactically invalid source on first initialization", async () => {
+  it("activates a recovery-capable initial snapshot with malformed source isolated", async () => {
     writeFileSync(
       path.join(repo, "src", "value.ts"),
       "export function value(: number { return 2; }\n"
@@ -173,14 +175,14 @@ describe("incremental refresh coordinator", () => {
     const indexer = new IncrementalRepositoryIndexer(db, repo);
     controllers.push(indexer);
 
-    await expect(indexer.initialize()).rejects.toMatchObject({
-      name: "InvalidRepositorySourceError"
-    });
+    await expect(indexer.initialize()).resolves.toBeDefined();
     const repoRow = db
       .prepare("SELECT id FROM repositories WHERE root_path = ?")
       .get(repo.split(path.sep).join("/")) as { id: number };
-    expect(getActiveSnapshot(db, repoRow.id, "working_tree")).toBeUndefined();
-    expect(listSnapshots(db, repoRow.id)).toEqual([]);
+    expect(getActiveSnapshot(db, repoRow.id, "working_tree")).toBeDefined();
+    expect(listSnapshots(db, repoRow.id)).toHaveLength(1);
+    const graph = loadSnapshotGraph(db, activeSnapshotId());
+    expect(graph.nodes.some((node) => node.file === "src/consumer.ts")).toBe(true);
   });
 
   it("treats lock and ignore files as captured full-invalidation inputs", async () => {

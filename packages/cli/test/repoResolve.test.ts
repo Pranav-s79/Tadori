@@ -28,15 +28,21 @@ describe("resolveRepoRoot", () => {
     expect(result).toEqual({ ok: true, root: path.resolve(tempDir) });
   });
 
+  it("resolves ok for a mixed-language directory without JavaScript manifests", () => {
+    tempDir = mkdtempSync(path.join(tmpdir(), "tadori-repo-resolve-"));
+    writeFileSync(path.join(tempDir, "main.py"), "print('hello')\n");
+    writeFileSync(path.join(tempDir, "main.go"), "package main\n");
+    const result = resolveRepoRoot(tempDir);
+    expect(result).toEqual({ ok: true, root: path.resolve(tempDir) });
+  });
+
   it("returns the exact unsupported-repository error for an empty directory", () => {
     tempDir = mkdtempSync(path.join(tmpdir(), "tadori-repo-resolve-"));
     const resolved = path.resolve(tempDir);
     const result = resolveRepoRoot(tempDir);
     expect(result).toEqual({
       ok: false,
-      error:
-        `'${resolved}' is not a supported TypeScript/JavaScript repository ` +
-        "(no package.json or tsconfig.json found at the repository root)."
+      error: `'${resolved}' does not contain any supported or structurally indexable files.`
     });
   });
 

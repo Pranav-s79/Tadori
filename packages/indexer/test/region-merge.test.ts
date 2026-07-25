@@ -12,10 +12,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { SnapshotGraph } from "@tadori/core";
 import {
   createProjectServices,
-  extractGraph,
+  captureRepository,
+  extractRepositoryGraph,
   indexRepository,
   mergeSnapshotRegion,
-  scanRepository,
   type SnapshotGraphMetadata,
   UnsafeIncrementalMergeError,
   UnsafeRegionExtractionError
@@ -54,19 +54,21 @@ function metadataOf(graph: SnapshotGraph): SnapshotGraphMetadata {
     label: graph.label,
     baseCommitSha: graph.baseCommitSha,
     workspaceHash: graph.workspaceHash,
-    analyzerVersion: graph.analyzerVersion
+    analyzerVersion: graph.analyzerVersion,
+    extractors: graph.extractors
   };
 }
 
 function extractRegion(repo: string, seedGraph: SnapshotGraph, files: readonly string[]) {
-  const scan = scanRepository(repo);
+  const capture = captureRepository(repo);
+  const scan = capture.scan;
   const services = createProjectServices(
     repo,
     scan.indexedFiles
       .filter((file) => file.language === "typescript" || file.language === "javascript")
       .map((file) => file.absolutePath)
   );
-  return extractGraph(repo, scan, services, { fileRegion: files, seedGraph });
+  return extractRepositoryGraph(repo, capture, services, { fileRegion: files, seedGraph });
 }
 
 function expectRegionalParity(
@@ -136,13 +138,15 @@ describe("regional extraction and graph merge", () => {
     expectRegionalParity(repo, previous, ["tests/user-controller.test.ts"]);
   });
 
-  it("matches full extraction after ADR links change", () => {
+  it("uses complete extraction for interface-document changes", () => {
     const repo = copyFixture("adr", "01-core-symbols/repo");
     const previous = indexRepository(repo, { kind: "commit" }).graph;
     replaceText(repo, "docs/ADR-001-math.md", "`src/math.ts`", "`src/strategy.ts`");
     replaceText(repo, "docs/ADR-001-math.md", "`factorial`", "`DoubleStrategy`");
 
-    expectRegionalParity(repo, previous, ["docs/ADR-001-math.md"]);
+    const full = indexRepository(repo, { kind: "working_tree" }).graph;
+    expect(full.workspaceHash).not.toBe(previous.workspaceHash);
+    expect(full.nodes.find((node) => node.file === "docs/ADR-001-math.md")).toBeDefined();
   });
 
   it("matches full extraction after a barrel export changes", () => {

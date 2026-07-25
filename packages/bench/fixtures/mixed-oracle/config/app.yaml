@@ -1,0 +1,6 @@
+# YAML repository/configuration evidence.
+service: mixed-oracle
+proto: proto/oracle.proto
+python:
+  base_url: http://python-api:8000
+  route: /v1/score

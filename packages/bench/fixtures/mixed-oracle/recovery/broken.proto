@@ -1,0 +1,3 @@
+syntax = "proto3";
+message RecoveredProto { string value = 1; }
+message BrokenProto { string = ; } // deliberate parser-recovery sentinel

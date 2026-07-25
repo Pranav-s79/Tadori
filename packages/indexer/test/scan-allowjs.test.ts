@@ -31,8 +31,8 @@ function makeRepo(): string {
   return dir;
 }
 
-describe("scanRepository allowJs gate", () => {
-  it("(a) gates off a JS file matched by an include glob when allowJs is absent", () => {
+describe("scanRepository JavaScript capability", () => {
+  it("(a) indexes JS at repository level even when an explicit tsconfig excludes it", () => {
     const root = makeRepo();
     mkdirSync(path.join(root, "src"), { recursive: true });
     writeFileSync(path.join(root, "package.json"), '{"name":"scan-a"}\n');
@@ -47,15 +47,15 @@ describe("scanRepository allowJs gate", () => {
     );
 
     const scan = scanRepository(root);
-    const jsFile = scan.supportFiles.find((f) => f.normalizedPath === "tool.config.js");
-    expect(jsFile).toMatchObject({ indexed: false, language: "javascript" });
-    expect(scan.indexedFiles.some((f) => f.normalizedPath === "tool.config.js")).toBe(false);
+    const jsFile = scan.indexedFiles.find((f) => f.normalizedPath === "tool.config.js");
+    expect(jsFile).toMatchObject({ indexed: true, language: "javascript" });
+    expect(scan.supportFiles.some((f) => f.normalizedPath === "tool.config.js")).toBe(false);
 
     const result = indexRepository(root, { kind: "working_tree" });
-    expect(result.graph.files.some((f) => f.normalizedPath === "tool.config.js")).toBe(false);
+    expect(result.graph.files.some((f) => f.normalizedPath === "tool.config.js")).toBe(true);
     expect(
       result.graph.nodes.some((n) => n.kind === "file" && n.file === "tool.config.js")
-    ).toBe(false);
+    ).toBe(true);
 
     const union = new Set([
       ...scan.indexedFiles.map((f) => f.normalizedPath),
@@ -92,7 +92,7 @@ describe("scanRepository allowJs gate", () => {
     ).toBe(true);
   });
 
-  it("(b2) applies the same JS_EXTENSIONS gate to .jsx, .mjs, and .cjs", () => {
+  it("(b2) indexes .jsx, .mjs, and .cjs regardless of semantic tsconfig inclusion", () => {
     const rootOn = makeRepo();
     mkdirSync(path.join(rootOn, "src"), { recursive: true });
     writeFileSync(path.join(rootOn, "package.json"), '{"name":"scan-b2-on"}\n');
@@ -131,8 +131,8 @@ describe("scanRepository allowJs gate", () => {
     );
     const scanOff = scanRepository(rootOff);
     for (const rel of ["src/comp.jsx", "src/mod.mjs", "src/mod.cjs"]) {
-      expect(scanOff.supportFiles.some((f) => f.normalizedPath === rel)).toBe(true);
-      expect(scanOff.indexedFiles.some((f) => f.normalizedPath === rel)).toBe(false);
+      expect(scanOff.supportFiles.some((f) => f.normalizedPath === rel)).toBe(false);
+      expect(scanOff.indexedFiles.some((f) => f.normalizedPath === rel)).toBe(true);
     }
   });
 
@@ -176,7 +176,7 @@ describe("scanRepository allowJs gate", () => {
     expect(scan.supportFiles.some((f) => f.normalizedPath === "src/util.js")).toBe(false);
   });
 
-  it("(e) gates JS off with no tsconfig at all", () => {
+  it("(e) enables semantic JavaScript defaults when no tsconfig exists", () => {
     const root = makeRepo();
     mkdirSync(path.join(root, "src"), { recursive: true });
     writeFileSync(path.join(root, "package.json"), '{"name":"scan-e"}\n');
@@ -186,11 +186,11 @@ describe("scanRepository allowJs gate", () => {
     );
 
     const scan = scanRepository(root);
-    expect(scan.supportFiles.some((f) => f.normalizedPath === "src/util.js")).toBe(true);
-    expect(scan.indexedFiles.some((f) => f.normalizedPath === "src/util.js")).toBe(false);
+    expect(scan.supportFiles.some((f) => f.normalizedPath === "src/util.js")).toBe(false);
+    expect(scan.indexedFiles.some((f) => f.normalizedPath === "src/util.js")).toBe(true);
 
     const result = indexRepository(root, { kind: "working_tree" });
-    expect(result.graph).toBeDefined();
+    expect(result.graph.nodes.some((node) => node.displayName === "util")).toBe(true);
   });
 
   it("(f) leaves .d.ts classification unchanged regardless of allowJs", () => {
@@ -209,7 +209,7 @@ describe("scanRepository allowJs gate", () => {
     expect(scan.indexedFiles.some((f) => f.normalizedPath === "src/shim.d.ts")).toBe(false);
   });
 
-  it("(g) refreshes successfully when a gated-off support JS file is edited", async () => {
+  it("(g) refreshes successfully when a repository-level JS file is edited", async () => {
     const root = makeRepo();
     mkdirSync(path.join(root, "src"), { recursive: true });
     writeFileSync(path.join(root, "package.json"), '{"name":"scan-g"}\n');

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package mixed.oracle.v1;
+option go_package = "example.com/tadori/mixed-oracle/gen/proto;oraclepb";
+
+// Protocol contract referenced by Python and Go source.
+message ScoreRequest {
+  int32 value = 1;
+}
+
+message ScoreReply {
+  int32 score = 1;
+}
+
+service ScoringService {
+  rpc Transform(ScoreRequest) returns (ScoreReply);
+}

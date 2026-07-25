@@ -8,6 +8,8 @@
   "dependencies": {
     "@tadori/core": "workspace:*",
     "@tadori/store": "workspace:*",
-    "typescript": "^5.5.3"
+    "tree-sitter-wasms": "0.1.13",
+    "typescript": "^5.5.3",
+    "web-tree-sitter": "0.25.10"
   }
 }

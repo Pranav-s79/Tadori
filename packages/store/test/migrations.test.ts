@@ -23,12 +23,12 @@ describe("database migrations", () => {
   it("keeps the five frozen migrations first and applies additive migrations in order", () => {
     expect(MIGRATIONS.slice(0, 5).map((migration) => migration.version)).toEqual([1, 2, 3, 4, 5]);
     const ran = runMigrations(db);
-    expect(ran).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(ran).toEqual([1, 2, 3, 4, 5, 6, 7]);
 
     const versions = db
       .prepare("SELECT version FROM schema_migrations ORDER BY version")
       .all() as Array<{ version: number }>;
-    expect(versions.map((v) => v.version)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(versions.map((v) => v.version)).toEqual([1, 2, 3, 4, 5, 6, 7]);
 
     const tables = new Set(
       (
@@ -80,7 +80,7 @@ describe("database migrations", () => {
   });
 
   it("skips already-applied migrations on a second run", () => {
-    expect(runMigrations(db)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(runMigrations(db)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(runMigrations(db)).toEqual([]);
   });
 

@@ -335,7 +335,9 @@ export class TadoriTools {
       evidenceOmittedCount: Math.max(0, node.evidence.length - EVIDENCE_RESULT_LIMIT),
       freshness: freshness.status,
       stale: freshness.stale,
-      staleReason: freshness.reason
+      staleReason: freshness.reason,
+      language: node.language ?? null,
+      provenance: node.provenance ?? null
     };
   }
 
@@ -360,7 +362,9 @@ export class TadoriTools {
       evidenceOmittedCount: Math.max(0, edge.evidence.length - EVIDENCE_RESULT_LIMIT),
       freshness: freshness.status,
       stale: freshness.stale,
-      staleReason: freshness.reason
+      staleReason: freshness.reason,
+      language: edge.language ?? null,
+      provenance: edge.provenance ?? null
     };
   }
 

@@ -1,0 +1,5 @@
+{
+  "service": "mixed-oracle",
+  "pythonBaseUrl": "http://python-api:8000",
+  "scoreRoute": "/v1/score"
+}

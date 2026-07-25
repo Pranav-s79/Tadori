@@ -21,15 +21,12 @@ function makeTempDir(prefix: string): string {
   return dir;
 }
 
-/** §8/§10: the exact resolveRepoRoot message both sub-cases must produce. */
+/** The exact language-neutral resolveRepoRoot message unsupported roots produce. */
 function expectedMessage(root: string): string {
-  return (
-    `'${root}' is not a supported TypeScript/JavaScript repository ` +
-    "(no package.json or tsconfig.json found at the repository root)."
-  );
+  return `'${root}' does not contain any supported or structurally indexable files.`;
 }
 
-describe("empty vs non-TS repository error messages (§8/§11 step 6)", () => {
+describe("unsupported repository error messages", () => {
   it("(a) an empty directory exits 2 with the exact resolveRepoRoot message", async () => {
     const root = makeTempDir("tadori-cli-empty-");
     const stderrLines: string[] = [];
@@ -44,10 +41,9 @@ describe("empty vs non-TS repository error messages (§8/§11 step 6)", () => {
     expect(stderrLines.join("")).toBe(`${expectedMessage(path.resolve(root))}\n`);
   });
 
-  it("(b) a directory with only non-TS files produces the IDENTICAL message (honest equivalence)", async () => {
-    const root = makeTempDir("tadori-cli-nonts-");
-    writeFileSync(path.join(root, "main.py"), "print('hello')\n");
-    writeFileSync(path.join(root, "README.md"), "# not a JS/TS project\n");
+  it("(b) a directory with only unregistered files produces the identical message", async () => {
+    const root = makeTempDir("tadori-cli-unsupported-");
+    writeFileSync(path.join(root, "image.png"), Buffer.from([0, 1, 2]));
     const stderrLines: string[] = [];
 
     const exitCode = await runServe([root], {
@@ -57,8 +53,6 @@ describe("empty vs non-TS repository error messages (§8/§11 step 6)", () => {
     });
 
     expect(exitCode).toBe(2);
-    // Documents that Tadori cannot (and should not pretend to) distinguish
-    // "empty" from "wrong language" without a package.json/tsconfig.json signal.
     expect(stderrLines.join("")).toBe(`${expectedMessage(path.resolve(root))}\n`);
   });
 });

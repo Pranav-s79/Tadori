@@ -3,3 +3,4 @@ export * from "./recorder.js";
 export * from "./aggregate.js";
 export * from "./task.js";
 export * from "./profile.js";
+export * from "./mixedOracle.js";

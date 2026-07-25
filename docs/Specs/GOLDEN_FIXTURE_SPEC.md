@@ -1,13 +1,13 @@
 # Tadori Golden Fixture Specification
 
-**Status:** Build-adjacent artifact for frozen Tadori v2.1  
+**Status:** Legacy TS/JS compatibility suite; not a product-scope contract
 **Target package:** `packages/fixtures`  
 **Ground-truth format:** JSON Schema draft 2020-12  
 **Fixture size constraint:** Every source repository contains fewer than 30 files.
 
 ## 1. Contract
 
-The fixture package contains three known-complete single-snapshot TypeScript repositories and one before/after micro-fixture.
+The fixture package contains three known-complete single-snapshot TypeScript repositories and one before/after micro-fixture. It protects backward compatibility while separate mixed-language oracles define current capability.
 
 The indexer test harness MUST:
 

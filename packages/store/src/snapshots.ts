@@ -10,7 +10,10 @@ import type {
   Relation,
   RepoStateKind,
   Resolution,
-  SnapshotGraph
+  SnapshotGraph,
+  SnapshotExtractor,
+  ExtractionCapability,
+  ExtractionDerivation
 } from "@tadori/core";
 import { entityKey } from "@tadori/core";
 import { isDeepStrictEqual } from "node:util";
@@ -491,9 +494,11 @@ export function insertSnapshotGraph(
     const insertSnapshotNode = db.prepare(
       `INSERT INTO snapshot_nodes
          (snapshot_id, node_id, file_id, display_name, span_start, span_end,
-          line_start, line_end, signature, body_hash, exported, analyzer_version)
+          line_start, line_end, signature, body_hash, exported, analyzer_version,
+          language, extractor_id, extractor_version, capability, derivation, unresolved_reason)
        VALUES (@snapshotId, @nodeId, @fileId, @displayName, @spanStart, @spanEnd,
-               @lineStart, @lineEnd, @signature, @bodyHash, @exported, @analyzerVersion)`
+               @lineStart, @lineEnd, @signature, @bodyHash, @exported, @analyzerVersion,
+               @language, @extractorId, @extractorVersion, @capability, @derivation, @unresolvedReason)`
     );
     const insertNodeEvidence = db.prepare(
       "INSERT INTO node_evidence (snapshot_id, node_id, evidence_id) VALUES (?, ?, ?)"
@@ -523,7 +528,13 @@ export function insertSnapshotGraph(
         signature: node.signature,
         bodyHash: node.bodyHash,
         exported: node.exported ? 1 : 0,
-        analyzerVersion: graph.analyzerVersion
+        analyzerVersion: graph.analyzerVersion,
+        language: node.language ?? null,
+        extractorId: node.provenance?.extractorId ?? null,
+        extractorVersion: node.provenance?.extractorVersion ?? null,
+        capability: node.provenance?.capability ?? null,
+        derivation: node.provenance?.derivation ?? null,
+        unresolvedReason: node.provenance?.unresolvedReason ?? null
       });
       for (const evidence of node.evidence) {
         insertNodeEvidence.run(snapshotId, nodeId, insertEvidenceItem(evidence));
@@ -539,8 +550,11 @@ export function insertSnapshotGraph(
     }
 
     const insertSnapshotEdge = db.prepare(
-      `INSERT INTO snapshot_edges (snapshot_id, edge_id, origin, confidence, resolution, analyzer_version)
-       VALUES (@snapshotId, @edgeId, @origin, @confidence, @resolution, @analyzerVersion)`
+      `INSERT INTO snapshot_edges
+         (snapshot_id, edge_id, origin, confidence, resolution, analyzer_version,
+          language, extractor_id, extractor_version, capability, derivation, unresolved_reason)
+       VALUES (@snapshotId, @edgeId, @origin, @confidence, @resolution, @analyzerVersion,
+               @language, @extractorId, @extractorVersion, @capability, @derivation, @unresolvedReason)`
     );
     const insertEdgeEvidence = db.prepare(
       "INSERT INTO edge_evidence (snapshot_id, edge_id, evidence_id) VALUES (?, ?, ?)"
@@ -580,11 +594,32 @@ export function insertSnapshotGraph(
         origin: edge.origin,
         confidence: edge.confidence,
         resolution: edge.resolution,
-        analyzerVersion: graph.analyzerVersion
+        analyzerVersion: graph.analyzerVersion,
+        language: edge.language ?? null,
+        extractorId: edge.provenance?.extractorId ?? null,
+        extractorVersion: edge.provenance?.extractorVersion ?? null,
+        capability: edge.provenance?.capability ?? null,
+        derivation: edge.provenance?.derivation ?? null,
+        unresolvedReason: edge.provenance?.unresolvedReason ?? null
       });
       for (const evidence of edge.evidence) {
         insertEdgeEvidence.run(snapshotId, edgeId, insertEvidenceItem(evidence));
       }
+    }
+
+    const insertSnapshotExtractor = db.prepare(
+      `INSERT INTO snapshot_extractors
+         (snapshot_id, extractor_id, extractor_version, capability, languages_json)
+       VALUES (?, ?, ?, ?, ?)`
+    );
+    for (const extractor of graph.extractors ?? []) {
+      insertSnapshotExtractor.run(
+        snapshotId,
+        extractor.id,
+        extractor.version,
+        extractor.capability,
+        JSON.stringify([...extractor.languages].sort())
+      );
     }
 
     if (!options.dangerouslySkipValidation) {
@@ -666,6 +701,7 @@ export interface StoredSnapshotGraph {
   files: GraphFile[];
   nodes: GraphNode[];
   edges: GraphEdge[];
+  extractors: SnapshotExtractor[];
 }
 
 interface StoredEvidenceRow {
@@ -778,6 +814,12 @@ export function loadSnapshotGraph(db: Database, snapshotId: number): StoredSnaps
       signature: string | null;
       body_hash: string | null;
       exported: number;
+      language: string | null;
+      extractor_id: string | null;
+      extractor_version: string | null;
+      capability: ExtractionCapability | null;
+      derivation: ExtractionDerivation | null;
+      unresolved_reason: string | null;
     }>
   ).map(
     (row): GraphNode => ({
@@ -794,9 +836,17 @@ export function loadSnapshotGraph(db: Database, snapshotId: number): StoredSnaps
       lineEnd: row.line_end,
       signature: row.signature,
       bodyHash: row.body_hash,
-      evidence: (nodeEvidence.all(snapshotId, row.node_id) as StoredEvidenceRow[]).map(
-        rowToEvidence
-      )
+      evidence: (nodeEvidence.all(snapshotId, row.node_id) as StoredEvidenceRow[]).map(rowToEvidence),
+      ...(row.language !== null || row.extractor_id !== null ? { language: row.language } : {}),
+      ...(row.extractor_id !== null && row.extractor_version !== null && row.capability !== null && row.derivation !== null
+        ? { provenance: {
+            extractorId: row.extractor_id,
+            extractorVersion: row.extractor_version,
+            capability: row.capability,
+            derivation: row.derivation,
+            unresolvedReason: row.unresolved_reason
+          } }
+        : {})
     })
   );
 
@@ -831,6 +881,12 @@ export function loadSnapshotGraph(db: Database, snapshotId: number): StoredSnaps
       origin: Origin;
       confidence: Confidence;
       resolution: Resolution;
+      language: string | null;
+      extractor_id: string | null;
+      extractor_version: string | null;
+      capability: ExtractionCapability | null;
+      derivation: ExtractionDerivation | null;
+      unresolved_reason: string | null;
     }>
   ).map(
     (row): GraphEdge => ({
@@ -842,11 +898,37 @@ export function loadSnapshotGraph(db: Database, snapshotId: number): StoredSnaps
       origin: row.origin,
       confidence: row.confidence,
       resolution: row.resolution,
-      evidence: (edgeEvidence.all(snapshotId, row.edge_id) as StoredEvidenceRow[]).map(
-        rowToEvidence
-      )
+      evidence: (edgeEvidence.all(snapshotId, row.edge_id) as StoredEvidenceRow[]).map(rowToEvidence),
+      ...(row.language !== null || row.extractor_id !== null ? { language: row.language } : {}),
+      ...(row.extractor_id !== null && row.extractor_version !== null && row.capability !== null && row.derivation !== null
+        ? { provenance: {
+            extractorId: row.extractor_id,
+            extractorVersion: row.extractor_version,
+            capability: row.capability,
+            derivation: row.derivation,
+            unresolvedReason: row.unresolved_reason
+          } }
+        : {})
     })
   );
 
-  return { snapshot, analyzerVersion, files, nodes, edges };
+  const extractors = (
+    db.prepare(
+      `SELECT extractor_id, extractor_version, capability, languages_json
+       FROM snapshot_extractors WHERE snapshot_id = ?
+       ORDER BY extractor_id, extractor_version`
+    ).all(snapshotId) as Array<{
+      extractor_id: string;
+      extractor_version: string;
+      capability: ExtractionCapability;
+      languages_json: string;
+    }>
+  ).map((row): SnapshotExtractor => ({
+    id: row.extractor_id,
+    version: row.extractor_version,
+    capability: row.capability,
+    languages: JSON.parse(row.languages_json) as string[]
+  }));
+
+  return { snapshot, analyzerVersion, files, nodes, edges, extractors };
 }

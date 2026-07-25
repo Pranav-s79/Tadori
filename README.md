@@ -2,8 +2,8 @@
 
 ## What Tadori is
 
-Tadori builds a provenance-typed graph of a TypeScript/JavaScript repository —
-packages, files, symbols, routes, tests, and ADR documents, where every edge
+Tadori builds one provenance-typed graph for mixed-language repositories —
+projects, files, symbols, interfaces, routes, tests, and documents, where every edge
 carries its origin, confidence, resolution, and file:line evidence. Agents
 consume the graph through a frozen six-tool MCP context interface; a local
 visual supervision layer (`tadori serve .`) serves that graph over a
@@ -13,9 +13,11 @@ with no cloud dependency and no external runtime fetch.
 
 ## Status
 
-The frozen v2.1 index/store/MCP core (Weeks 1–6) is complete and validated, and
-work has moved through local serving (Phase 7) into guided 2D visualization
-(Phase 8) and review-diff (Phase 9):
+The active contract is the multi-language transition specification. TypeScript
+and JavaScript retain compiler-backed semantic extraction; Python, C, C++, Go,
+Rust, and Java use pinned WASM structural parsers; Proto, Terraform, YAML,
+Dockerfile, Markdown, JSON, shell/Make, TOML, and CMake use deterministic
+repository/interface extraction. Unknown safe text remains visible at repository level.
 
 - All five golden fixtures compare exactly — zero missing, unexpected, or
   mismatched nodes and edges.
@@ -29,7 +31,8 @@ work has moved through local serving (Phase 7) into guided 2D visualization
   and honest errors — never a silent substitution of one comparison kind for
   another. The on-map diff-badge visualization is the remaining slice.
 
-The frozen six-tool MCP interface, golden fixtures, and schemas are unchanged.
+The legacy TS/JS fixtures remain compatibility coverage, not a product-scope limit.
+See `docs/MULTILANGUAGE_CAPABILITIES.json` for precise per-feature support.
 
 ## Quick start
 
@@ -94,7 +97,7 @@ Workspace packages:
 |---|---|
 | `packages/core` | Frozen enums, Zod graph schemas, canonical pipe-delimited identities, SHA-256 entity keys |
 | `packages/store` | SQLite store: frozen migrations, transactional snapshots, integrity validation, three-way diff, pruning, orphan GC |
-| `packages/indexer` | TypeScript LanguageService driver: repository scan, semantic extraction, incremental refresh, native watching |
+| `packages/indexer` | Language registry and adapters: TS/JS semantics, pinned WASM structural parsing, repository/interface extraction, incremental refresh |
 | `packages/harness` | Golden-fixture validation, indexing comparison, and fixture typecheck CLIs |
 | `packages/mcp` | The frozen six-tool MCP interface: snapshot queries, FTS5 search, explainable ranking, budgeting, stdio transport |
 | `packages/server` | `127.0.0.1`-only HTTP/WebSocket product surface: graph, layout, search, source, inspection, and review-diff APIs |
@@ -105,16 +108,15 @@ Workspace packages:
 directory, not a workspace package (absent from `pnpm-workspace.yaml`); see
 `packages/fixtures/README.md`.
 
-Planned, not yet built: `packages/hooks`, `packages/bench`.
+`packages/bench` contains deterministic mixed-language and external-validation manifests.
 
-## Frozen contracts
+## Active contracts
 
 - Exactly six MCP tools: `repo_overview`, `find_symbol`, `symbol_context`,
   `find_tests`, `impact`, `path`. No seventh tool.
-- The golden fixtures are authoritative and are never weakened.
-- Specifications live in `docs/Specs/` (frozen v2.1 specification,
-  corrections, and golden-fixture spec); the serve-command contract is
-  `docs/CLI_CONTRACT.md`.
+- Legacy golden fixtures remain byte-stable compatibility checks.
+- The governing specification is `docs/Specs/Tadori-Multilanguage-Transition.md`;
+  older v2.1 documents are historical references only.
 
 ## Roadmap
 

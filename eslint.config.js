@@ -6,10 +6,12 @@ export default tseslint.config(
     ignores: [
       "node_modules/**",
       "packages/fixtures/**",
+      "packages/bench/fixtures/**",
       "docs/**",
       "**/dist/**",
       "**/coverage/**",
-      ".tmp/**"
+      ".tmp/**",
+      ".claude/worktrees/**"
     ]
   },
   js.configs.recommended,

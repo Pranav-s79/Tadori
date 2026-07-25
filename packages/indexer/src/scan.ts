@@ -1,7 +1,13 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { resolveRootCompilerOptions } from "./project.js";
+import {
+  detectLanguage,
+  isGeneratedPath,
+  UNKNOWN_TEXT_LANGUAGE,
+  type LanguageId,
+  type LanguageRegistration
+} from "./languageRegistry.js";
 
 export interface ScannedFile {
   /** Absolute path on disk. */
@@ -10,12 +16,15 @@ export interface ScannedFile {
   normalizedPath: string;
   /** true = becomes a graph file node; false = compiler/support only. */
   indexed: boolean;
-  language: "typescript" | "javascript" | "markdown" | "json" | "other";
+  language: LanguageId;
+  isGenerated: boolean;
+  registration: LanguageRegistration;
 }
 
 export interface ScanResult {
   indexedFiles: ScannedFile[];
   supportFiles: ScannedFile[];
+  diagnostics: Array<{ code: string; message: string }>;
 }
 
 /** Built-in exclusions per frozen corrections §8. */
@@ -32,14 +41,19 @@ const EXCLUDED_DIRECTORIES = new Set([
   ".cache"
 ]);
 
-const TS_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts"]);
-const JS_EXTENSIONS = new Set([".js", ".jsx", ".mjs", ".cjs"]);
 const CAPTURED_CONFIGURATION_NAMES = new Set([
   "pnpm-lock.yaml",
   "yarn.lock",
+  "tadori.rules.json",
   ".gitignore",
   ".tadoriignore"
 ]);
+const PROJECT_CONFIGURATION_NAMES = new Set([
+  "package.json", "tsconfig.json", "jsconfig.json", "pyproject.toml", "requirements.txt",
+  "compile_commands.json", "go.mod", "go.work", "Cargo.toml", "pom.xml", "build.gradle",
+  "build.gradle.kts", "settings.gradle", "buf.yaml", "buf.work.yaml", ".terraform.lock.hcl"
+]);
+const MAX_INDEXABLE_FILE_BYTES = 5 * 1024 * 1024;
 
 export function normalizePath(root: string, absolute: string): string {
   const rel = path.relative(root, absolute).split(path.sep).join("/");
@@ -102,33 +116,33 @@ function isIgnored(relPath: string, isDirectory: boolean, rules: IgnoreRule[]): 
   return false;
 }
 
-function classify(normalizedPath: string, allowJs: boolean): Pick<ScannedFile, "indexed" | "language"> {
-  const ext = path.posix.extname(normalizedPath).toLowerCase();
+function classify(
+  normalizedPath: string,
+  registration: LanguageRegistration
+): Pick<ScannedFile, "indexed" | "language" | "isGenerated" | "registration"> {
   if (normalizedPath.endsWith(".d.ts") || normalizedPath.endsWith(".d.mts") || normalizedPath.endsWith(".d.cts")) {
     // Declaration shims participate in compiler resolution without becoming
     // graph file nodes (golden fixture contract §2).
-    return { indexed: false, language: "typescript" };
+    return { indexed: false, language: registration.id, isGenerated: true, registration };
   }
-  if (TS_EXTENSIONS.has(ext)) {
-    return { indexed: true, language: "typescript" };
-  }
-  if (JS_EXTENSIONS.has(ext)) {
-    return { indexed: allowJs, language: "javascript" };
-  }
-  if (ext === ".md") {
-    return { indexed: true, language: "markdown" };
-  }
-  if (ext === ".json") {
-    return { indexed: false, language: "json" };
-  }
-  return { indexed: false, language: "other" };
+  const basename = path.posix.basename(normalizedPath);
+  const configurationOnly =
+    CAPTURED_CONFIGURATION_NAMES.has(basename) || PROJECT_CONFIGURATION_NAMES.has(basename);
+  // JavaScript remains visible even when an explicit tsconfig excludes it;
+  // the TS adapter then reports repository-only extraction for that file.
+  const indexed = registration.id === "javascript" ? true : !configurationOnly;
+  return {
+    indexed,
+    language: registration.id,
+    isGenerated: isGeneratedPath(normalizedPath, registration),
+    registration
+  };
 }
 
 /** Walks the repository and splits files into indexed and support sets. */
 export function scanRepository(root: string): ScanResult {
   const rules = readIgnoreRules(root);
-  const options = resolveRootCompilerOptions(root);
-  const allowJs = options.allowJs === true || options.checkJs === true;
+  const diagnostics: Array<{ code: string; message: string }> = [];
   const indexedFiles: ScannedFile[] = [];
   const supportFiles: ScannedFile[] = [];
 
@@ -146,11 +160,22 @@ export function scanRepository(root: string): ScanResult {
       if (isIgnored(rel, false, rules)) {
         continue;
       }
-      const { indexed, language } = classify(rel, allowJs);
-      const file: ScannedFile = { absolutePath: absolute, normalizedPath: rel, indexed, language };
-      if (language === "other" && !CAPTURED_CONFIGURATION_NAMES.has(path.posix.basename(rel))) {
+      if (stats.size > MAX_INDEXABLE_FILE_BYTES) {
         continue;
       }
+      const bytes = readFileSync(absolute);
+      if (bytes.includes(0)) continue;
+      const firstLine = bytes.toString("utf8").split(/\r?\n/, 1)[0] ?? "";
+      const registration = detectLanguage(rel, firstLine) ?? UNKNOWN_TEXT_LANGUAGE;
+      const { indexed, language, isGenerated } = classify(rel, registration);
+      const file: ScannedFile = {
+        absolutePath: absolute,
+        normalizedPath: rel,
+        indexed,
+        language,
+        isGenerated,
+        registration
+      };
       (indexed ? indexedFiles : supportFiles).push(file);
     }
   };
@@ -158,7 +183,7 @@ export function scanRepository(root: string): ScanResult {
   walk(root);
   indexedFiles.sort((a, b) => a.normalizedPath.localeCompare(b.normalizedPath));
   supportFiles.sort((a, b) => a.normalizedPath.localeCompare(b.normalizedPath));
-  return { indexedFiles, supportFiles };
+  return { indexedFiles, supportFiles, diagnostics };
 }
 
 /** Nearest package.json `name` walking up from the file toward the root. */

@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "mixed-oracle",
+  "root": ".",
+  "determinism": {
+    "networkAccess": false,
+    "repositoryCodeExecution": false,
+    "generatedArtifactsRequired": false,
+    "expectedTotalFileCount": 40,
+    "subjectFileCount": 38,
+    "excludedFromSubject": ["README.md", "expected-oracle.json"],
+    "pathSeparator": "/",
+    "evidenceLinesAreOneBased": true
+  },
+  "languageCoverage": [
+    { "language": "typescript", "capability": "semantic", "valid": ["src/typescript/client.ts", "src/typescript/client.test.ts"], "recovery": "recovery/broken.ts" },
+    { "language": "javascript", "capability": "semantic", "valid": ["src/javascript/worker.js", "src/javascript/worker.test.js"], "recovery": "recovery/broken.js" },
+    { "language": "python", "capability": "structural", "valid": ["src/python/api.py", "src/python/test_api.py"], "recovery": "recovery/broken.py" },
+    { "language": "c", "capability": "structural", "valid": ["src/c/checksum.h", "src/c/checksum.c", "src/c/test_checksum.c"], "recovery": "recovery/broken.c" },
+    { "language": "cpp", "capability": "structural", "valid": ["src/cpp/bridge.cpp", "src/cpp/test_bridge.cpp"], "recovery": "recovery/broken.cpp" },
+    { "language": "go", "capability": "structural", "valid": ["src/go/go.mod", "src/go/client.go", "src/go/client_test.go"], "recovery": "recovery/broken.go" },
+    { "language": "rust", "capability": "structural", "valid": ["src/rust/Cargo.toml", "src/rust/lib.rs", "src/rust/tests/lib_test.rs"], "recovery": "recovery/broken.rs" },
+    { "language": "java", "capability": "structural", "valid": ["src/java/example/oracle/Service.java", "src/java/example/oracle/ServiceTest.java"], "recovery": "recovery/Broken.java" },
+    { "language": "protobuf", "capability": "repository-only", "valid": ["proto/oracle.proto"], "recovery": "recovery/broken.proto" },
+    { "language": "json", "capability": "repository-only", "valid": ["config/app.json"], "recovery": "recovery/broken.json", "notApplicable": ["function", "method", "call", "test"] },
+    { "language": "yaml", "capability": "repository-only", "valid": ["config/app.yaml"], "recovery": "recovery/broken.yaml", "notApplicable": ["function", "method", "call", "test"] },
+    { "language": "markdown", "capability": "repository-only", "valid": ["docs/architecture.md"], "notApplicable": ["import", "function", "type", "method", "call", "test", "syntax-recovery"] },
+    { "language": "dockerfile", "capability": "repository-only", "valid": ["Dockerfile"], "notApplicable": ["function", "type", "method", "test", "syntax-recovery"] },
+    { "language": "terraform", "capability": "repository-only", "valid": ["infra/main.tf"], "recovery": "recovery/broken.tf", "notApplicable": ["function", "method", "test"] }
+  ],
+  "sameNamedSymbolInvariant": {
+    "name": "transform",
+    "minimumDistinctLanguageCount": 8,
+    "definitions": [
+      { "language": "typescript", "file": "src/typescript/client.ts", "line": 12 },
+      { "language": "javascript", "file": "src/javascript/worker.js", "line": 7 },
+      { "language": "python", "file": "src/python/api.py", "line": 17 },
+      { "language": "c", "file": "src/c/checksum.c", "line": 4 },
+      { "language": "cpp", "file": "src/cpp/bridge.cpp", "line": 12, "qualifiedName": "oracle::transform" },
+      { "language": "go", "file": "src/go/client.go", "line": 15 },
+      { "language": "rust", "file": "src/rust/lib.rs", "line": 10 },
+      { "language": "java", "file": "src/java/example/oracle/Service.java", "line": 11, "qualifiedName": "example.oracle.Service.transform" }
+    ],
+    "expected": "All definitions have distinct canonical identities; names alone create no cross-language edge."
+  },
+  "expectedCrossLanguageRelations": [
+    {
+      "id": "typescript-to-python-http",
+      "relation": "routes_to",
+      "boundaryKind": "http-route",
+      "source": { "language": "typescript", "symbol": "score", "file": "src/typescript/client.ts" },
+      "target": { "language": "python", "symbol": "score", "file": "src/python/api.py" },
+      "derivation": "convention-derived",
+      "resolution": "resolved",
+      "evidence": [
+        { "file": "src/typescript/client.ts", "line": 17, "contains": "http://python-api:8000/v1/score" },
+        { "file": "src/python/api.py", "line": 27, "contains": "@post(\"/v1/score\")" }
+      ]
+    },
+    {
+      "id": "python-to-protobuf-generated-binding",
+      "relation": "references",
+      "boundaryKind": "generated-binding",
+      "source": { "language": "python", "file": "src/python/api.py" },
+      "target": { "language": "protobuf", "symbol": "mixed.oracle.v1.ScoreRequest", "file": "proto/oracle.proto" },
+      "derivation": "repository-derived",
+      "resolution": "resolved",
+      "evidence": [
+        { "file": "src/python/api.py", "line": 5, "contains": "generated-from: ../../proto/oracle.proto" },
+        { "file": "src/python/api.py", "line": 6, "contains": "from oracle_pb2 import ScoreRequest" },
+        { "file": "proto/oracle.proto", "line": 7, "contains": "message ScoreRequest" }
+      ]
+    },
+    {
+      "id": "go-to-protobuf-generated-binding",
+      "relation": "references",
+      "boundaryKind": "generated-binding",
+      "source": { "language": "go", "file": "src/go/client.go" },
+      "target": { "language": "protobuf", "file": "proto/oracle.proto" },
+      "derivation": "repository-derived",
+      "resolution": "resolved",
+      "evidence": [
+        { "file": "src/go/client.go", "line": 3, "contains": "protoc --go_out=../gen ../../proto/oracle.proto" },
+        { "file": "proto/oracle.proto", "line": 4, "contains": "option go_package" }
+      ]
+    },
+    {
+      "id": "cpp-to-c-ffi",
+      "relation": "calls",
+      "boundaryKind": "ffi",
+      "source": { "language": "cpp", "symbol": "oracle::transform", "file": "src/cpp/bridge.cpp" },
+      "target": { "language": "c", "symbol": "c_checksum", "file": "src/c/checksum.c" },
+      "derivation": "parser-derived",
+      "resolution": "resolved",
+      "evidence": [
+        { "file": "src/cpp/bridge.cpp", "line": 1, "contains": "../c/checksum.h" },
+        { "file": "src/cpp/bridge.cpp", "line": 13, "contains": "c_checksum(\"cpp\")" },
+        { "file": "src/c/checksum.h", "line": 5, "contains": "extern \"C\"" },
+        { "file": "src/c/checksum.c", "line": 8, "contains": "int c_checksum" }
+      ]
+    },
+    {
+      "id": "cpp-to-python-subprocess",
+      "relation": "calls",
+      "boundaryKind": "subprocess",
+      "source": { "language": "cpp", "symbol": "run_python_healthcheck", "file": "src/cpp/bridge.cpp" },
+      "target": { "language": "python", "file": "src/python/api.py" },
+      "derivation": "parser-derived",
+      "resolution": "resolved",
+      "evidence": [{ "file": "src/cpp/bridge.cpp", "line": 18, "contains": "python3 src/python/api.py --healthcheck" }]
+    },
+    {
+      "id": "cmake-c-to-cpp-build",
+      "relation": "references",
+      "boundaryKind": "build-link",
+      "source": { "language": "cmake", "symbol": "cpp_bridge", "file": "CMakeLists.txt" },
+      "target": { "language": "cmake", "symbol": "checksum", "file": "CMakeLists.txt" },
+      "derivation": "repository-derived",
+      "resolution": "resolved",
+      "evidence": [{ "file": "CMakeLists.txt", "line": 8, "contains": "target_link_libraries(cpp_bridge PRIVATE checksum)" }]
+    }
+  ],
+  "expectedUnresolvedCalls": [
+    { "language": "typescript", "file": "src/typescript/client.ts", "line": 28, "reason": "dynamic-property-call" },
+    { "language": "javascript", "file": "src/javascript/worker.js", "line": 13, "reason": "dynamic-property-call" },
+    { "language": "python", "file": "src/python/api.py", "line": 35, "reason": "dynamic-import-reflection" },
+    { "language": "c", "file": "src/c/test_checksum.c", "line": 9, "reason": "indirect-function-pointer" },
+    { "language": "cpp", "file": "src/cpp/bridge.cpp", "line": 22, "reason": "indirect-function-pointer" },
+    { "language": "go", "file": "src/go/client.go", "line": 23, "reason": "dynamic-map-dispatch" },
+    { "language": "rust", "file": "src/rust/lib.rs", "line": 14, "reason": "dynamic-map-dispatch" },
+    { "language": "java", "file": "src/java/example/oracle/Service.java", "line": 15, "reason": "reflection" }
+  ],
+  "expectedTestFiles": [
+    "src/typescript/client.test.ts",
+    "src/javascript/worker.test.js",
+    "src/python/test_api.py",
+    "src/c/test_checksum.c",
+    "src/cpp/test_bridge.cpp",
+    "src/go/client_test.go",
+    "src/rust/tests/lib_test.rs",
+    "src/java/example/oracle/ServiceTest.java"
+  ],
+  "recoveryInvariant": {
+    "expectedDiagnosticFileCount": 12,
+    "unaffectedValidFilesMustRemainIndexed": true,
+    "recoveredDeclarations": [
+      { "language": "typescript", "file": "recovery/broken.ts", "name": "recoveredTs", "line": 1 },
+      { "language": "javascript", "file": "recovery/broken.js", "name": "recoveredJs", "line": 1 },
+      { "language": "python", "file": "recovery/broken.py", "name": "recovered_python", "line": 1 },
+      { "language": "c", "file": "recovery/broken.c", "name": "recovered_c", "line": 1 },
+      { "language": "cpp", "file": "recovery/broken.cpp", "name": "recovered_cpp", "line": 1 },
+      { "language": "go", "file": "recovery/broken.go", "name": "recoveredGo", "line": 3 },
+      { "language": "rust", "file": "recovery/broken.rs", "name": "recovered_rust", "line": 1 },
+      { "language": "java", "file": "recovery/Broken.java", "name": "recoveredJava", "line": 4 },
+      { "language": "protobuf", "file": "recovery/broken.proto", "name": "RecoveredProto", "line": 2 }
+    ],
+    "repositoryFallbackFiles": ["recovery/broken.json", "recovery/broken.yaml", "recovery/broken.tf"]
+  },
+  "integrityInvariants": {
+    "duplicateCanonicalIdentities": 0,
+    "danglingEdges": 0,
+    "invalidEvidenceSpans": 0,
+    "crossLanguageEdgesWithoutConcreteEvidence": 0,
+    "compilerResolvedFactsOutsideTypeScriptJavaScript": 0,
+    "runtimeObservedEdges": 0
+  }
+}

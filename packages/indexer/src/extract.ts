@@ -39,6 +39,12 @@ import {
 export interface IndexDiagnostic {
   file: string | null;
   message: string;
+  code?: string;
+  severity?: "info" | "warning" | "error";
+  language?: string | null;
+  extractorId?: string;
+  lineStart?: number;
+  lineEnd?: number;
 }
 
 export interface ExtractedGraph {
@@ -308,7 +314,7 @@ export function extractGraph(
       language: scanned.language,
       contentHash: sha256HexBytes(bytes),
       sizeBytes: bytes.length,
-      isGenerated: false,
+      isGenerated: scanned.isGenerated,
       isBinary: false
     });
     const lineCount = lineCountOf(text);
@@ -532,6 +538,9 @@ export function extractGraph(
 
   for (const scanned of activeFiles) {
     if (scanned.language === "markdown") {
+      continue;
+    }
+    if (scanned.language !== "typescript" && scanned.language !== "javascript") {
       continue;
     }
     const sf = sourceFileFor(scanned);
@@ -1089,6 +1098,7 @@ export function extractGraph(
     if (!sf || !fileNode) {
       continue;
     }
+    let fileHasRegisteredTest = false;
     for (const statement of sf.statements) {
       if (!ts.isExpressionStatement(statement) || !ts.isCallExpression(statement.expression)) {
         continue;
@@ -1119,6 +1129,7 @@ export function extractGraph(
         continue;
       }
       registeredTests.add(qualifiedName);
+      fileHasRegisteredTest = true;
       const start = call.getStart(sf);
       const end = call.getEnd();
       const testNode = buildNode({
@@ -1173,6 +1184,31 @@ export function extractGraph(
         n.forEachChild(visitTestBody);
       };
       visitTestBody(callbackArg.body);
+    }
+    if (
+      !fileHasRegisteredTest &&
+      /(?:^|\/)[^/]+\.(?:test|spec)\.[cm]?[jt]sx?$/i.test(p)
+    ) {
+      const firstStatement = sf.statements[0];
+      const lastStatement = sf.statements.at(-1);
+      const start = firstStatement?.getStart(sf) ?? 0;
+      const end = lastStatement?.getEnd() ?? sf.getText(sf).trimEnd().length;
+      const testNode = buildNode({
+        kind: "test",
+        qualifiedName: `${p}::<test module>`,
+        displayName: path.posix.basename(p),
+        file: p,
+        exported: false,
+        spanStart: start,
+        spanEnd: end,
+        ...lineRangeOf(sf, start, end),
+        bodyHash: bodyHashOfText(sf.getText(sf)),
+        evidence: [{ file: p, kind: "source", ...linesAsEvidence(sf, start, end) }]
+      });
+      testNodes.push(testNode);
+      edges.add(fileNode, "contains", testNode, [
+        { file: p, kind: "source", ...linesAsEvidence(sf, start, end) }
+      ]);
     }
   }
 
@@ -1383,7 +1419,42 @@ export function extractGraph(
           if (nameNode && enclosing) {
             const symbol = checker.getSymbolAtLocation(nameNode);
             const target = graphNodeForSymbol(symbol);
-            if (target && (target.kind === "function" || target.kind === "method")) {
+            const dynamicAlias = ts.isIdentifier(callee)
+              ? symbol?.declarations?.find((declaration): declaration is ts.VariableDeclaration =>
+                  ts.isVariableDeclaration(declaration) && declaration.initializer !== undefined &&
+                  ts.isElementAccessExpression(unwrapExpression(declaration.initializer))
+                )
+              : undefined;
+            if (dynamicAlias?.initializer !== undefined) {
+              const initializer = unwrapExpression(dynamicAlias.initializer);
+              if (!ts.isElementAccessExpression(initializer)) {
+                throw new Error("Dynamic alias declaration lost its element-access initializer");
+              }
+              const label = dynamicCallLabel(initializer, sf);
+              const key = `${p}|${label}`;
+              let unresolvedNode = unresolvedNodes.get(key);
+              if (!unresolvedNode) {
+                unresolvedNode = buildNode({
+                  kind: "unresolved",
+                  qualifiedName: `${p}::<unresolved ${label}>`,
+                  displayName: label,
+                  file: p,
+                  exported: false,
+                  spanStart: n.getStart(sf),
+                  spanEnd: n.getEnd(),
+                  ...lineRangeOf(sf, n.getStart(sf), n.getEnd()),
+                  evidence: [lineEvidence(sf, n, p)]
+                });
+                unresolvedNodes.set(key, unresolvedNode);
+                edges.add(fileNode, "contains", unresolvedNode, [lineEvidence(sf, n, p)]);
+              }
+              edges.add(enclosing, "calls", unresolvedNode, [lineEvidence(sf, n, p)], {
+                origin: "heuristic",
+                confidence: "inferred",
+                resolution: "unresolved"
+              });
+              dynamicUnresolvedCount += 1;
+            } else if (target && (target.kind === "function" || target.kind === "method")) {
               edges.add(enclosing, "calls", target, [lineEvidence(sf, n, p)]);
               resolvedCallCount += 1;
             } else if (!symbol && ts.isPropertyAccessExpression(callee)) {
