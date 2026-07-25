@@ -33,11 +33,21 @@ The frozen six-tool MCP interface, golden fixtures, and schemas are unchanged.
 
 ## Quick start
 
+### Supported Node.js
+
+Tadori supports the maintained LTS lines: **Node 24 (prioritized)**, **Node 26**,
+and **Node 22** (`engines.node` is `>=22`). Node 25 and other non-LTS /
+out-of-maintenance releases are not supported. `better-sqlite3` (>=12) ships
+prebuilt binaries for all three on Windows, Linux, and macOS, so a normal
+install never source-builds native dependencies. Local dev pins Node 24.18.0
+via `.npmrc` (pnpm) and `.nvmrc`; run `nvm use` to match. CI runs the full gate
+on every {Ubuntu, Windows} × {Node 22, 24, 26} combination.
+
 ```bash
 pnpm install
 ```
 
-Installs workspace dependencies (`.npmrc` pins Node 22.14.0 via pnpm).
+Installs workspace dependencies.
 
 ```bash
 pnpm test
