@@ -1,0 +1,122 @@
+{
+  "$schema": "./multilanguage-capabilities.schema.json",
+  "version": 1,
+  "claim": "Tadori can structurally map mixed-language repositories, with deeper semantic analysis available for selected languages.",
+  "states": ["semantic", "structural", "repository-only", "unsupported", "experimental"],
+  "languages": [
+    {
+      "id": "typescript",
+      "extractorId": "tadori-typescript",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "semantic", "functions": "semantic", "classesTypes": "semantic", "importsIncludes": "semantic", "calls": "semantic", "inheritance": "semantic", "tests": "semantic", "routes": "semantic", "docs": "repository-only", "bodyHashes": "semantic", "behaviorStory": "semantic", "boundaryRules": "semantic", "diffs": "semantic", "renameCoalescing": "semantic", "semanticResolution": "semantic", "structuralResolution": "semantic", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "javascript",
+      "extractorId": "tadori-typescript",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "semantic", "functions": "semantic", "classesTypes": "semantic", "importsIncludes": "semantic", "calls": "semantic", "inheritance": "semantic", "tests": "semantic", "routes": "semantic", "docs": "repository-only", "bodyHashes": "semantic", "behaviorStory": "semantic", "boundaryRules": "semantic", "diffs": "semantic", "renameCoalescing": "semantic", "semanticResolution": "semantic", "structuralResolution": "semantic", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "python",
+      "extractorId": "tadori-tree-sitter",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "unsupported", "functions": "structural", "classesTypes": "structural", "importsIncludes": "structural", "calls": "structural", "inheritance": "structural", "tests": "structural", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "structural", "behaviorStory": "unsupported", "boundaryRules": "structural", "diffs": "structural", "renameCoalescing": "structural", "semanticResolution": "unsupported", "structuralResolution": "structural", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "cpp",
+      "extractorId": "tadori-tree-sitter",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "unsupported", "functions": "structural", "classesTypes": "structural", "importsIncludes": "structural", "calls": "structural", "inheritance": "structural", "tests": "structural", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "structural", "behaviorStory": "unsupported", "boundaryRules": "structural", "diffs": "structural", "renameCoalescing": "structural", "semanticResolution": "unsupported", "structuralResolution": "structural", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "c",
+      "extractorId": "tadori-tree-sitter",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "unsupported", "functions": "structural", "classesTypes": "structural", "importsIncludes": "structural", "calls": "structural", "inheritance": "unsupported", "tests": "structural", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "structural", "behaviorStory": "unsupported", "boundaryRules": "structural", "diffs": "structural", "renameCoalescing": "structural", "semanticResolution": "unsupported", "structuralResolution": "structural", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "go",
+      "extractorId": "tadori-tree-sitter",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "unsupported", "functions": "structural", "classesTypes": "structural", "importsIncludes": "structural", "calls": "structural", "inheritance": "unsupported", "tests": "structural", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "structural", "behaviorStory": "unsupported", "boundaryRules": "structural", "diffs": "structural", "renameCoalescing": "structural", "semanticResolution": "unsupported", "structuralResolution": "structural", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "rust",
+      "extractorId": "tadori-tree-sitter",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "unsupported", "functions": "structural", "classesTypes": "structural", "importsIncludes": "structural", "calls": "structural", "inheritance": "structural", "tests": "structural", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "structural", "behaviorStory": "unsupported", "boundaryRules": "structural", "diffs": "structural", "renameCoalescing": "structural", "semanticResolution": "unsupported", "structuralResolution": "structural", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "java",
+      "extractorId": "tadori-tree-sitter",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "unsupported", "functions": "structural", "classesTypes": "structural", "importsIncludes": "structural", "calls": "structural", "inheritance": "structural", "tests": "structural", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "structural", "behaviorStory": "unsupported", "boundaryRules": "structural", "diffs": "structural", "renameCoalescing": "structural", "semanticResolution": "unsupported", "structuralResolution": "structural", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "protobuf",
+      "extractorId": "tadori-interface-files",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "repository-only", "functions": "repository-only", "classesTypes": "repository-only", "importsIncludes": "repository-only", "calls": "unsupported", "inheritance": "unsupported", "tests": "unsupported", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "repository-only", "behaviorStory": "unsupported", "boundaryRules": "repository-only", "diffs": "repository-only", "renameCoalescing": "repository-only", "semanticResolution": "unsupported", "structuralResolution": "unsupported", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "terraform",
+      "extractorId": "tadori-interface-files",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "repository-only", "functions": "unsupported", "classesTypes": "repository-only", "importsIncludes": "repository-only", "calls": "unsupported", "inheritance": "unsupported", "tests": "unsupported", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "repository-only", "behaviorStory": "unsupported", "boundaryRules": "repository-only", "diffs": "repository-only", "renameCoalescing": "repository-only", "semanticResolution": "unsupported", "structuralResolution": "unsupported", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "yaml",
+      "extractorId": "tadori-interface-files",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "repository-only", "functions": "unsupported", "classesTypes": "unsupported", "importsIncludes": "repository-only", "calls": "unsupported", "inheritance": "unsupported", "tests": "unsupported", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "repository-only", "behaviorStory": "unsupported", "boundaryRules": "repository-only", "diffs": "repository-only", "renameCoalescing": "repository-only", "semanticResolution": "unsupported", "structuralResolution": "unsupported", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "dockerfile",
+      "extractorId": "tadori-interface-files",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "repository-only", "functions": "unsupported", "classesTypes": "unsupported", "importsIncludes": "repository-only", "calls": "repository-only", "inheritance": "unsupported", "tests": "unsupported", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "repository-only", "behaviorStory": "unsupported", "boundaryRules": "repository-only", "diffs": "repository-only", "renameCoalescing": "repository-only", "semanticResolution": "unsupported", "structuralResolution": "unsupported", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "markdown",
+      "extractorId": "tadori-interface-files",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "unsupported", "functions": "unsupported", "classesTypes": "unsupported", "importsIncludes": "repository-only", "calls": "unsupported", "inheritance": "unsupported", "tests": "unsupported", "routes": "unsupported", "docs": "repository-only", "bodyHashes": "repository-only", "behaviorStory": "unsupported", "boundaryRules": "repository-only", "diffs": "repository-only", "renameCoalescing": "repository-only", "semanticResolution": "unsupported", "structuralResolution": "unsupported", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "json",
+      "extractorId": "tadori-interface-files",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "repository-only", "functions": "unsupported", "classesTypes": "unsupported", "importsIncludes": "repository-only", "calls": "unsupported", "inheritance": "unsupported", "tests": "unsupported", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "repository-only", "behaviorStory": "unsupported", "boundaryRules": "repository-only", "diffs": "repository-only", "renameCoalescing": "repository-only", "semanticResolution": "unsupported", "structuralResolution": "unsupported", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "shell",
+      "extractorId": "tadori-interface-files",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "repository-only", "functions": "repository-only", "classesTypes": "repository-only", "importsIncludes": "repository-only", "calls": "repository-only", "inheritance": "unsupported", "tests": "unsupported", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "repository-only", "behaviorStory": "unsupported", "boundaryRules": "repository-only", "diffs": "repository-only", "renameCoalescing": "repository-only", "semanticResolution": "unsupported", "structuralResolution": "unsupported", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "toml",
+      "extractorId": "tadori-interface-files",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "repository-only", "functions": "unsupported", "classesTypes": "unsupported", "importsIncludes": "repository-only", "calls": "unsupported", "inheritance": "unsupported", "tests": "unsupported", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "repository-only", "behaviorStory": "unsupported", "boundaryRules": "repository-only", "diffs": "repository-only", "renameCoalescing": "repository-only", "semanticResolution": "unsupported", "structuralResolution": "unsupported", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "cmake",
+      "extractorId": "tadori-interface-files",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "repository-only", "functions": "unsupported", "classesTypes": "repository-only", "importsIncludes": "repository-only", "calls": "repository-only", "inheritance": "unsupported", "tests": "unsupported", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "repository-only", "behaviorStory": "unsupported", "boundaryRules": "repository-only", "diffs": "repository-only", "renameCoalescing": "repository-only", "semanticResolution": "unsupported", "structuralResolution": "unsupported", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "repository-config",
+      "extractorId": "tadori-repository",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "unsupported", "functions": "unsupported", "classesTypes": "unsupported", "importsIncludes": "unsupported", "calls": "unsupported", "inheritance": "unsupported", "tests": "unsupported", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "repository-only", "behaviorStory": "unsupported", "boundaryRules": "repository-only", "diffs": "repository-only", "renameCoalescing": "repository-only", "semanticResolution": "unsupported", "structuralResolution": "unsupported", "frameworkPlugins": "unsupported" }
+    },
+    {
+      "id": "unknown",
+      "extractorId": "tadori-repository",
+      "extractorVersion": "1",
+      "features": { "files": "repository-only", "modulesPackages": "unsupported", "functions": "unsupported", "classesTypes": "unsupported", "importsIncludes": "unsupported", "calls": "unsupported", "inheritance": "unsupported", "tests": "unsupported", "routes": "unsupported", "docs": "unsupported", "bodyHashes": "repository-only", "behaviorStory": "unsupported", "boundaryRules": "repository-only", "diffs": "repository-only", "renameCoalescing": "repository-only", "semanticResolution": "unsupported", "structuralResolution": "unsupported", "frameworkPlugins": "unsupported" }
+    }
+  ]
+}

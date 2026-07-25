@@ -1,4 +1,4 @@
-# Tadori CLI contract (frozen v2.1)
+# Tadori CLI compatibility contract
 
 This document freezes the contract for Tadori's normal visual command before
 the visualization milestone implements it. It is a contract, not an

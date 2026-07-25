@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tadori.local/schemas/multilanguage-capabilities.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "claim", "states", "languages"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+    "claim": { "type": "string", "minLength": 1 },
+    "states": {
+      "type": "array",
+      "const": ["semantic", "structural", "repository-only", "unsupported", "experimental"]
+    },
+    "languages": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/language" }
+    }
+  },
+  "$defs": {
+    "state": { "enum": ["semantic", "structural", "repository-only", "unsupported", "experimental"] },
+    "language": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "extractorId", "extractorVersion", "features"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "extractorId": { "type": "string", "minLength": 1 },
+        "extractorVersion": { "type": "string", "minLength": 1 },
+        "features": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["files", "modulesPackages", "functions", "classesTypes", "importsIncludes", "calls", "inheritance", "tests", "routes", "docs", "bodyHashes", "behaviorStory", "boundaryRules", "diffs", "renameCoalescing", "semanticResolution", "structuralResolution", "frameworkPlugins"],
+          "properties": {
+            "files": { "$ref": "#/$defs/state" },
+            "modulesPackages": { "$ref": "#/$defs/state" },
+            "functions": { "$ref": "#/$defs/state" },
+            "classesTypes": { "$ref": "#/$defs/state" },
+            "importsIncludes": { "$ref": "#/$defs/state" },
+            "calls": { "$ref": "#/$defs/state" },
+            "inheritance": { "$ref": "#/$defs/state" },
+            "tests": { "$ref": "#/$defs/state" },
+            "routes": { "$ref": "#/$defs/state" },
+            "docs": { "$ref": "#/$defs/state" },
+            "bodyHashes": { "$ref": "#/$defs/state" },
+            "behaviorStory": { "$ref": "#/$defs/state" },
+            "boundaryRules": { "$ref": "#/$defs/state" },
+            "diffs": { "$ref": "#/$defs/state" },
+            "renameCoalescing": { "$ref": "#/$defs/state" },
+            "semanticResolution": { "$ref": "#/$defs/state" },
+            "structuralResolution": { "$ref": "#/$defs/state" },
+            "frameworkPlugins": { "$ref": "#/$defs/state" }
+          }
+        }
+      }
+    }
+  }
+}

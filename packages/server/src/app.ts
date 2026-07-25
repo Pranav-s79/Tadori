@@ -16,6 +16,7 @@ import { registerSnapshotRoutes } from "./routes/snapshots.js";
 import { registerSourceRoutes } from "./routes/source.js";
 import { registerStoryRoutes } from "./routes/story.js";
 import { registerWebSocket } from "./ws.js";
+import { registerVisualizationRoutes } from "./visualization.js";
 
 export interface ServerAppOptions {
   /** @tadori/store Database, already migrated. */
@@ -26,6 +27,8 @@ export interface ServerAppOptions {
   refresh: ConcurrentRefreshController;
   /** Optional immutable snapshot selection for `tadori serve --snapshot`. */
   snapshotId?: number;
+  /** Optional completed Vite build to serve at `/`. */
+  visualizationRoot?: string;
 }
 
 declare module "fastify" {
@@ -68,6 +71,10 @@ export async function createServerApp(options: ServerAppOptions): Promise<Fastif
   await app.register(registerBoundaryRoutes, { prefix: "/api/v1" });
   await app.register(registerObservationRoutes, { prefix: "/api/v1" });
   await app.register(registerWebSocket, { prefix: "/api/v1" });
+
+  if (options.visualizationRoot !== undefined) {
+    await registerVisualizationRoutes(app, { distRoot: options.visualizationRoot });
+  }
 
   return app;
 }

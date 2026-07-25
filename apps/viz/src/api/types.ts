@@ -18,6 +18,21 @@ export type Origin = "compiler" | "heuristic" | "git" | "doc" | "human" | "llm";
 export type Confidence = "certain" | "likely" | "inferred";
 
 export type Resolution = "resolved" | "partial" | "unresolved";
+export type ExtractionCapability = "semantic" | "structural" | "repository";
+export type ExtractionDerivation =
+  | "compiler-resolved"
+  | "parser-derived"
+  | "convention-derived"
+  | "repository-derived"
+  | "inferred";
+
+export interface ExtractionProvenance {
+  extractorId: string;
+  extractorVersion: string;
+  capability: ExtractionCapability;
+  derivation: ExtractionDerivation;
+  unresolvedReason: string | null;
+}
 
 export interface ApiNode {
   entityKey: string;
@@ -27,6 +42,8 @@ export interface ApiNode {
   file: string | null;
   exported: boolean;
   fanIn: number;
+  language: string | null;
+  provenance: ExtractionProvenance | null;
 }
 
 export interface ApiEdge {
@@ -37,6 +54,8 @@ export interface ApiEdge {
   origin: Origin;
   confidence: Confidence;
   resolution: Resolution;
+  language: string | null;
+  provenance: ExtractionProvenance | null;
 }
 
 export interface ApiContext {

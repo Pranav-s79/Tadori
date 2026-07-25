@@ -9,6 +9,38 @@ import {
   resolutionSchema
 } from "./enums.js";
 
+export const EXTRACTION_CAPABILITIES = ["semantic", "structural", "repository"] as const;
+export type ExtractionCapability = (typeof EXTRACTION_CAPABILITIES)[number];
+export const extractionCapabilitySchema = z.enum(EXTRACTION_CAPABILITIES);
+
+export const EXTRACTION_DERIVATIONS = [
+  "compiler-resolved",
+  "parser-derived",
+  "convention-derived",
+  "repository-derived",
+  "inferred"
+] as const;
+export type ExtractionDerivation = (typeof EXTRACTION_DERIVATIONS)[number];
+export const extractionDerivationSchema = z.enum(EXTRACTION_DERIVATIONS);
+
+/** Additive per-item attribution. Legacy snapshots legitimately omit it. */
+export const extractionProvenanceSchema = z.object({
+  extractorId: z.string().min(1),
+  extractorVersion: z.string().min(1),
+  capability: extractionCapabilitySchema,
+  derivation: extractionDerivationSchema,
+  unresolvedReason: z.string().min(1).nullable()
+});
+export type ExtractionProvenance = z.infer<typeof extractionProvenanceSchema>;
+
+export const snapshotExtractorSchema = z.object({
+  id: z.string().min(1),
+  version: z.string().min(1),
+  capability: extractionCapabilitySchema,
+  languages: z.array(z.string().min(1)).min(1)
+});
+export type SnapshotExtractor = z.infer<typeof snapshotExtractorSchema>;
+
 const hex64 = z.string().regex(/^[0-9a-f]{64}$/, "expected 64-char lowercase hex");
 const oneBasedLine = z.number().int().min(1);
 
@@ -60,7 +92,10 @@ export const graphNodeSchema = z.object({
   lineEnd: oneBasedLine.nullable(),
   signature: z.string().nullable(),
   bodyHash: hex64.nullable(),
-  evidence: z.array(evidenceSchema)
+  evidence: z.array(evidenceSchema),
+  /** Additive metadata; absent only for snapshots written before migration 7. */
+  language: z.string().min(1).nullable().optional(),
+  provenance: extractionProvenanceSchema.optional()
 });
 export type GraphNode = z.infer<typeof graphNodeSchema>;
 
@@ -74,7 +109,10 @@ export const graphEdgeSchema = z.object({
   origin: originSchema,
   confidence: confidenceSchema,
   resolution: resolutionSchema,
-  evidence: z.array(evidenceSchema)
+  evidence: z.array(evidenceSchema),
+  /** Additive metadata; absent only for snapshots written before migration 7. */
+  language: z.string().min(1).nullable().optional(),
+  provenance: extractionProvenanceSchema.optional()
 });
 export type GraphEdge = z.infer<typeof graphEdgeSchema>;
 
@@ -88,6 +126,8 @@ export const snapshotGraphSchema = z.object({
   analyzerVersion: z.string().min(1),
   files: z.array(graphFileSchema),
   nodes: z.array(graphNodeSchema),
-  edges: z.array(graphEdgeSchema)
+  edges: z.array(graphEdgeSchema),
+  /** Extractors that contributed to this snapshot, sorted by id then version. */
+  extractors: z.array(snapshotExtractorSchema).optional()
 });
 export type SnapshotGraph = z.infer<typeof snapshotGraphSchema>;

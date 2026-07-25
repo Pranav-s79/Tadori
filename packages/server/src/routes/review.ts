@@ -130,7 +130,8 @@ export async function registerReviewRoutes(app: FastifyInstance): Promise<void> 
       // captured for coalescing when coalesce=coalesced.
       let rawNodesAdded: GraphNode[];
       let rawNodesRemoved: GraphNode[];
-      let analyzerVersion: string;
+      let baseAnalyzerVersion: string;
+      let headAnalyzerVersion: string;
 
       if (kind === "working_tree" || kind === "staged") {
         let result;
@@ -150,7 +151,8 @@ export async function registerReviewRoutes(app: FastifyInstance): Promise<void> 
         nodesAdded = result.nodesAdded.map((node) => toToolNode(app, node));
         nodesRemoved = result.nodesRemoved.map((node) => toToolNode(app, node));
         edges = result.edges;
-        analyzerVersion = service.graph.analyzerVersion;
+        baseAnalyzerVersion = result.baseAnalyzerVersion ?? service.graph.analyzerVersion;
+        headAnalyzerVersion = result.headAnalyzerVersion ?? service.graph.analyzerVersion;
         baseDto = toSnapshotRowDto(service.snapshot);
         headDto = liveHeadDto(kind);
       } else {
@@ -187,8 +189,8 @@ export async function registerReviewRoutes(app: FastifyInstance): Promise<void> 
         rawNodesRemoved = baseGraph.nodes.filter((node) => !headKeys.has(node.entityKey));
         nodesAdded = rawNodesAdded.map((node) => toToolNode(app, node));
         nodesRemoved = rawNodesRemoved.map((node) => toToolNode(app, node));
-        // Head graph defines the diff's analyzer version.
-        analyzerVersion = headGraph.analyzerVersion;
+        baseAnalyzerVersion = baseGraph.analyzerVersion;
+        headAnalyzerVersion = headGraph.analyzerVersion;
         baseDto = toSnapshotRowDto(baseSnapshot);
         headDto = toSnapshotRowDto(headSnapshot);
       }
@@ -203,8 +205,13 @@ export async function registerReviewRoutes(app: FastifyInstance): Promise<void> 
       let ambiguousGroups: AmbiguousNodeGroupDto[] | undefined;
       if (wantCoalesced) {
         try {
-          const stageA = stageAMatch(rawNodesRemoved, rawNodesAdded, analyzerVersion);
-          const stageB = stageBMatch(stageA.remainingRemoved, stageA.remainingAdded, analyzerVersion);
+          if (baseAnalyzerVersion !== headAnalyzerVersion) {
+            throw new Error(
+              `Coalescing disabled across analyzer versions ${baseAnalyzerVersion} and ${headAnalyzerVersion}`
+            );
+          }
+          const stageA = stageAMatch(rawNodesRemoved, rawNodesAdded, headAnalyzerVersion);
+          const stageB = stageBMatch(stageA.remainingRemoved, stageA.remainingAdded, headAnalyzerVersion);
           const nodePairs = [...stageA.pairs, ...stageB.pairs];
           const { edgePairs } = coalesceEdges(edges, nodePairs);
           coalesced = buildCoalescedChanges(nodePairs, edgePairs, edges).map((change) => ({

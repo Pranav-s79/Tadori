@@ -1,6 +1,7 @@
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { createServer } from "node:net";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import open from "open";
 import {
   findDanglingEndpoints,
@@ -16,7 +17,11 @@ import { createServerApp } from "@tadori/server";
 import { parseServeFlags, type ServeFlags } from "./flags.js";
 import { resolveRepoRoot } from "./repoResolve.js";
 import { loadServeConfig } from "./config.js";
-import { renderStatusPage } from "./statusPage.js";
+
+const packagedVisualizationRoot = fileURLToPath(new URL("../viz", import.meta.url));
+const VISUALIZATION_DIST_ROOT = existsSync(path.join(packagedVisualizationRoot, "index.html"))
+  ? packagedVisualizationRoot
+  : fileURLToPath(new URL("../../../apps/viz/dist", import.meta.url));
 
 type ServerApp = Awaited<ReturnType<typeof createServerApp>>;
 
@@ -313,12 +318,8 @@ export async function runServe(argv: readonly string[], deps: RunServeDeps = {})
       db,
       repoRoot: root,
       refresh,
+      visualizationRoot: VISUALIZATION_DIST_ROOT,
       ...(pinnedSnapshotId === null ? {} : { snapshotId: pinnedSnapshotId })
-    });
-    app.get("/", async (_request, reply) => {
-      return reply.type("text/html").send(
-        renderStatusPage({ repoRoot: root, snapshotId, indexState, mode: "2d" })
-      );
     });
     // §11 step 1 carve-out: the listen call gets its own try/catch for the
     // exit-4 path (backstop for the probe's TOCTOU gap). Every other startup

@@ -81,7 +81,13 @@ export function PackageMapCanvas({ nodes, edges, positions, onGraphReady }: Pack
       graph.mergeEdgeAttributes(key, {
         size: 1,
         color: style.muted ? "#b2bec3" : "#636e72",
-        type: style.dash === null ? "line" : "dashed"
+        // Sigma ships no "dashed" edge-renderer program by default (no
+        // program is registered for it), which throws and crashes the whole
+        // canvas. Render every edge as the built-in "line" program; the
+        // dash/muted style intent still exists in `style` for a future
+        // dedicated edge-program registration, it just isn't drawn as a
+        // dash pattern yet.
+        type: "line"
       });
     });
 

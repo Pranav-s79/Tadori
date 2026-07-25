@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   confidenceSchema,
   evidenceKindSchema,
+  extractionProvenanceSchema,
   nodeKindSchema,
   originSchema,
   relationSchema,
@@ -64,7 +65,9 @@ export const toolNodeSchema = z
     evidenceOmittedCount: z.number().int().min(0),
     freshness: freshnessStatusSchema,
     stale: z.boolean(),
-    staleReason: freshnessReasonSchema
+    staleReason: freshnessReasonSchema,
+    language: z.string().min(1).nullable().optional(),
+    provenance: extractionProvenanceSchema.nullable().optional()
   })
   .strict();
 
@@ -83,7 +86,9 @@ export const toolEdgeSchema = z
     evidenceOmittedCount: z.number().int().min(0),
     freshness: freshnessStatusSchema,
     stale: z.boolean(),
-    staleReason: freshnessReasonSchema
+    staleReason: freshnessReasonSchema,
+    language: z.string().min(1).nullable().optional(),
+    provenance: extractionProvenanceSchema.nullable().optional()
   })
   .strict();
 

@@ -563,11 +563,51 @@ COMMIT;
 `
 };
 
+/**
+ * Corrective multi-language milestone: attribution is snapshot membership
+ * state, not stable entity identity. Nullable columns preserve legacy reads.
+ */
+const migration007: Migration = {
+  version: 7,
+  name: "per-item extraction provenance and snapshot extractor inventory",
+  sql: `
+PRAGMA foreign_keys = ON;
+BEGIN IMMEDIATE;
+
+ALTER TABLE snapshot_nodes ADD COLUMN language TEXT;
+ALTER TABLE snapshot_nodes ADD COLUMN extractor_id TEXT;
+ALTER TABLE snapshot_nodes ADD COLUMN extractor_version TEXT;
+ALTER TABLE snapshot_nodes ADD COLUMN capability TEXT CHECK (capability IS NULL OR capability IN ('semantic','structural','repository'));
+ALTER TABLE snapshot_nodes ADD COLUMN derivation TEXT CHECK (derivation IS NULL OR derivation IN ('compiler-resolved','parser-derived','convention-derived','repository-derived','inferred'));
+ALTER TABLE snapshot_nodes ADD COLUMN unresolved_reason TEXT;
+
+ALTER TABLE snapshot_edges ADD COLUMN language TEXT;
+ALTER TABLE snapshot_edges ADD COLUMN extractor_id TEXT;
+ALTER TABLE snapshot_edges ADD COLUMN extractor_version TEXT;
+ALTER TABLE snapshot_edges ADD COLUMN capability TEXT CHECK (capability IS NULL OR capability IN ('semantic','structural','repository'));
+ALTER TABLE snapshot_edges ADD COLUMN derivation TEXT CHECK (derivation IS NULL OR derivation IN ('compiler-resolved','parser-derived','convention-derived','repository-derived','inferred'));
+ALTER TABLE snapshot_edges ADD COLUMN unresolved_reason TEXT;
+
+CREATE TABLE snapshot_extractors (
+    snapshot_id INTEGER NOT NULL REFERENCES repository_snapshots(id) ON DELETE CASCADE,
+    extractor_id TEXT NOT NULL,
+    extractor_version TEXT NOT NULL,
+    capability TEXT NOT NULL CHECK (capability IN ('semantic','structural','repository')),
+    languages_json TEXT NOT NULL CHECK (json_valid(languages_json)),
+    PRIMARY KEY (snapshot_id, extractor_id, extractor_version)
+);
+
+INSERT INTO schema_migrations(version) VALUES (7);
+COMMIT;
+`
+};
+
 export const MIGRATIONS: readonly Migration[] = [
   migration001,
   migration002,
   migration003,
   migration004,
   migration005,
-  migration006
+  migration006,
+  migration007
 ];

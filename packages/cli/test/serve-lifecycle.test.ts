@@ -53,11 +53,15 @@ describe("runServe lifecycle", () => {
     const response = await fetch(`${url}api/v1/snapshot`);
     expect(response.status).toBe(200);
 
-    const statusPageResponse = await fetch(url as string);
-    const statusPageHtml = await statusPageResponse.text();
-    expect(statusPageHtml).toContain(path.resolve(repoRoot));
-    expect(statusPageHtml.toLowerCase()).not.toContain("dashboard");
-    expect(statusPageHtml).toContain("not yet built");
+    const visualizationResponse = await fetch(url as string);
+    const visualizationHtml = await visualizationResponse.text();
+    expect(visualizationResponse.status).toBe(200);
+    expect(visualizationHtml).toContain("<title>Tadori</title>");
+    const assetPath = visualizationHtml.match(/src="(\/assets\/[^"]+)"/)?.[1];
+    expect(assetPath).toBeDefined();
+    const assetResponse = await fetch(new URL(assetPath!, url as string));
+    expect(assetResponse.status).toBe(200);
+    expect(assetResponse.headers.get("content-type")).toContain("text/javascript");
 
     controller.abort();
     const exitCode = await runPromise;
@@ -152,7 +156,9 @@ describe("runServe lifecycle", () => {
     });
 
     expect(exitCode).toBe(2);
-    expect(stderrLines.join("")).toContain("is not a supported TypeScript/JavaScript repository");
+    expect(stderrLines.join("")).toContain(
+      "does not contain any supported or structurally indexable files"
+    );
   });
 
   it("an invalid/nonexistent --snapshot id exits 3 naming the id", async () => {

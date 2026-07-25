@@ -5,10 +5,20 @@ import { sha256Hex, sha256HexBytes } from "@tadori/core";
 import type { Database, InsertSnapshotOptions, InsertSnapshotResult } from "@tadori/store";
 import { insertSnapshotGraph } from "@tadori/store";
 import { computeCoChangeEdges } from "./coChange.js";
-import { extractGraph, type ExtractedGraph, type IndexDiagnostic } from "./extract.js";
+import {
+  extractGraph,
+  type ExtractedGraph,
+  type ExtractGraphOptions,
+  type IndexDiagnostic
+} from "./extract.js";
 import { createProjectServices } from "./project.js";
 import { scanRepository, type ScanResult } from "./scan.js";
 import { ANALYZER_VERSION } from "./version.js";
+import { attributeTypeScriptExtraction } from "./typescriptExtractor.js";
+import { structuralExtractor } from "./structuralExtractor.js";
+import { LANGUAGE_BY_ID } from "./languageRegistry.js";
+import { interfaceExtractor } from "./interfaceExtractor.js";
+import { extractCrossLanguageBoundaries } from "./crossLanguageExtractor.js";
 
 export interface IndexOptions {
   kind: RepoStateKind;
@@ -37,24 +47,151 @@ export class InvalidRepositorySourceError extends Error {
   }
 }
 
-function rejectSyntacticallyInvalidRepository(
+function collectSyntacticDiagnostics(
   services: ReturnType<typeof createProjectServices>,
   scan: ScanResult
-): void {
-  const diagnostics: string[] = [];
+): IndexDiagnostic[] {
+  const diagnostics: IndexDiagnostic[] = [];
   for (const file of scan.indexedFiles) {
     if (file.language !== "typescript" && file.language !== "javascript") {
       continue;
     }
+    if (services.program.getSourceFile(file.absolutePath) === undefined) {
+      continue;
+    }
     for (const diagnostic of services.languageService.getSyntacticDiagnostics(file.absolutePath)) {
-      diagnostics.push(
-        `${file.normalizedPath}: ${String(diagnostic.code)} ${String(diagnostic.messageText)}`
-      );
+      diagnostics.push({
+        file: file.normalizedPath,
+        message: `TypeScript syntax ${String(diagnostic.code)}: ${String(diagnostic.messageText)}`
+      });
     }
   }
-  if (diagnostics.length > 0) {
-    throw new InvalidRepositorySourceError(diagnostics.sort());
+  return diagnostics.sort((left, right) =>
+    `${left.file ?? ""}\0${left.message}`.localeCompare(`${right.file ?? ""}\0${right.message}`)
+  );
+}
+
+/** Shared full/regional adapter pipeline used by initial and incremental indexing. */
+export function extractRepositoryGraph(
+  root: string,
+  captured: RepositoryCapture,
+  services: ReturnType<typeof createProjectServices>,
+  options: ExtractGraphOptions = {}
+): ExtractedGraph & { extractors?: SnapshotGraph["extractors"] } {
+  const { scan } = captured;
+  const extracted: ExtractedGraph & { extractors?: SnapshotGraph["extractors"] } =
+    attributeTypeScriptExtraction(
+      extractGraph(root, scan, services, { ...options, fileContents: captured.fileContents }),
+      scan
+    );
+  if (options.fileRegion === undefined) {
+    extracted.diagnostics.unshift(...collectSyntacticDiagnostics(services, scan));
+    const structural = structuralExtractor.extract({
+      root,
+      capture: captured,
+      registrations: LANGUAGE_BY_ID
+    });
+    if (scan.indexedFiles.some((file) => structural.languages.includes(file.language))) {
+      const nodeByKey = new Map(extracted.nodes.map((node) => [node.entityKey, node]));
+      for (const node of structural.nodes) {
+        if (!nodeByKey.has(node.entityKey)) nodeByKey.set(node.entityKey, node);
+      }
+      const edgeByKey = new Map(extracted.edges.map((edge) => [edge.entityKey, edge]));
+      for (const edge of structural.edges) {
+        if (!edgeByKey.has(edge.entityKey)) edgeByKey.set(edge.entityKey, edge);
+      }
+      extracted.nodes = [...nodeByKey.values()].sort((left, right) =>
+        left.canonicalIdentity.localeCompare(right.canonicalIdentity)
+      );
+      extracted.edges = [...edgeByKey.values()].sort((left, right) =>
+        left.canonicalIdentity.localeCompare(right.canonicalIdentity)
+      );
+      extracted.diagnostics.push(...structural.diagnostics);
+      extracted.extractors = [
+        ...(extracted.extractors ?? []),
+        {
+          id: structural.extractorId,
+          version: structural.extractorVersion,
+          capability: structural.capability,
+          languages: [...new Set(
+            scan.indexedFiles
+              .map((file) => file.language)
+              .filter((language) => structural.languages.includes(language))
+          )].sort()
+        }
+      ].sort((left, right) => left.id.localeCompare(right.id) || left.version.localeCompare(right.version));
+    }
+    const repositoryFiles = interfaceExtractor.extract({
+      root,
+      capture: captured,
+      registrations: LANGUAGE_BY_ID
+    });
+    if (scan.indexedFiles.some((file) => repositoryFiles.languages.includes(file.language))) {
+      // The legacy TS adapter already owns ADR files in TS projects. Avoid a
+      // second Markdown projection for those same documents so adapter parity
+      // remains exact while ordinary Markdown in mixed repositories still
+      // receives repository-level sections.
+      const semanticDocumentFiles = new Set(
+        extracted.nodes.flatMap((node) => node.kind === "adr" && node.file !== null ? [node.file] : [])
+      );
+      const suppressedNodeKeys = new Set(
+        repositoryFiles.nodes.flatMap((node) =>
+          node.language === "markdown" && node.file !== null && semanticDocumentFiles.has(node.file)
+            ? [node.entityKey]
+            : []
+        )
+      );
+      const nodeByKey = new Map(extracted.nodes.map((node) => [node.entityKey, node]));
+      for (const node of repositoryFiles.nodes) {
+        if (suppressedNodeKeys.has(node.entityKey)) continue;
+        if (!nodeByKey.has(node.entityKey)) nodeByKey.set(node.entityKey, node);
+      }
+      const edgeByKey = new Map(extracted.edges.map((edge) => [edge.entityKey, edge]));
+      for (const edge of repositoryFiles.edges) {
+        if (suppressedNodeKeys.has(edge.srcEntityKey) || suppressedNodeKeys.has(edge.dstEntityKey)) continue;
+        if (!edgeByKey.has(edge.entityKey)) edgeByKey.set(edge.entityKey, edge);
+      }
+      extracted.nodes = [...nodeByKey.values()].sort((left, right) =>
+        left.canonicalIdentity.localeCompare(right.canonicalIdentity)
+      );
+      extracted.edges = [...edgeByKey.values()].sort((left, right) =>
+        left.canonicalIdentity.localeCompare(right.canonicalIdentity)
+      );
+      extracted.diagnostics.push(...repositoryFiles.diagnostics);
+      extracted.extractors = [
+        ...(extracted.extractors ?? []),
+        {
+          id: repositoryFiles.extractorId,
+          version: repositoryFiles.extractorVersion,
+          capability: repositoryFiles.capability,
+          languages: [...new Set(
+            scan.indexedFiles
+              .map((file) => file.language)
+              .filter((language) => repositoryFiles.languages.includes(language))
+          )].sort()
+        }
+      ].sort((left, right) => left.id.localeCompare(right.id) || left.version.localeCompare(right.version));
+    }
+    const boundaries = extractCrossLanguageBoundaries({ root, capture: captured, registrations: LANGUAGE_BY_ID }, extracted.nodes);
+    if (boundaries.edges.length > 0) {
+      const edgeByKey = new Map(extracted.edges.map((edge) => [edge.entityKey, edge]));
+      for (const edge of boundaries.edges) if (!edgeByKey.has(edge.entityKey)) edgeByKey.set(edge.entityKey, edge);
+      extracted.edges = [...edgeByKey.values()].sort((left, right) =>
+        left.canonicalIdentity.localeCompare(right.canonicalIdentity)
+      );
+      extracted.diagnostics.push(...boundaries.diagnostics);
+      extracted.extractors = [
+        ...(extracted.extractors ?? []),
+        {
+          id: boundaries.extractorId,
+          version: boundaries.extractorVersion,
+          capability: boundaries.capability,
+          languages: boundaries.languages
+        }
+      ].sort((left, right) => left.id.localeCompare(right.id) || left.version.localeCompare(right.version));
+    }
   }
+  return extracted;
 }
 
 export interface RepositoryCapture {
@@ -133,10 +270,9 @@ export function indexRepository(rootPath: string, options: IndexOptions): IndexR
       ])
     )
   );
-  let extracted: ExtractedGraph;
+  let extracted: ExtractedGraph & { extractors?: SnapshotGraph["extractors"] };
   try {
-    rejectSyntacticallyInvalidRepository(services, scan);
-    extracted = extractGraph(root, scan, services, { fileContents: captured.fileContents });
+    extracted = extractRepositoryGraph(root, captured, services);
     const verified = captureRepository(root);
     if (verified.workspaceHash !== captured.workspaceHash) {
       throw new WorkspaceChangedDuringIndexError();
@@ -164,7 +300,8 @@ export function indexRepository(rootPath: string, options: IndexOptions): IndexR
     analyzerVersion: ANALYZER_VERSION,
     files: extracted.files,
     nodes: extracted.nodes,
-    edges: [...extracted.edges, ...coChangeEdges]
+    edges: [...extracted.edges, ...coChangeEdges],
+    extractors: extracted.extractors
   };
 
   return {

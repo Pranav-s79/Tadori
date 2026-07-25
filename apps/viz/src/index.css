@@ -1,0 +1,25 @@
+/* Minimal layout stylesheet: establishes the height chain the graph canvas
+   needs. Sigma requires its container to have a real (non-zero) height;
+   without this, html/body/#root default to content-height (0), the canvas
+   throws "Container has no height", and React never paints (white screen). */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-graph-stage {
+  flex: 1;
+  min-height: 0;
+}

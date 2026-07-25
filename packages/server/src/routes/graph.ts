@@ -87,7 +87,9 @@ export function toToolNode(app: FastifyInstance, node: GraphNode): ToolNode {
     evidenceOmittedCount: 0,
     freshness: freshness.status,
     stale: freshness.stale,
-    staleReason: freshness.reason
+    staleReason: freshness.reason,
+    language: node.language ?? null,
+    provenance: node.provenance ?? null
   };
 }
 
@@ -108,7 +110,9 @@ export function toToolEdge(app: FastifyInstance, edge: GraphEdge): ToolEdge {
     evidenceOmittedCount: 0,
     freshness: freshness.status,
     stale: freshness.stale,
-    staleReason: freshness.reason
+    staleReason: freshness.reason,
+    language: edge.language ?? null,
+    provenance: edge.provenance ?? null
   };
 }
 

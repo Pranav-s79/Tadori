@@ -1,0 +1,2 @@
+recovered: true
+broken: [1, 2  # deliberate parser-recovery sentinel

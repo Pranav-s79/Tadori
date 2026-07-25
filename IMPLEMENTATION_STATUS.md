@@ -2,6 +2,34 @@
 
 # Current State (always overwritten)
 
+Current node: ML-00 — multi-language repository intelligence transition.
+Status: implementation and local validation complete in the working tree.
+Active contract: `docs/Specs/Tadori-Multilanguage-Transition.md`. The v2.1
+documents are historical compatibility references and no longer constrain
+language scope.
+
+Implemented: central language registry and universal safe-text scanning;
+compiler-backed TypeScript/JavaScript adapter parity; pinned/checksummed
+Tree-sitter WASM extraction for Python, C, C++, Go, Rust, and Java;
+repository/interface extraction for Proto, Terraform, YAML, Dockerfile,
+Markdown, JSON, shell/Make, TOML, and CMake; explicit evidenced cross-language
+HTTP, generated-binding, FFI, subprocess, and build-link edges; per-item
+language/capability/provenance persistence and API exposure; syntax-failure
+isolation; deterministic mixed-language oracle; cross-version coalescing guard;
+production visualization serving; and an installable package build.
+
+Validation evidence (2026-07-24): `pnpm skills:check`, `pnpm typecheck`,
+`pnpm lint`, `python validate_fixtures.py`, `pnpm fixtures:validate`,
+`pnpm fixtures:index`, and `pnpm fixtures:typecheck` pass; full Vitest is
+78/78 files and 472/472 tests. The deterministic mixed oracle passes twice
+without mutation. A packed `tadori@0.1.0` tarball installed outside the
+monorepo, indexed GoogleCloudPlatform/microservices-demo at pinned commit
+`9a4616e77f0f9cbcbecaf27d711c38890dda1404` (324 files, 6,568 nodes,
+7,433 edges), served the built visualization and API, and purged its local
+index with a clean git worktree afterward. The capability truth source is
+`docs/MULTILANGUAGE_CAPABILITIES.json`; unsupported semantic facts remain
+absent or explicitly unresolved.
+
 Current node: 08-11 — accessible non-canvas graph table (viz a11y slice): IMPLEMENTED on branch bp/08-11-a11y, pending CI/merge. 11-03 profile model MERGED (#48=7c975f2). 11-01/02 bench (#46/#47). 12-01 s1/s2 (#44/#45). 09-05 (#43). 08-04 (#42).
 Branch: bp/08-11-a11y (off main 7c975f2)
 Latest commit: 7c975f2 main (PR #48 merged — 11-03 bench competitor-profile model, CI green both OSes). 11-02 (#47). 11-01 (#46). 12-01 s2 (#45). 12-01 s1 (#44). 09-05 (#43). 08-04 (#42). 08-07E (#41). 08-07D (#40). 08-07C (#39). 08-07B (#38). 08-07A (#37). 08-07 (#36). 09-04 (#35).

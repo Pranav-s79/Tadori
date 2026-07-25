@@ -9,13 +9,10 @@ import {
   type Database,
   type SnapshotHead
 } from "@tadori/store";
-import {
-  extractGraph,
-  type ExtractedGraph,
-  type IndexDiagnostic
-} from "./extract.js";
+import type { ExtractedGraph, IndexDiagnostic } from "./extract.js";
 import {
   captureRepository,
+  extractRepositoryGraph,
   indexRepositoryIntoStore,
   type RepositoryCapture
 } from "./indexRepository.js";
@@ -134,7 +131,8 @@ function graphFromStored(head: SnapshotHead, root: string, stored: ReturnType<ty
     analyzerVersion: stored.analyzerVersion,
     files: stored.files,
     nodes: stored.nodes,
-    edges: stored.edges
+    edges: stored.edges,
+    extractors: stored.extractors
   };
 }
 
@@ -156,7 +154,7 @@ function capturedTexts(root: string, capture: RepositoryCapture): Map<string, st
 function composeGraph(
   root: string,
   capture: RepositoryCapture,
-  extracted: ExtractedGraph,
+  extracted: ExtractedGraph & { extractors?: SnapshotGraph["extractors"] },
   kind: RepoStateKind,
   label: string | null
 ): SnapshotGraph {
@@ -169,7 +167,8 @@ function composeGraph(
     analyzerVersion: ANALYZER_VERSION,
     files: extracted.files,
     nodes: extracted.nodes,
-    edges: extracted.edges
+    edges: extracted.edges,
+    extractors: extracted.extractors
   };
 }
 
@@ -592,10 +591,12 @@ export class IncrementalRepositoryIndexer {
       );
     }
     const services = this.projects.initial();
-    this.rejectSyntacticallyInvalidChanges(services, capture, changedPaths);
+    // The compiler AST is recovery-capable. Syntax diagnostics are retained by
+    // full extraction; a malformed TS/JS file must not prevent unaffected
+    // languages from publishing a valid mixed-repository snapshot.
 
     const extractionStartedAt = performance.now();
-    let extracted: ExtractedGraph;
+    let extracted: ExtractedGraph & { extractors?: SnapshotGraph["extractors"] };
     let graph: SnapshotGraph;
     let mode: Exclude<RefreshMode, "noop">;
     let reason: string;
@@ -608,12 +609,16 @@ export class IncrementalRepositoryIndexer {
       structuralHint ||
       rootsChanged ||
       configChanged ||
-      regionalCandidates.length !== changedPaths.length;
+      regionalCandidates.length !== changedPaths.length ||
+      changedPaths.some((file) => {
+        const language = afterFiles.get(file)?.language ?? beforeFiles.get(file)?.language;
+        return language !== undefined && !["typescript", "javascript"].includes(language);
+      });
 
     if (!fullRequired) {
       affectedPaths = this.reverseImportClosure(regionalCandidates);
       try {
-        extracted = extractGraph(this.root, capture.scan, services, {
+        extracted = extractRepositoryGraph(this.root, capture, services, {
           fileRegion: affectedPaths,
           seedGraph: this.graph,
           fileContents: capture.fileContents
@@ -627,7 +632,8 @@ export class IncrementalRepositoryIndexer {
             label: target.label,
             baseCommitSha: target.baseCommitSha,
             workspaceHash: target.workspaceHash,
-            analyzerVersion: target.analyzerVersion
+            analyzerVersion: target.analyzerVersion,
+            extractors: target.extractors
           }
         });
         const region = new Set(affectedPaths);
@@ -646,18 +652,14 @@ export class IncrementalRepositoryIndexer {
       } catch (error) {
         // Every regional extraction/merge failure is intentionally converted
         // into a deterministic complete extraction.
-        extracted = extractGraph(this.root, capture.scan, services, {
-          fileContents: capture.fileContents
-        });
+        extracted = extractRepositoryGraph(this.root, capture, services);
         graph = composeGraph(this.root, capture, extracted, this.kind, this.label);
         mode = "full";
         reason = `regional proof failed: ${error instanceof Error ? error.message : String(error)}`;
         affectedPaths = capture.scan.indexedFiles.map((file) => file.normalizedPath);
       }
     } else {
-      extracted = extractGraph(this.root, capture.scan, services, {
-        fileContents: capture.fileContents
-      });
+      extracted = extractRepositoryGraph(this.root, capture, services);
       graph = composeGraph(this.root, capture, extracted, this.kind, this.label);
       mode = "full";
       affectedPaths = capture.scan.indexedFiles.map((file) => file.normalizedPath);

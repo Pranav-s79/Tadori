@@ -1,4 +1,4 @@
-# Tadori v2.1 — Remaining Build Backlog
+# Tadori — Historical roadmap and multi-language transition backlog
 
 Source of truth for remaining work. Maintained by the planning model; consumed
 by builder agents via `blueprints/`. State lives in files, never in chat.
@@ -61,7 +61,9 @@ default (Sigma.js/WebGL, seeded frozen layout, semantic zoom packages → files 
 exported symbols); provenance edge legend fixed; evidence/origin/confidence/
 resolution visible everywhere; localhost-only; no cloud dependency; invalid
 snapshots never served; fixtures authoritative; Graphify is ignored reference
-material only; TypeScript/JavaScript only; ATLAS separate; no runtime tracing.
+material only; ATLAS separate; no runtime tracing. The former
+TypeScript/JavaScript-only scope was superseded by the multi-language
+transition on 2026-07-24.
 
 Decisions locked 2026-07-15 (owner answers):
 - Push authorized once for existing sprint branches + resulting `main`; no tags/releases.

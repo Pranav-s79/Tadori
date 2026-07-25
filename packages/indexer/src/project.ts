@@ -208,6 +208,7 @@ const DEFAULT_OPTIONS: ts.CompilerOptions = {
   target: ts.ScriptTarget.ES2022,
   module: ts.ModuleKind.NodeNext,
   moduleResolution: ts.ModuleResolutionKind.NodeNext,
+  allowJs: true,
   strict: true,
   noEmit: true
 };

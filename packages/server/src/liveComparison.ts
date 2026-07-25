@@ -42,6 +42,8 @@ export interface LiveComparisonResult {
   nodesAdded: GraphNode[];
   nodesRemoved: GraphNode[];
   edges: EdgeDiffRow[];
+  baseAnalyzerVersion?: string;
+  headAnalyzerVersion?: string;
 }
 
 /**
@@ -191,7 +193,11 @@ export async function computeLiveComparison(
 
     const headGraph = loadSnapshotGraph(tempDb, headSnapshotId);
     const baseGraph = loadSnapshotGraph(servedDb, activeSnapshotId);
-    return diffGraphs(baseGraph, headGraph);
+    return {
+      ...diffGraphs(baseGraph, headGraph),
+      baseAnalyzerVersion: baseGraph.analyzerVersion,
+      headAnalyzerVersion: headGraph.analyzerVersion
+    };
   } finally {
     // Dispose in reverse acquisition order (close DB before removing its dir).
     for (const dispose of disposers.reverse()) {

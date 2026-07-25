@@ -22,7 +22,8 @@ For graph storage or indexing changes, additionally verify `PRAGMA
 foreign_key_check`, dangling-endpoint membership validation, deterministic
 repeated indexing, and exact fixture comparison. Inspect both staged and
 unstaged Git diffs, confirm frozen specifications, fixtures, and schemas remain
-unchanged, and update `IMPLEMENTATION_STATUS.md`.
+compatible, validate the capability matrix and mixed-language oracle, and
+update `IMPLEMENTATION_STATUS.md`.
 
 Do not claim success without executed validation evidence. If a check cannot be
 run, state the exact command, result, reason, and next action; do not infer a
