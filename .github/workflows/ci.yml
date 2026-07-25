@@ -14,9 +14,29 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Supported alpha runtime matrix: maintained LTS lines only. Node 24 is
+        # the prioritized line; Node 26 is the current release; Node 22 is kept
+        # for compatibility. Node 25 (non-LTS/out-of-maintenance) is NOT targeted.
         os: [ubuntu-latest, windows-latest]
+        node: ["22.14.0", "24.18.0", "26.5.0"]
+        exclude:
+          # Windows + Node >=24 aborts inside libuv's recursive fs.watch
+          # ("Assertion failed: !_wcsnicmp, src\\win\\fs-event.c:72"), which
+          # crashes the child in packages/mcp/test/stdio.test.ts. This is an
+          # upstream Node/libuv Windows regression, not a Tadori or
+          # better-sqlite3 issue (the native binding loads on every combo).
+          # Node 24/26 stay verified on Linux; Windows stays verified on 22.
+          # Tracked as a known limitation until the libuv fix ships.
+          - os: windows-latest
+            node: "24.18.0"
+          - os: windows-latest
+            node: "26.5.0"
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    env:
+      # pnpm honors `use-node-version` from .npmrc (the local-dev pin); override
+      # it per matrix leg so the matrix Node — not the pinned one — runs here.
+      npm_config_use_node_version: ${{ matrix.node }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,9 +47,14 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Explicit better-sqlite3 load check on this exact OS + Node combination:
+      # require the native binding to load and run a query, proving a prebuilt
+      # binary exists for this ABI (never a silent source-build fallback).
+      - name: better-sqlite3 loads on ${{ matrix.os }} / node ${{ matrix.node }}
+        run: pnpm --filter @tadori/store exec node -e "const D=require('better-sqlite3'); const db=new D(':memory:'); db.exec('CREATE TABLE t(x)'); db.prepare('INSERT INTO t VALUES (?)').run(1); if (db.prepare('SELECT x FROM t').get().x !== 1) { throw new Error('better-sqlite3 query failed'); } db.close(); console.log('better-sqlite3 OK on', process.version);"
       - run: pnpm skills:check
       - run: pnpm typecheck
       - run: pnpm lint
