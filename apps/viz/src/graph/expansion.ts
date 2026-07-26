@@ -99,11 +99,16 @@ export interface FileLevelData {
 export function applyExpansion(graph: Graph, packageKey: string, data: FileLevelData): void {
   const positionByKey = new Map(data.positions.map((p) => [p.entityKey, p]));
   for (const node of data.nodes) {
+    if (!positionByKey.has(node.entityKey)) {
+      throw new Error(`Expanded file node ${JSON.stringify(node.entityKey)} has no served layout position`);
+    }
+  }
+  for (const node of data.nodes) {
     const nodeId = fileNodeId(packageKey, node.entityKey);
     if (graph.hasNode(nodeId)) {
       continue;
     }
-    const pos = positionByKey.get(node.entityKey);
+    const pos = positionByKey.get(node.entityKey)!;
     graph.addNode(nodeId, {
       kind: node.kind,
       qualifiedName: node.qualifiedName,
@@ -112,9 +117,11 @@ export function applyExpansion(graph: Graph, packageKey: string, data: FileLevel
       file: node.file,
       exported: node.exported,
       fanIn: node.fanIn,
-      x: pos?.x ?? 0,
-      y: pos?.y ?? 0,
-      pinned: pos?.pinned ?? false,
+      language: node.language ?? null,
+      provenance: node.provenance ?? null,
+      x: pos.x,
+      y: pos.y,
+      pinned: pos.pinned,
       expandedFrom: packageKey,
       size: 4,
       color: "#26de81"
@@ -132,6 +139,8 @@ export function applyExpansion(graph: Graph, packageKey: string, data: FileLevel
       origin: edge.origin,
       confidence: edge.confidence,
       resolution: edge.resolution,
+      language: edge.language ?? null,
+      provenance: edge.provenance ?? null,
       expandedFrom: packageKey
     });
   }
@@ -177,11 +186,16 @@ const SYMBOL_LABEL_MAX = 18;
 export function applySymbolExpansion(graph: Graph, fileKey: string, data: FileLevelData): void {
   const positionByKey = new Map(data.positions.map((p) => [p.entityKey, p]));
   for (const node of data.nodes) {
+    if (!positionByKey.has(node.entityKey)) {
+      throw new Error(`Expanded symbol node ${JSON.stringify(node.entityKey)} has no served layout position`);
+    }
+  }
+  for (const node of data.nodes) {
     const nodeId = symbolNodeId(fileKey, node.entityKey);
     if (graph.hasNode(nodeId)) {
       continue;
     }
-    const pos = positionByKey.get(node.entityKey);
+    const pos = positionByKey.get(node.entityKey)!;
     graph.addNode(nodeId, {
       kind: node.kind,
       qualifiedName: node.qualifiedName,
@@ -190,9 +204,11 @@ export function applySymbolExpansion(graph: Graph, fileKey: string, data: FileLe
       file: node.file,
       exported: node.exported,
       fanIn: node.fanIn,
-      x: pos?.x ?? 0,
-      y: pos?.y ?? 0,
-      pinned: pos?.pinned ?? false,
+      language: node.language ?? null,
+      provenance: node.provenance ?? null,
+      x: pos.x,
+      y: pos.y,
+      pinned: pos.pinned,
       expandedFromFile: fileKey,
       size: 3,
       color: "#fd9644"
@@ -210,6 +226,8 @@ export function applySymbolExpansion(graph: Graph, fileKey: string, data: FileLe
       origin: edge.origin,
       confidence: edge.confidence,
       resolution: edge.resolution,
+      language: edge.language ?? null,
+      provenance: edge.provenance ?? null,
       expandedFromFile: fileKey
     });
   }

@@ -28,6 +28,22 @@ export interface Page<T> {
   items: T[];
   nextCursor: string | null;
   total: number | null;
+  /** Rows after this page; additive LOD accounting for bounded clients. */
+  omittedCount?: number;
+  /** Present only for server-derived package projection pages. */
+  projection?: {
+    candidateEdgeCount: number;
+    projectedEdgeCount: number;
+    omittedEdgeCount: number;
+    ambiguousEntityCount: number;
+    unownedEntityCount: number;
+  };
+  scope?: {
+    totalNodeCount: number;
+    boundedNodeCount: number;
+    omittedNodeCount: number;
+    omittedEdgeCount: number;
+  };
 }
 
 export interface ApiError {

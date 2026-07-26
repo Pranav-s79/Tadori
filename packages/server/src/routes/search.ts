@@ -2,6 +2,8 @@ import type { NodeKind } from "@tadori/core";
 import { NODE_KINDS } from "@tadori/core";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { badRequest } from "../errors.js";
+import { getPackageProjection } from "../packageProjection.js";
+import { selectLodScope } from "../lodScope.js";
 
 const NODE_KIND_SET: ReadonlySet<string> = new Set(NODE_KINDS);
 
@@ -35,6 +37,18 @@ export async function registerSearchRoutes(app: FastifyInstance): Promise<void> 
     }
     const service = app.graphState.current();
     const result = service.searchNodes(q, limit, kind as NodeKind | undefined, offset);
-    return reply.send(result);
+    const projection = getPackageProjection(service.graph);
+    const visiblePackages = selectLodScope(service.graph, "package", {}, projection).keys;
+    return reply.send({
+      ...result,
+      matches: result.matches.map((match) => {
+        const representative = projection.representativeByEntityKey.get(match.entity_key) ?? null;
+        return {
+          ...match,
+          representative_package_key:
+            representative !== null && visiblePackages.has(representative) ? representative : null
+        };
+      })
+    });
   });
 }

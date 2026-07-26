@@ -8,6 +8,7 @@ export default tseslint.config(
       "packages/fixtures/**",
       "packages/bench/fixtures/**",
       "docs/**",
+      "front_end_template/**",
       "**/dist/**",
       "**/coverage/**",
       ".tmp/**",

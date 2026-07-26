@@ -31,6 +31,9 @@ const DEFAULT_PAGE = { limit: 20, offset: 0 } as const;
 export interface SearchStoreCallbacks {
   focusEntity?: (entityKey: string) => void;
   openInspectionPanel?: (entityKey: string) => void;
+  filters?: SearchFilters;
+  onFiltersChange?: (filters: SearchFilters) => void;
+  languageOptions?: readonly string[];
 }
 
 function deriveStatus(result: SearchApiResult): SearchStatus {
@@ -50,7 +53,8 @@ export function useSearchStore(callbacks: SearchStoreCallbacks = {}): SearchStat
   selectResult(entityKey: string): void;
 } {
   const [query, setQueryState] = useState("");
-  const [filters, setFiltersState] = useState<SearchFilters>(defaultFilters);
+  const [localFilters, setFiltersState] = useState<SearchFilters>(defaultFilters);
+  const filters = callbacks.filters ?? localFilters;
   const [results, setResults] = useState<SearchApiResult | null>(null);
   const [status, setStatus] = useState<SearchStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -119,15 +123,17 @@ export function useSearchStore(callbacks: SearchStoreCallbacks = {}): SearchStat
   const setFilters = useCallback((f: SearchFilters) => {
     // Render-overlay only: updating filters does NOT re-issue a search here.
     // The kind param takes effect on the NEXT query the user types.
-    setFiltersState(f);
-  }, []);
+    if (callbacks.onFiltersChange !== undefined) callbacks.onFiltersChange(f);
+    else setFiltersState(f);
+  }, [callbacks]);
 
   const selectResult = useCallback(
     (entityKey: string) => {
-      callbacks.focusEntity?.(entityKey);
+      const row = results?.rows.find((candidate) => candidate.entityKey === entityKey);
+      callbacks.focusEntity?.(row?.representativePackageKey ?? entityKey);
       callbacks.openInspectionPanel?.(entityKey);
     },
-    [callbacks]
+    [callbacks, results]
   );
 
   useEffect(() => {

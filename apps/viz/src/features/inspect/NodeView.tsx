@@ -85,6 +85,9 @@ export function NodeView({ entityKey, repoRoot, onPivot }: NodeViewProps): React
         <h3>{node.displayName}</h3>
         <dl className="inspect-meta">
           <div><dt>Kind</dt><dd>{node.kind}</dd></div>
+          <div><dt>Language</dt><dd>{node.language ?? "not attributed"}</dd></div>
+          <div><dt>Extraction capability</dt><dd>{node.provenance?.capability ?? "legacy snapshot"}</dd></div>
+          <div><dt>Derivation</dt><dd>{node.provenance?.derivation ?? "not attributed"}</dd></div>
           <div><dt>Qualified name</dt><dd>{node.qualifiedName}</dd></div>
           <div><dt>Location</dt><dd>{location}</dd></div>
           <div><dt>Exported</dt><dd>{node.exported ? "yes" : "no"}</dd></div>

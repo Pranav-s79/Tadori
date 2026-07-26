@@ -43,7 +43,14 @@ export function readCommitFileSets(
     stdout = execFileSync(
       "git",
       ["log", "--no-merges", "--name-only", "--format=%x00%H", "-n", String(maxCommits), "--", "."],
-      { cwd: rootPath, shell: false, windowsHide: true, maxBuffer: 64 * 1024 * 1024, encoding: "utf8" }
+      {
+        cwd: rootPath,
+        shell: false,
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "pipe"],
+        maxBuffer: 64 * 1024 * 1024,
+        encoding: "utf8"
+      }
     );
   } catch {
     return [];

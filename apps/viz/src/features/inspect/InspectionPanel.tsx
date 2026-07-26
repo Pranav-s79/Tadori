@@ -26,6 +26,8 @@ interface InspectionPanelProps {
  */
 export function InspectionPanel({ store, repoRoot, edgesByKey }: InspectionPanelProps): ReactElement | null {
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
   const { current, previous, openEntity, goBack, close } = store;
 
   const onPivot = useCallback(
@@ -36,8 +38,16 @@ export function InspectionPanel({ store, repoRoot, edgesByKey }: InspectionPanel
   );
 
   useEffect(() => {
-    if (current !== null) {
+    if (current !== null && !wasOpenRef.current) {
+      const active = document.activeElement;
+      openerRef.current = active instanceof HTMLElement && !panelRef.current?.contains(active) ? active : null;
+      wasOpenRef.current = true;
       panelRef.current?.focus();
+    } else if (current === null && wasOpenRef.current) {
+      wasOpenRef.current = false;
+      const opener = openerRef.current;
+      openerRef.current = null;
+      if (opener?.isConnected === true) opener.focus();
     }
   }, [current]);
 

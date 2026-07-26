@@ -11,6 +11,7 @@ import {
   indexRepositoryIntoStore
 } from "../packages/indexer/src/index.ts";
 import { openDatabase, runMigrations } from "../packages/store/src/index.ts";
+import { createSyntheticCorpus } from "./lib/syntheticCorpus.mts";
 
 const FILE_COUNT = 250;
 const LINES_PER_FILE = 1_000;
@@ -31,47 +32,12 @@ function pageBytes(db: ReturnType<typeof openDatabase>): number {
   return pageCount * pageSize;
 }
 
-function writeLeaf(root: string, index: number, revision: number): void {
-  const comments = Array.from(
-    { length: LINES_PER_FILE - 2 },
-    (_, line) => `// corpus ${index} line ${line}`
-  );
-  const name = `value${String(index).padStart(3, "0")}`;
-  writeFileSync(
-    path.join(root, "src", `f${String(index).padStart(3, "0")}.ts`),
-    [...comments, `export function ${name}(): number { return ${revision}; }`, ""].join("\n")
-  );
-}
-
-function writeChain(root: string, index: number, revision: number): void {
-  const next = index + 1;
-  const source =
-    next < CHAIN_COUNT
-      ? `import { chain${next} } from "./chain${next}.js";\nexport function chain${index}(): number { return chain${next}(); }\n`
-      : `export function chain${index}(): number { return ${revision}; }\n`;
-  writeFileSync(path.join(root, "src", `chain${index}.ts`), source);
-}
-
 const root = mkdtempSync(path.join(tmpdir(), "tadori-incremental-benchmark-"));
-const sourceRoot = path.join(root, "src");
-mkdirSync(sourceRoot);
-writeFileSync(path.join(root, "package.json"), '{"name":"benchmark-corpus"}\n');
-writeFileSync(
-  path.join(root, "tsconfig.json"),
-  '{"compilerOptions":{"module":"NodeNext","moduleResolution":"NodeNext","strict":true},"include":["src"]}\n'
-);
-for (let index = 0; index < FILE_COUNT; index += 1) {
-  writeLeaf(root, index, 0);
-}
-for (let index = 0; index < CHAIN_COUNT; index += 1) {
-  writeChain(root, index, 0);
-}
-const exports = Array.from(
-  { length: FILE_COUNT },
-  (_, index) =>
-    `export { value${String(index).padStart(3, "0")} } from "./f${String(index).padStart(3, "0")}.js";`
-);
-writeFileSync(path.join(sourceRoot, "index.ts"), `${exports.join("\n")}\n`);
+const corpus = createSyntheticCorpus(root, {
+  leafFileCount: FILE_COUNT,
+  linesPerLeafFile: LINES_PER_FILE,
+  chainFileCount: CHAIN_COUNT
+});
 
 const databasePath = path.join(root, ".tadori", "benchmark.sqlite");
 mkdirSync(path.dirname(databasePath));
@@ -91,7 +57,7 @@ try {
 
   const oneFileMs: number[] = [];
   for (let iteration = 1; iteration <= ITERATIONS; iteration += 1) {
-    writeLeaf(root, 0, iteration);
+    corpus.writeLeaf(0, iteration);
     const startedAt = performance.now();
     const state = await indexer.refresh([{ path: "src/f000.ts", kind: "change" }]);
     if (state.phase !== "idle") {
@@ -100,14 +66,14 @@ try {
     oneFileMs.push(performance.now() - startedAt);
   }
 
-  writeChain(root, CHAIN_COUNT - 1, 1);
+  corpus.writeChain(CHAIN_COUNT - 1, 1);
   let startedAt = performance.now();
   const dependency = await indexer.refresh([
     { path: `src/chain${CHAIN_COUNT - 1}.ts`, kind: "change" }
   ]);
   const dependencyRegionMs = performance.now() - startedAt;
 
-  writeFileSync(path.join(sourceRoot, "index.ts"), `${exports.slice(1).join("\n")}\n`);
+  corpus.writeBarrel(1);
   startedAt = performance.now();
   const barrel = await indexer.refresh([{ path: "src/index.ts", kind: "change" }]);
   const largeBarrelMs = performance.now() - startedAt;
@@ -124,8 +90,8 @@ try {
   const heapAfterRefreshes = process.memoryUsage().heapUsed;
   const result = {
     corpus: {
-      approximateLoc: FILE_COUNT * LINES_PER_FILE + CHAIN_COUNT * 2 + FILE_COUNT,
-      files: FILE_COUNT + CHAIN_COUNT + 1,
+      approximateLoc: corpus.approximateLoc,
+      files: corpus.fileCount,
       iterations: ITERATIONS,
       runtime: process.version,
       platform: `${process.platform}-${process.arch}`

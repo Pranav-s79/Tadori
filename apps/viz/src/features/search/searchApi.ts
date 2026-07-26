@@ -27,6 +27,7 @@ export interface SearchResultRow {
   lineEnd: number | null;
   exported: boolean;
   exactMatch: boolean; // from FtsMatchRow.exact_match (0|1)
+  representativePackageKey: string | null;
 }
 
 export interface SearchApiResult {
@@ -51,6 +52,7 @@ interface FtsMatchRowWire {
   exported: number; // 0|1
   rank: number;
   exact_match: number; // 0|1
+  representative_package_key: string | null;
 }
 
 function clampLimit(limit: number): number {
@@ -77,7 +79,8 @@ function mapRow(row: FtsMatchRowWire): SearchResultRow {
     lineStart: row.line_start,
     lineEnd: row.line_end,
     exported: row.exported === 1,
-    exactMatch: row.exact_match === 1
+    exactMatch: row.exact_match === 1,
+    representativePackageKey: row.representative_package_key ?? null
   };
 }
 

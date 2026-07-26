@@ -1,4 +1,4 @@
-import type { Confidence, NodeKind, Origin, Resolution } from "../../api/types.ts";
+import type { Confidence, ExtractionProvenance, NodeKind, Origin, Resolution } from "../../api/types.ts";
 
 const API_BASE = "/api/v1";
 
@@ -43,6 +43,8 @@ export interface ToolNode {
   freshness: Freshness;
   stale: boolean;
   staleReason: string | null;
+  language?: string | null;
+  provenance?: ExtractionProvenance | null;
 }
 
 /** Mirrors packages/mcp toolEdgeSchema. Provenance fields are always present. */
@@ -61,6 +63,8 @@ export interface ToolEdge {
   freshness: Freshness;
   stale: boolean;
   staleReason: string | null;
+  language?: string | null;
+  provenance?: ExtractionProvenance | null;
 }
 
 /** GET /api/v1/nodes/:entityKey → NodeDetailDto. */

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { ApiEdge } from "../src/api/types.ts";
-import { computeAggregatedEdges, diffExpandedNodes, truncate } from "../src/graph/expansion.ts";
+import Graph from "graphology";
+import type { ApiEdge, ApiNode } from "../src/api/types.ts";
+import {
+  applyExpansion,
+  applySymbolExpansion,
+  computeAggregatedEdges,
+  diffExpandedNodes,
+  truncate
+} from "../src/graph/expansion.ts";
 
 function edge(
   entityKey: string,
@@ -108,5 +115,32 @@ describe("diffExpandedNodes", () => {
     const diff = diffExpandedNodes(new Set(["pkg:a"]), new Set(["pkg:a"]));
     expect(diff.added).toEqual([]);
     expect(diff.removed).toEqual([]);
+  });
+});
+
+describe("semantic-zoom layout integrity", () => {
+  const node: ApiNode = {
+    entityKey: "file:missing-position",
+    kind: "file",
+    qualifiedName: "src/missing.ts",
+    displayName: "missing.ts",
+    file: "src/missing.ts",
+    exported: false,
+    fanIn: 0
+  };
+
+  it("rejects a file expansion before mutation when a served position is missing", () => {
+    const graph = new Graph({ multi: true, type: "directed" });
+    expect(() => applyExpansion(graph, "pkg:a", { nodes: [node], edges: [], positions: [] }))
+      .toThrow('Expanded file node "file:missing-position" has no served layout position');
+    expect(graph.order).toBe(0);
+  });
+
+  it("rejects a symbol expansion before mutation when a served position is missing", () => {
+    const graph = new Graph({ multi: true, type: "directed" });
+    const symbol = { ...node, entityKey: "fn:missing-position", kind: "function" as const };
+    expect(() => applySymbolExpansion(graph, "file:a", { nodes: [symbol], edges: [], positions: [] }))
+      .toThrow('Expanded symbol node "fn:missing-position" has no served layout position');
+    expect(graph.order).toBe(0);
   });
 });

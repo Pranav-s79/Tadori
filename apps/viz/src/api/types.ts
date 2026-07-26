@@ -42,8 +42,11 @@ export interface ApiNode {
   file: string | null;
   exported: boolean;
   fanIn: number;
-  language: string | null;
-  provenance: ExtractionProvenance | null;
+  language?: string | null;
+  provenance?: ExtractionProvenance | null;
+  aggregateLanguages?: string[];
+  aggregateCapabilities?: ExtractionCapability[];
+  aggregateDerivations?: ExtractionDerivation[];
 }
 
 export interface ApiEdge {
@@ -51,11 +54,20 @@ export interface ApiEdge {
   srcEntityKey: string;
   relation: string;
   dstEntityKey: string;
-  origin: Origin;
-  confidence: Confidence;
-  resolution: Resolution;
-  language: string | null;
-  provenance: ExtractionProvenance | null;
+  origin?: Origin;
+  confidence?: Confidence;
+  resolution?: Resolution;
+  language?: string | null;
+  provenance?: ExtractionProvenance | null;
+  aggregateCount?: number;
+  aggregateProvenance?: AggregatedProvenance[];
+  projectionKind?: "package_aggregate";
+  aggregateLanguages?: string[];
+  aggregateCapabilities?: ExtractionCapability[];
+  aggregateDerivations?: ExtractionDerivation[];
+  sourceEdgeCount?: number;
+  sourceEdgeOmittedCount?: number;
+  evidenceOmittedCount?: number;
 }
 
 export interface ApiContext {

@@ -1,9 +1,16 @@
-import type { Evidence, GraphEdge, GraphNode, NodeKind, Relation } from "@tadori/core";
+import type { Evidence, GraphEdge, GraphNode, Relation } from "@tadori/core";
 import { NODE_KINDS, RELATIONS } from "@tadori/core";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { GraphService, ToolEdge, ToolNode } from "@tadori/mcp";
 import { badRequest, conflict, notFound } from "../errors.js";
 import type { NodeDetailDto, NodeEvidenceDto, Page } from "../types.js";
+import {
+  clampResponseLimit,
+  LOD_EDGE_RESPONSE_CAP,
+  LOD_NODE_RESPONSE_CAPS
+} from "../lodBudgets.js";
+import { getPackageProjection, type ProjectedPackageEdge } from "../packageProjection.js";
+import { selectLodScope } from "../lodScope.js";
 
 /**
  * Converts core `Evidence` (optional fields) to the wire shape
@@ -29,12 +36,65 @@ function toToolEvidence(service: GraphService, evidence: readonly Evidence[]): T
 const LEVELS = ["package", "file", "symbol"] as const;
 type Level = (typeof LEVELS)[number];
 
+interface PackageAggregateEdgeDto {
+  entityKey: string;
+  srcEntityKey: string;
+  srcQualifiedName: string;
+  relation: Relation;
+  dstEntityKey: string;
+  dstQualifiedName: string;
+  projectionKind: "package_aggregate";
+  aggregateCount: number;
+  aggregateProvenance: Array<{
+    origin: GraphEdge["origin"];
+    confidence: GraphEdge["confidence"];
+    resolution: GraphEdge["resolution"];
+    count: number;
+  }>;
+  aggregateLanguages: string[];
+  aggregateCapabilities: string[];
+  aggregateDerivations: string[];
+  sourceEdgeCount: number;
+  sourceEdgeOmittedCount: number;
+  evidenceOmittedCount: number;
+}
+
+function packageAggregateDto(
+  service: GraphService,
+  projected: ProjectedPackageEdge,
+  sourceEdges: readonly GraphEdge[]
+): PackageAggregateEdgeDto {
+  const buckets = new Map<string, PackageAggregateEdgeDto["aggregateProvenance"][number]>();
+  for (const edge of sourceEdges) {
+    const key = `${edge.origin}\0${edge.confidence}\0${edge.resolution}`;
+    const existing = buckets.get(key);
+    if (existing === undefined) {
+      buckets.set(key, { origin: edge.origin, confidence: edge.confidence, resolution: edge.resolution, count: 1 });
+    } else existing.count += 1;
+  }
+  return {
+    entityKey: projected.entityKey,
+    srcEntityKey: projected.srcPackageKey,
+    srcQualifiedName: service.nodesByKey.get(projected.srcPackageKey)?.qualifiedName ?? projected.srcPackageKey,
+    relation: projected.relation,
+    dstEntityKey: projected.dstPackageKey,
+    dstQualifiedName: service.nodesByKey.get(projected.dstPackageKey)?.qualifiedName ?? projected.dstPackageKey,
+    projectionKind: "package_aggregate",
+    aggregateCount: sourceEdges.length,
+    aggregateProvenance: [...buckets.values()].sort((left, right) =>
+      `${left.origin}\0${left.confidence}\0${left.resolution}`
+        .localeCompare(`${right.origin}\0${right.confidence}\0${right.resolution}`)),
+    aggregateLanguages: [...new Set(sourceEdges.flatMap((edge) => edge.language ? [edge.language] : []))].sort(),
+    aggregateCapabilities: [...new Set(sourceEdges.flatMap((edge) => edge.provenance ? [edge.provenance.capability] : []))].sort(),
+    aggregateDerivations: [...new Set(sourceEdges.flatMap((edge) => edge.provenance ? [edge.provenance.derivation] : []))].sort(),
+    sourceEdgeCount: sourceEdges.length,
+    sourceEdgeOmittedCount: projected.sourceEdges.length - sourceEdges.length,
+    evidenceOmittedCount: sourceEdges.reduce((sum, edge) => sum + edge.evidence.length, 0)
+  };
+}
+
 const NODE_KIND_SET: ReadonlySet<string> = new Set(NODE_KINDS);
 const RELATION_SET: ReadonlySet<string> = new Set(RELATIONS);
-
-const MAX_NODE_LIMIT = 500;
-const MAX_EDGE_LIMIT = 1000;
-const DEFAULT_LIMIT = 100;
 
 function parseCursor(raw: unknown): number | null {
   if (raw === undefined) {
@@ -43,18 +103,8 @@ function parseCursor(raw: unknown): number | null {
   if (typeof raw !== "string" || !/^\d+$/.test(raw)) {
     return null;
   }
-  return Number(raw);
-}
-
-function parseLimit(raw: unknown, max: number): number | null {
-  if (raw === undefined) {
-    return DEFAULT_LIMIT;
-  }
   const value = Number(raw);
-  if (!Number.isInteger(value) || value < 1 || value > max) {
-    return null;
-  }
-  return value;
+  return Number.isSafeInteger(value) ? value : null;
 }
 
 function paginate<T>(items: readonly T[], offset: number, limit: number): Page<T> {
@@ -116,18 +166,6 @@ export function toToolEdge(app: FastifyInstance, edge: GraphEdge): ToolEdge {
   };
 }
 
-function levelKinds(level: Level): ReadonlySet<NodeKind> {
-  if (level === "package") {
-    return new Set<NodeKind>(["package"]);
-  }
-  if (level === "file") {
-    return new Set<NodeKind>(["file"]);
-  }
-  return new Set<NodeKind>(
-    NODE_KINDS.filter((kind) => kind !== "package" && kind !== "file")
-  );
-}
-
 interface NodeQuery {
   level?: string;
   packageName?: string;
@@ -139,6 +177,9 @@ interface NodeQuery {
 }
 
 interface EdgeQuery {
+  level?: string;
+  packageName?: string;
+  file?: string;
   relation?: string;
   origin?: string;
   confidence?: string;
@@ -166,47 +207,62 @@ export async function registerGraphRoutes(app: FastifyInstance): Promise<void> {
       const { statusCode, payload } = badRequest("bad_level");
       return reply.code(statusCode).send(payload);
     }
-    const limit = parseLimit(request.query.limit, MAX_NODE_LIMIT);
+    const nodeCap = level === undefined ? LOD_NODE_RESPONSE_CAPS.file : LOD_NODE_RESPONSE_CAPS[level as Level];
+    const limit = clampResponseLimit(request.query.limit, nodeCap);
     if (limit === null) {
       const { statusCode, payload } = badRequest("bad_level");
       return reply.code(statusCode).send(payload);
     }
-    const filesByPath = new Map(service.graph.files.map((f) => [f.normalizedPath, f]));
-    const allowedKinds = level === undefined ? null : levelKinds(level as Level);
-    const filtered = service.graph.nodes.filter((node) => {
-      if (allowedKinds !== null && !allowedKinds.has(node.kind)) {
-        return false;
-      }
+    const packageProjection = level === "package" ? getPackageProjection(service.graph) : null;
+    const scope = level === undefined ? null : selectLodScope(
+      service.graph,
+      level as Level,
+      { ...(packageName === undefined ? {} : { packageName }), ...(file === undefined ? {} : { file }) },
+      packageProjection ?? undefined
+    );
+    const candidateNodes = scope?.nodes ?? service.graph.nodes;
+    const filtered = candidateNodes.filter((node) => {
       if (kind !== undefined && node.kind !== kind) {
         return false;
-      }
-      if (file !== undefined && node.file !== file) {
-        return false;
-      }
-      if (packageName !== undefined) {
-        const nodePackage =
-          node.kind === "package" ? node.qualifiedName : node.file !== null ? filesByPath.get(node.file)?.packageName ?? null : null;
-        if (nodePackage !== packageName) {
-          return false;
-        }
       }
       if (exported !== undefined && node.exported !== (exported === "true")) {
         return false;
       }
       return true;
-    });
+    }).sort((left, right) => left.entityKey.localeCompare(right.entityKey));
     const page = paginate(filtered, offset, limit);
-    const body: Page<ToolNode> = {
-      items: page.items.map((node) => toToolNode(app, node)),
+    const body: Page<ToolNode & {
+      aggregateLanguages?: string[];
+      aggregateCapabilities?: string[];
+      aggregateDerivations?: string[];
+    }> = {
+      items: page.items.map((node) => ({
+        ...toToolNode(app, node),
+        ...(packageProjection?.aggregatesByPackageKey.get(node.entityKey) ?? {})
+      })),
       nextCursor: page.nextCursor,
-      total: page.total
+      total: scope?.allNodes.length ?? page.total,
+      omittedCount: (scope?.omittedNodeCount ?? 0) + Math.max(0, (page.total ?? 0) - offset - page.items.length),
+      ...(packageProjection === null ? {} : { projection: packageProjection.accounting }),
+      ...(scope === null ? {} : {
+        scope: {
+          totalNodeCount: scope.allNodes.length,
+          boundedNodeCount: scope.nodes.length,
+          omittedNodeCount: scope.omittedNodeCount,
+          omittedEdgeCount: 0
+        }
+      })
     };
     return reply.send(body);
   });
 
   app.get("/edges", async (request: FastifyRequest<{ Querystring: EdgeQuery }>, reply: FastifyReply) => {
     const service = app.graphState.current();
-    const { relation, origin, confidence, resolution, srcKey, dstKey } = request.query;
+    const { level, packageName, file, relation, origin, confidence, resolution, srcKey, dstKey } = request.query;
+    if (level !== undefined && !LEVELS.includes(level as Level)) {
+      const { statusCode, payload } = badRequest("bad_level");
+      return reply.code(statusCode).send(payload);
+    }
     if (relation !== undefined && !RELATION_SET.has(relation)) {
       const { statusCode, payload } = badRequest("bad_query");
       return reply.code(statusCode).send(payload);
@@ -216,37 +272,73 @@ export async function registerGraphRoutes(app: FastifyInstance): Promise<void> {
       const { statusCode, payload } = badRequest("bad_query");
       return reply.code(statusCode).send(payload);
     }
-    const limit = parseLimit(request.query.limit, MAX_EDGE_LIMIT);
+    const limit = clampResponseLimit(request.query.limit, LOD_EDGE_RESPONSE_CAP);
     if (limit === null) {
       const { statusCode, payload } = badRequest("bad_query");
       return reply.code(statusCode).send(payload);
     }
-    const filtered = service.graph.edges.filter((edge) => {
-      if (relation !== undefined && edge.relation !== (relation as Relation)) {
-        return false;
-      }
-      if (origin !== undefined && edge.origin !== origin) {
-        return false;
-      }
-      if (confidence !== undefined && edge.confidence !== confidence) {
-        return false;
-      }
-      if (resolution !== undefined && edge.resolution !== resolution) {
-        return false;
-      }
-      if (srcKey !== undefined && edge.srcEntityKey !== srcKey) {
-        return false;
-      }
-      if (dstKey !== undefined && edge.dstEntityKey !== dstKey) {
-        return false;
-      }
-      return true;
-    });
+    const packageProjection = level === "package" ? getPackageProjection(service.graph) : null;
+    const scope = level === undefined ? null : selectLodScope(
+      service.graph,
+      level as Level,
+      { ...(packageName === undefined ? {} : { packageName }), ...(file === undefined ? {} : { file }) },
+      packageProjection ?? undefined
+    );
+    if (packageProjection !== null) {
+      const filteredGroups = packageProjection.edges.flatMap((item) => {
+        if (relation !== undefined && item.relation !== relation) return [];
+        if (srcKey !== undefined && item.srcPackageKey !== srcKey) return [];
+        if (dstKey !== undefined && item.dstPackageKey !== dstKey) return [];
+        const sourceEdges = item.sourceEdges.filter((edge) =>
+          (origin === undefined || edge.origin === origin)
+          && (confidence === undefined || edge.confidence === confidence)
+          && (resolution === undefined || edge.resolution === resolution));
+        return sourceEdges.length === 0 ? [] : [{ item, sourceEdges }];
+      });
+      const boundedGroups = filteredGroups.filter(({ item }) =>
+        scope!.keys.has(item.srcPackageKey) && scope!.keys.has(item.dstPackageKey));
+      const omittedByNodeBudget = filteredGroups.length - boundedGroups.length;
+      const page = paginate(boundedGroups, offset, limit);
+      const body: Page<PackageAggregateEdgeDto> = {
+        items: page.items.map(({ item, sourceEdges }) => packageAggregateDto(service, item, sourceEdges)),
+        nextCursor: page.nextCursor,
+        total: page.total,
+        omittedCount: omittedByNodeBudget + Math.max(0, (page.total ?? 0) - offset - page.items.length),
+        projection: packageProjection.accounting,
+        scope: {
+          totalNodeCount: scope!.allNodes.length,
+          boundedNodeCount: scope!.nodes.length,
+          omittedNodeCount: scope!.omittedNodeCount,
+          omittedEdgeCount: omittedByNodeBudget
+        }
+      };
+      return reply.send(body);
+    }
+    const rawMatches = service.graph.edges.filter((edge) =>
+      (relation === undefined || edge.relation === relation)
+      && (origin === undefined || edge.origin === origin)
+      && (confidence === undefined || edge.confidence === confidence)
+      && (resolution === undefined || edge.resolution === resolution)
+      && (srcKey === undefined || edge.srcEntityKey === srcKey)
+      && (dstKey === undefined || edge.dstEntityKey === dstKey)
+      && (scope === null || (scope.allKeys.has(edge.srcEntityKey) && scope.allKeys.has(edge.dstEntityKey))));
+    const filtered = scope === null ? rawMatches : rawMatches.filter((edge) =>
+      scope.keys.has(edge.srcEntityKey) && scope.keys.has(edge.dstEntityKey));
+    const omittedByNodeBudget = rawMatches.length - filtered.length;
     const page = paginate(filtered, offset, limit);
     const body: Page<ToolEdge> = {
       items: page.items.map((edge) => toToolEdge(app, edge)),
       nextCursor: page.nextCursor,
-      total: page.total
+      total: page.total,
+      omittedCount: omittedByNodeBudget + Math.max(0, (page.total ?? 0) - offset - page.items.length),
+      ...(scope === null ? {} : {
+        scope: {
+          totalNodeCount: scope.allNodes.length,
+          boundedNodeCount: scope.nodes.length,
+          omittedNodeCount: scope.omittedNodeCount,
+          omittedEdgeCount: omittedByNodeBudget
+        }
+      })
     };
     return reply.send(body);
   });

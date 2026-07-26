@@ -2,38 +2,56 @@
 
 # Current State (always overwritten)
 
-Current node: ML-00 — multi-language repository intelligence transition.
-Status: implementation and local validation complete in the working tree.
-Active contract: `docs/Specs/Tadori-Multilanguage-Transition.md`. The v2.1
-documents are historical compatibility references and no longer constrain
-language scope.
+Current node: 08-10 — bounded stable 2D Atlas and deployable local package.
+Status: implementation and post-review validation are complete; GitHub
+publication is prepared.
 
-Implemented: central language registry and universal safe-text scanning;
-compiler-backed TypeScript/JavaScript adapter parity; pinned/checksummed
-Tree-sitter WASM extraction for Python, C, C++, Go, Rust, and Java;
-repository/interface extraction for Proto, Terraform, YAML, Dockerfile,
-Markdown, JSON, shell/Make, TOML, and CMake; explicit evidenced cross-language
-HTTP, generated-binding, FFI, subprocess, and build-link edges; per-item
-language/capability/provenance persistence and API exposure; syntax-failure
-isolation; deterministic mixed-language oracle; cross-version coalescing guard;
-production visualization serving; and an installable package build.
+Active contract: `docs/Specs/Tadori-Multilanguage-Transition.md`. Superseded
+v2.1 documents are not product, schema, or language-scope authorities. Legacy
+TypeScript/JavaScript fixtures remain regression coverage only.
 
-Validation evidence (2026-07-24): `pnpm skills:check`, `pnpm typecheck`,
-`pnpm lint`, `python validate_fixtures.py`, `pnpm fixtures:validate`,
-`pnpm fixtures:index`, and `pnpm fixtures:typecheck` pass; full Vitest is
-78/78 files and 472/472 tests. The deterministic mixed oracle passes twice
-without mutation. A packed `tadori@0.1.0` tarball installed outside the
-monorepo, indexed GoogleCloudPlatform/microservices-demo at pinned commit
-`9a4616e77f0f9cbcbecaf27d711c38890dda1404` (324 files, 6,568 nodes,
-7,433 edges), served the built visualization and API, and purged its local
-index with a clean git worktree afterward. The capability truth source is
-`docs/MULTILANGUAGE_CAPABILITIES.json`; unsupported semantic facts remain
-absent or explicitly unresolved.
+Implemented: the multi-language registry and extraction stack; explicit
+language/capability/derivation provenance; evidence-backed cross-language
+relations; deterministic mixed-language fixtures; snapshot, diff, API, MCP,
+layout, and local serving paths; an installable package and confined purge
+workflow; and the accessible stable 2D archaeological-circuit Atlas.
 
-Current node: 08-11 — accessible non-canvas graph table (viz a11y slice): IMPLEMENTED on branch bp/08-11-a11y, pending CI/merge. 11-03 profile model MERGED (#48=7c975f2). 11-01/02 bench (#46/#47). 12-01 s1/s2 (#44/#45). 09-05 (#43). 08-04 (#42).
-Branch: bp/08-11-a11y (off main 7c975f2)
-Latest commit: 7c975f2 main (PR #48 merged — 11-03 bench competitor-profile model, CI green both OSes). 11-02 (#47). 11-01 (#46). 12-01 s2 (#45). 12-01 s1 (#44). 09-05 (#43). 08-04 (#42). 08-07E (#41). 08-07D (#40). 08-07C (#39). 08-07B (#38). 08-07A (#37). 08-07 (#36). 09-04 (#35).
-Open PR: 08-11 a11y slice to be opened after push.
+The Atlas uses graph facts for every mark: package foundations, file tiles,
+symbol markers, documentation tablets, test scaffolds, unresolved termini,
+and provenance circuit traces. Search, shared filters, inspection, story,
+changes, boundaries, agent-review, and accessible-table surfaces are composed
+in one responsive shell. Server-owned LOD budgets keep package/file views at
+500 nodes, symbol views at 1,000 nodes, edges at 1,000, and labels at 200 while
+reporting every bounded omission. Package aggregates preserve full provenance
+breakdowns instead of promoting a representative edge.
+
+Performance evidence (2026-07-26): a 150,230-LOC corpus reached real-browser
+first data paint in 4,496.70 ms, used 3,919,728 bytes of JavaScript heap, and
+had zero package/file/symbol position-identity mismatches. The 250,330-LOC
+incremental benchmark passed: 945.86 ms single-file p95, 815.11 ms package
+invalidation, 176,632,456 bytes heap growth, and approximately 758,579 bytes
+per snapshot.
+
+Validation evidence (2026-07-26): project skill checks, type checking, lint,
+fixture validation/index/typecheck gates, package artifact creation, and npm
+pack audit all pass. The root suite passes 81 files / 477 tests and the Atlas
+suite passes 42 files / 335 tests. A local `tadori serve . --no-open` smoke
+produced a fresh snapshot with 5,735 nodes and 14,503 edges; package-level
+node and layout scopes agreed, with no missing edge endpoints. In-app browser
+visual QA could not start because the browser session omitted its required
+`sandboxPolicy` metadata; automated component, integration, real-browser
+performance, accessibility, and API checks remain green.
+
+The capability truth source is `docs/MULTILANGUAGE_CAPABILITIES.json`;
+unsupported semantic facts remain absent or explicitly unresolved. Public npm
+release remains intentionally unauthorized while the generated package is
+`UNLICENSED`; private local tarball installation is supported.
+
+Prior merged delivery record: 08-11 accessible non-canvas graph table, plus
+11-01/02/03 benchmark models, 12-01 local-data lifecycle, 09-05 agent-change
+overlays, and the 08-04 package→file→symbol zoom foundation. The following
+notes are retained as implementation evidence; their former branch/PR state is
+superseded by the current Atlas work above.
 08-11 a11y slice done (branch): AccessibleGraphTable — the WCAG-AA NON-CANVAS alternative to the Sigma graph that 08-11 names ("accessible list/table alternative for visible graph content"). Renders the SAME usePackageGraph nodes/edges as a real semantic <table> (caption, <th scope=col> headers, <th scope=row> per node) so the graph is fully reachable by screen readers + keyboard alone — every node's kind/name/file/fan-in + an outgoing-relation text summary ("calls → 3, imports → 1"), no info available only visually. Rows link into the existing inspection panel. Mounted in App.tsx beside the canvas (gated on data). VERIFIED END-TO-END LOCALLY (viz is local-runnable): AccessibleGraphTable.test 5/5 (semantic table roles, edge summary, none-state, inspect link, empty), viz 289/289 (+5), tsc/eslint/vite build 0, confined to apps/viz. DEFERRED (needs Playwright + SQLite serve, infeasible locally): the Chromium full-flow / Firefox smoke E2E suites — the browser-driver half of 08-11.
 11-03 done (MERGED #48): the bench COMPETITOR-PROFILE MODEL (code half of 11-03; install recipes/protocol docs + corpora are content, separate). Added to @tadori/bench: benchProfileSchema (Zod .strict) — {id, kind, installSteps[], invocation, isolation, status, statusReason?}. Closed PROFILE_KINDS enum (plain_claude_code/codebase_memory_mcp/codegraph/tadori_mcp/tadori_visual). "FAILURES DOCUMENTED NOT GUESSED" (BACKLOG 11-03) enforced by schema refinement: a non-available profile (install_failed/unavailable) MUST carry a documented statusReason — an install failure is recorded verbatim, never inferred, never silently treated as available. `isolation` field documents how each profile is kept from contaminating others. parseProfile(untrusted)→validated (throws on missing reason / unknown kind); availableProfiles() filters runnable subset. VERIFIED END-TO-END LOCALLY (pure TS): profile.test 6/6 + task 8 + harness 13 = 27/27, root tsc 0, eslint 0. Bench harness now has the full structured model: metrics+recorder+seeds (11-01), tasks+traps (11-02), profiles (11-03).
 11-02 done (MERGED #47): the bench TASK-SET MODEL (the code half of 11-02; the actual 3×50-150k-LOC corpora are content-authoring, separate). Added to @tadori/bench: benchTaskSchema (Zod .strict) — {id, prompt, corpus, successCommand, isSeededTrap, trapKind?}. successCommand is the HELD-OUT check that DEFINES success (run after the change, exit 0 = pass) — the agent never scores itself. Closed TRAP_KINDS enum (boundary_violation/unsupported_claim/missing_dependency_edit/wrong_symbol_same_name/hidden_dynamic_dispatch/stale_doc_drift). Refinement invariant: trapKind present IFF isSeededTrap. benchTaskSetSchema enforces unique task ids + non-empty. parseTaskSet(untrusted)→validated (throws on any violation, malformed set never enters the bench); seededTraps(set) filters the trap subset. VERIFIED END-TO-END LOCALLY (pure TS): task.test 8/8 + bench.test 13/13 = 21/21, root tsc 0 (incl. @ts-expect-error on invalid trapKind), eslint 0. NOTE this branch was originally cut for 11-01; that context in prior status line is superseded.

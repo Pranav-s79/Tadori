@@ -21,7 +21,7 @@ const graph: RenderableGraph = { nodes, edges };
 describe("defaultFilters / filtersActive", () => {
   it("default filters are all-empty and inactive", () => {
     const f = defaultFilters();
-    expect(f).toEqual({ kinds: [], relations: [], origins: [], confidences: [], resolutions: [] });
+    expect(f).toEqual({ kinds: [], relations: [], origins: [], confidences: [], resolutions: [], languages: [], capabilities: [], derivations: [] });
     expect(filtersActive(f)).toBe(false);
   });
 
@@ -87,5 +87,31 @@ describe("applyFiltersToGraph", () => {
     const byKey = new Map(result.edges.map((e) => [e.edge.entityKey, e.visible]));
     expect(byKey.get("e1")).toBe(true); // certain + resolved
     expect(byKey.get("e2")).toBe(false); // likely + partial
+  });
+
+  it("matches aggregate buckets without combining facts from different source edges", () => {
+    const aggregate: ApiEdge = {
+      entityKey: "aggregate",
+      srcEntityKey: "fn:a",
+      relation: "imports",
+      dstEntityKey: "pkg:c",
+      projectionKind: "package_aggregate",
+      aggregateCount: 2,
+      aggregateProvenance: [
+        { origin: "compiler", confidence: "certain", resolution: "resolved", count: 1 },
+        { origin: "heuristic", confidence: "likely", resolution: "partial", count: 1 }
+      ],
+      aggregateLanguages: ["python"],
+      aggregateCapabilities: ["structural"]
+    };
+    const crossedFacts = applyFiltersToGraph({ nodes, edges: [aggregate] }, {
+      ...defaultFilters(), origins: ["compiler"], confidences: ["likely"]
+    });
+    expect(crossedFacts.edges[0]?.visible).toBe(false);
+    const sameBucket = applyFiltersToGraph({ nodes, edges: [aggregate] }, {
+      ...defaultFilters(), origins: ["heuristic"], confidences: ["likely"],
+      languages: ["python"], capabilities: ["structural"]
+    });
+    expect(sameBucket.edges[0]?.visible).toBe(true);
   });
 });

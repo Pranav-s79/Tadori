@@ -76,6 +76,29 @@ describe("graph routes", () => {
     expect(body.nextCursor).not.toBeNull();
   });
 
+  it("scopes symbol edges to both endpoints in the requested file", async () => {
+    const instance = await setup();
+    const service = instance.graphState.current();
+    const file = service.graph.nodes.find((node) =>
+      node.kind !== "package" && node.kind !== "file" && node.file !== null
+    )!.file!;
+    const expectedKeys = new Set(service.graph.nodes.filter((node) =>
+      node.kind !== "package" && node.kind !== "file" && node.file === file
+    ).map((node) => node.entityKey));
+    const response = await instance.inject({
+      method: "GET",
+      url: `/api/v1/edges?level=symbol&file=${encodeURIComponent(file)}&limit=9999`
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as Page<ToolEdge>;
+    expect(body.items.every((edge) =>
+      expectedKeys.has(edge.srcEntityKey) && expectedKeys.has(edge.dstEntityKey)
+    )).toBe(true);
+    expect(body.total).toBe(service.graph.edges.filter((edge) =>
+      expectedKeys.has(edge.srcEntityKey) && expectedKeys.has(edge.dstEntityKey)
+    ).length);
+  });
+
   it("GET /nodes/:entityKey returns out/in edges and fanIn matching GraphService.fanIn", async () => {
     const instance = await setup();
     const nodesResponse = await instance.inject({ method: "GET", url: "/api/v1/nodes?level=symbol&limit=500" });

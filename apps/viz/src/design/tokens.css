@@ -1,0 +1,155 @@
+:root {
+  color-scheme: light;
+
+  /* Excavation surfaces: neutral context, never a data encoding. */
+  --tadori-ground: #d8cfbc;
+  --tadori-ground-deep: #c6baa2;
+  --tadori-panel: #f4efe4;
+  --tadori-panel-raised: #fbf8f1;
+  --tadori-ink: #292a28;
+  --tadori-ink-muted: #66645d;
+  --tadori-rule: #aaa18f;
+
+  /* Relationship materials. Their text labels remain mandatory. */
+  --tadori-copper: #9b5d2b;
+  --tadori-bronze: #7c6239;
+  --tadori-verdigris: #587c6d;
+  --tadori-clay: #9b917d;
+
+  /* Interaction and state. These are not capability colors. */
+  --tadori-focus: #315f8c;
+  --tadori-change: #a43f27;
+  --tadori-danger: #8f2f25;
+
+  /* Functional regions use matched-lightness stone, not language hues. */
+  --tadori-region-ochre: #c9ab7e;
+  --tadori-region-green: #a9b2a2;
+  --tadori-region-clay: #bd9b88;
+  --tadori-region-violet: #aaa1ad;
+  --tadori-region-gold: #c7b47f;
+  --tadori-region-blue: #9fadb2;
+
+  --tadori-font-ui: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --tadori-font-label: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  --tadori-font-mono: "IBM Plex Mono", "Cascadia Mono", monospace;
+
+  --tadori-text-xs: 0.75rem;
+  --tadori-text-sm: 0.875rem;
+  --tadori-text-md: 1rem;
+  --tadori-text-lg: 1.25rem;
+  --tadori-text-xl: 1.75rem;
+  --tadori-leading: 1.5;
+
+  --tadori-space-1: 0.25rem;
+  --tadori-space-2: 0.5rem;
+  --tadori-space-3: 0.75rem;
+  --tadori-space-4: 1rem;
+  --tadori-space-6: 1.5rem;
+  --tadori-space-8: 2rem;
+
+  --tadori-radius-sm: 0.25rem;
+  --tadori-radius-md: 0.5rem;
+  --tadori-focus-ring: 0 0 0 3px rgb(49 95 140 / 35%);
+  --tadori-motion-fast: 120ms;
+  --tadori-motion-camera: 280ms;
+}
+
+.tadori-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--tadori-focus);
+  outline-offset: 2px;
+  box-shadow: var(--tadori-focus-ring);
+}
+
+.tadori-capability-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tadori-space-2);
+  min-height: 1.75rem;
+  color: var(--tadori-ink);
+  font: 600 var(--tadori-text-xs) / 1 var(--tadori-font-ui);
+  letter-spacing: 0.02em;
+}
+
+.tadori-capability-mark__sample {
+  width: 1.5rem;
+  height: 1rem;
+  border: 1px solid var(--tadori-ink-muted);
+  border-radius: 2px;
+  background-color: var(--tadori-panel-raised);
+}
+
+.tadori-capability-mark[data-capability="semantic"] .tadori-capability-mark__sample {
+  background: var(--tadori-region-ochre);
+}
+
+.tadori-capability-mark[data-capability="structural"] .tadori-capability-mark__sample {
+  background:
+    repeating-linear-gradient(135deg, transparent 0 3px, rgb(41 42 40 / 45%) 3px 4px),
+    var(--tadori-panel-raised);
+}
+
+.tadori-capability-mark[data-capability="repository"] .tadori-capability-mark__sample {
+  background:
+    radial-gradient(circle, rgb(41 42 40 / 55%) 1px, transparent 1.5px) 0 0 / 5px 5px,
+    var(--tadori-panel-raised);
+}
+
+.tadori-capability-mark[data-capability="unknown"] .tadori-capability-mark__sample {
+  background:
+    linear-gradient(0deg, var(--tadori-ground-deep) 0 45%, transparent 45%),
+    var(--tadori-panel-raised);
+}
+
+.tadori-capability-mark[data-capability="unsupported"] .tadori-capability-mark__sample {
+  background: transparent;
+  border-style: dashed;
+}
+
+.tadori-provenance-stroke {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tadori-space-2);
+  color: var(--tadori-ink-muted);
+  font: var(--tadori-text-xs) / var(--tadori-leading) var(--tadori-font-ui);
+}
+
+.tadori-provenance-stroke svg {
+  flex: none;
+  color: var(--tadori-copper);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --tadori-motion-fast: 0ms;
+    --tadori-motion-camera: 0ms;
+  }
+}
+
+@media (forced-colors: active) {
+  :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline-color: Highlight;
+    box-shadow: none;
+  }
+
+  .tadori-capability-mark__sample {
+    background: Canvas !important;
+    border-color: CanvasText;
+  }
+
+  .tadori-capability-mark[data-capability="structural"] .tadori-capability-mark__sample,
+  .tadori-capability-mark[data-capability="repository"] .tadori-capability-mark__sample {
+    border-style: double;
+  }
+}

@@ -3,11 +3,10 @@ import type { ApiEdge, ApiNode, LayoutPositionDto } from "../api/types.ts";
 
 /**
  * Pure transform: (nodes, edges, positions) -> a graphology Graph.
- * Node/edge counts always match the input arrays (nodes are added
- * unconditionally; edges are added unconditionally too, using a
- * placeholder position of (0,0) for any endpoint missing a layout entry
- * rather than being dropped, so an incomplete layout response never
- * silently shrinks the edge count).
+ * Node/edge counts always match the input arrays. Every rendered node must have
+ * a served layout position, and every edge endpoint must be a real response
+ * node. Inconsistency is explicit; the renderer never fabricates a (0,0)
+ * pile-up or placeholder graph entity.
  */
 export function buildGraphologyGraph(
   nodes: readonly ApiNode[],
@@ -19,6 +18,9 @@ export function buildGraphologyGraph(
 
   for (const node of nodes) {
     const position = positionByKey.get(node.entityKey);
+    if (position === undefined) {
+      throw new Error(`Graph node ${JSON.stringify(node.entityKey)} has no served layout position`);
+    }
     graph.addNode(node.entityKey, {
       kind: node.kind,
       qualifiedName: node.qualifiedName,
@@ -26,24 +28,40 @@ export function buildGraphologyGraph(
       file: node.file,
       exported: node.exported,
       fanIn: node.fanIn,
-      x: position?.x ?? 0,
-      y: position?.y ?? 0,
-      pinned: position?.pinned ?? false
+      language: node.language ?? null,
+      provenance: node.provenance ?? null,
+      aggregateLanguages: node.aggregateLanguages ?? [],
+      aggregateCapabilities: node.aggregateCapabilities ?? [],
+      aggregateDerivations: node.aggregateDerivations ?? [],
+      x: position.x,
+      y: position.y,
+      pinned: position.pinned
     });
   }
 
   for (const edge of edges) {
     if (!graph.hasNode(edge.srcEntityKey)) {
-      graph.addNode(edge.srcEntityKey, { kind: "unresolved", qualifiedName: edge.srcEntityKey, displayName: edge.srcEntityKey, file: null, exported: false, fanIn: 0, x: 0, y: 0, pinned: false });
+      throw new Error(`Graph edge ${JSON.stringify(edge.entityKey)} references missing source node ${JSON.stringify(edge.srcEntityKey)}`);
     }
     if (!graph.hasNode(edge.dstEntityKey)) {
-      graph.addNode(edge.dstEntityKey, { kind: "unresolved", qualifiedName: edge.dstEntityKey, displayName: edge.dstEntityKey, file: null, exported: false, fanIn: 0, x: 0, y: 0, pinned: false });
+      throw new Error(`Graph edge ${JSON.stringify(edge.entityKey)} references missing target node ${JSON.stringify(edge.dstEntityKey)}`);
     }
     graph.addEdgeWithKey(edge.entityKey, edge.srcEntityKey, edge.dstEntityKey, {
       relation: edge.relation,
       origin: edge.origin,
       confidence: edge.confidence,
-      resolution: edge.resolution
+      resolution: edge.resolution,
+      language: edge.language ?? null,
+      provenance: edge.provenance ?? null,
+      projectionKind: edge.projectionKind ?? null,
+      aggregateCount: edge.aggregateCount ?? 1,
+      aggregateProvenance: edge.aggregateProvenance ?? [],
+      aggregateLanguages: edge.aggregateLanguages ?? [],
+      aggregateCapabilities: edge.aggregateCapabilities ?? [],
+      aggregateDerivations: edge.aggregateDerivations ?? [],
+      sourceEdgeCount: edge.sourceEdgeCount ?? 1,
+      sourceEdgeOmittedCount: edge.sourceEdgeOmittedCount ?? 0,
+      evidenceOmittedCount: edge.evidenceOmittedCount ?? 0
     });
   }
 

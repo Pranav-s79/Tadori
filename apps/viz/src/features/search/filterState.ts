@@ -6,6 +6,7 @@ import type {
   Origin,
   Resolution
 } from "../../api/types.ts";
+import type { ExtractionCapability, ExtractionDerivation } from "../../api/types.ts";
 
 /**
  * Frozen filter vocabularies (mirror @tadori/core enums.ts — apps/viz may not
@@ -32,35 +33,37 @@ export const NODE_KINDS: readonly NodeKind[] = [
 ];
 
 export type Relation =
-  | "imports"
-  | "calls"
-  | "extends"
-  | "implements"
-  | "references"
   | "contains"
-  | "defines"
+  | "imports"
+  | "exports"
+  | "references"
+  | "calls"
+  | "implements"
+  | "extends"
   | "tests"
   | "documents"
-  | "routes"
-  | "depends_on";
+  | "routes_to"
+  | "changed_with";
 
 export const RELATIONS: readonly Relation[] = [
-  "imports",
-  "calls",
-  "extends",
-  "implements",
-  "references",
   "contains",
-  "defines",
+  "imports",
+  "exports",
+  "references",
+  "calls",
+  "implements",
+  "extends",
   "tests",
   "documents",
-  "routes",
-  "depends_on"
+  "routes_to",
+  "changed_with"
 ];
 
 export const ORIGINS: readonly Origin[] = ["compiler", "heuristic", "git", "doc", "human", "llm"];
 export const CONFIDENCES: readonly Confidence[] = ["certain", "likely", "inferred"];
 export const RESOLUTIONS: readonly Resolution[] = ["resolved", "partial", "unresolved"];
+export const CAPABILITIES: readonly ExtractionCapability[] = ["semantic", "structural", "repository"];
+export const DERIVATIONS: readonly ExtractionDerivation[] = ["compiler-resolved", "parser-derived", "convention-derived", "repository-derived", "inferred"];
 
 export interface SearchFilters {
   kinds: NodeKind[]; // subset of the 13 frozen NODE_KINDS; [] = no kind restriction
@@ -68,6 +71,9 @@ export interface SearchFilters {
   origins: Origin[]; // subset of the 6 frozen ORIGINS; graph-render filter only
   confidences: Confidence[]; // subset of the 3 frozen CONFIDENCES
   resolutions: Resolution[]; // subset of the 3 frozen RESOLUTIONS
+  languages: string[];
+  capabilities: ExtractionCapability[];
+  derivations: ExtractionDerivation[];
 }
 
 /**
@@ -99,7 +105,7 @@ export interface FilteredGraph {
 }
 
 export function defaultFilters(): SearchFilters {
-  return { kinds: [], relations: [], origins: [], confidences: [], resolutions: [] };
+  return { kinds: [], relations: [], origins: [], confidences: [], resolutions: [], languages: [], capabilities: [], derivations: [] };
 }
 
 export function filtersActive(filters: SearchFilters): boolean {
@@ -108,7 +114,10 @@ export function filtersActive(filters: SearchFilters): boolean {
     filters.relations.length > 0 ||
     filters.origins.length > 0 ||
     filters.confidences.length > 0 ||
-    filters.resolutions.length > 0
+    filters.resolutions.length > 0 ||
+    filters.languages.length > 0 ||
+    filters.capabilities.length > 0 ||
+    filters.derivations.length > 0
   );
 }
 
@@ -123,25 +132,48 @@ export function filtersActive(filters: SearchFilters): boolean {
  * EXISTENCE of data, only its emphasis; blueprint §8 AD-final).
  */
 export function applyFiltersToGraph(graph: RenderableGraph, filters: SearchFilters): FilteredGraph {
-  const kindSet = new Set(filters.kinds);
-  const relationSet = new Set<string>(filters.relations);
-  const originSet = new Set(filters.origins);
-  const confidenceSet = new Set(filters.confidences);
-  const resolutionSet = new Set(filters.resolutions);
-
   const nodes: RenderableNode[] = graph.nodes.map((node) => ({
     node,
-    visible: kindSet.size === 0 || kindSet.has(node.kind)
+    visible: nodeMatchesFilters(node, filters)
   }));
 
   const edges: RenderableEdge[] = graph.edges.map((edge) => ({
     edge,
-    visible:
-      (relationSet.size === 0 || relationSet.has(edge.relation)) &&
-      (originSet.size === 0 || originSet.has(edge.origin)) &&
-      (confidenceSet.size === 0 || confidenceSet.has(edge.confidence)) &&
-      (resolutionSet.size === 0 || resolutionSet.has(edge.resolution))
+    visible: edgeMatchesFilters(edge, filters)
   }));
 
   return { nodes, edges };
+}
+
+export function edgeMatchesFilters(edge: ApiEdge, filters: SearchFilters): boolean {
+  const provenanceBuckets = edge.aggregateProvenance !== undefined && edge.aggregateProvenance.length > 0
+    ? edge.aggregateProvenance : (edge.origin !== undefined
+    && edge.confidence !== undefined && edge.resolution !== undefined
+    ? [{ origin: edge.origin, confidence: edge.confidence, resolution: edge.resolution, count: 1 }]
+    : []);
+  const provenanceMatches = provenanceBuckets.some((bucket) =>
+    (filters.origins.length === 0 || filters.origins.includes(bucket.origin))
+    && (filters.confidences.length === 0 || filters.confidences.includes(bucket.confidence))
+    && (filters.resolutions.length === 0 || filters.resolutions.includes(bucket.resolution)));
+  const languages = edge.aggregateLanguages !== undefined && edge.aggregateLanguages.length > 0
+    ? edge.aggregateLanguages : edge.language ? [edge.language] : [];
+  const capabilities = edge.aggregateCapabilities !== undefined && edge.aggregateCapabilities.length > 0
+    ? edge.aggregateCapabilities : edge.provenance ? [edge.provenance.capability] : [];
+  const derivations = edge.aggregateDerivations !== undefined && edge.aggregateDerivations.length > 0
+    ? edge.aggregateDerivations : edge.provenance ? [edge.provenance.derivation] : [];
+  return (filters.relations.length === 0 || filters.relations.includes(edge.relation as Relation)) &&
+    ((filters.origins.length === 0 && filters.confidences.length === 0 && filters.resolutions.length === 0) || provenanceMatches) &&
+    (filters.languages.length === 0 || filters.languages.some((value) => languages.includes(value))) &&
+    (filters.capabilities.length === 0 || filters.capabilities.some((value) => capabilities.includes(value))) &&
+    (filters.derivations.length === 0 || filters.derivations.some((value) => derivations.includes(value)));
+}
+
+export function nodeMatchesFilters(node: ApiNode, filters: SearchFilters): boolean {
+  const languages = node.aggregateLanguages ?? (node.language === undefined || node.language === null ? [] : [node.language]);
+  const capabilities = node.aggregateCapabilities ?? (node.provenance === undefined || node.provenance === null ? [] : [node.provenance.capability]);
+  const derivations = node.aggregateDerivations ?? (node.provenance === undefined || node.provenance === null ? [] : [node.provenance.derivation]);
+  return (filters.kinds.length === 0 || filters.kinds.includes(node.kind)) &&
+    (filters.languages.length === 0 || filters.languages.some((value) => languages.includes(value))) &&
+    (filters.capabilities.length === 0 || filters.capabilities.some((value) => capabilities.includes(value))) &&
+    (filters.derivations.length === 0 || filters.derivations.some((value) => derivations.includes(value)));
 }

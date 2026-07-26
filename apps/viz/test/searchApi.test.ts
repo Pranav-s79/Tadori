@@ -16,6 +16,7 @@ function wireRow(over: Record<string, unknown> = {}) {
     exported: 1,
     rank: -1.2,
     exact_match: 1,
+    representative_package_key: "pkg:a",
     ...over
   };
 }
@@ -127,7 +128,8 @@ describe("fetchSearch mapping + generation", () => {
       lineStart: 3,
       lineEnd: 9,
       exported: false,
-      exactMatch: false
+      exactMatch: false,
+      representativePackageKey: "pkg:a"
     });
   });
 

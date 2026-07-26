@@ -1,10 +1,14 @@
 import { ensureLayout, type LayoutLevel } from "@tadori/store";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { badRequest } from "../errors.js";
+import { getPackageProjection } from "../packageProjection.js";
+import { selectLodScope } from "../lodScope.js";
 
 interface LayoutQuery {
   level?: string;
   viewKey?: string;
+  packageName?: string;
+  file?: string;
 }
 
 const LAYOUT_LEVELS: ReadonlySet<string> = new Set(["package", "file", "symbol"]);
@@ -30,6 +34,11 @@ export async function registerLayoutRoutes(app: FastifyInstance): Promise<void> 
     // exact graph selected here.
     const service = app.graphState.current();
     try {
+      const projection = level === "package" ? getPackageProjection(service.graph) : undefined;
+      const scope = selectLodScope(service.graph, level as LayoutLevel, {
+        ...(request.query.packageName === undefined ? {} : { packageName: request.query.packageName }),
+        ...(request.query.file === undefined ? {} : { file: request.query.file })
+      }, projection);
       const layout = ensureLayout(
         app.graphState.currentDb(),
         service.graph,
@@ -37,14 +46,19 @@ export async function registerLayoutRoutes(app: FastifyInstance): Promise<void> 
         viewKey
       );
       return reply.send({
-        positions: layout.positions.map((position) => ({
+        positions: layout.positions.filter((position) => scope.keys.has(position.entityKey)).map((position) => ({
           entityKey: position.entityKey,
           x: position.x,
           y: position.y,
           z: position.z,
           pinned: position.pinned
         })),
-        layoutVersion: layout.layoutVersion
+        layoutVersion: layout.layoutVersion,
+        scope: {
+          totalNodeCount: scope.allNodes.length,
+          boundedNodeCount: scope.nodes.length,
+          omittedNodeCount: scope.omittedNodeCount
+        }
       });
     } catch {
       return reply.code(500).send({

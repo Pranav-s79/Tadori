@@ -93,6 +93,27 @@ describe("InspectionPanel", () => {
     );
   });
 
+  it("shows multi-language extraction attribution without upgrading legacy facts", async () => {
+    routeFetch({
+      a: {
+        ...nodeBody("a", "Alpha"),
+        language: "python",
+        provenance: {
+          extractorId: "tadori-tree-sitter",
+          extractorVersion: "1",
+          capability: "structural",
+          derivation: "parser-derived",
+          unresolvedReason: null
+        }
+      }
+    });
+    render(<Harness />);
+    fireEvent.click(screen.getByText("open-a"));
+    await waitFor(() => expect(screen.getByText("python")).toBeInTheDocument());
+    expect(screen.getByText("structural")).toBeInTheDocument();
+    expect(screen.getByText("parser-derived")).toBeInTheDocument();
+  });
+
   it("Escape closes the panel", async () => {
     routeFetch({ a: nodeBody("a", "Alpha") });
     render(<Harness />);
@@ -100,6 +121,17 @@ describe("InspectionPanel", () => {
     await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("restores focus to the actual opener after close", async () => {
+    routeFetch({ a: nodeBody("a", "Alpha") });
+    render(<Harness />);
+    const opener = screen.getByText("open-a");
+    opener.focus();
+    fireEvent.click(opener);
+    await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
+    fireEvent.click(screen.getByRole("button", { name: "Close inspection panel" }));
+    await waitFor(() => expect(opener).toHaveFocus());
   });
 
   it("edge view shows all three provenance badges", () => {
@@ -117,7 +149,15 @@ describe("InspectionPanel", () => {
       evidenceOmittedCount: 0,
       freshness: "fresh",
       stale: false,
-      staleReason: null
+      staleReason: null,
+      language: null,
+      provenance: {
+        extractorId: "tadori-cross-language-boundaries",
+        extractorVersion: "1",
+        capability: "repository",
+        derivation: "repository-derived",
+        unresolvedReason: null
+      }
     };
     routeFetch({});
     function EdgeHarness() {
@@ -136,5 +176,7 @@ describe("InspectionPanel", () => {
     expect(screen.getByText(/origin: compiler/)).toBeInTheDocument();
     expect(screen.getByText(/confidence: certain/)).toBeInTheDocument();
     expect(screen.getByText(/resolution: resolved/)).toBeInTheDocument();
+    expect(screen.getByText(/capability: repository/)).toBeInTheDocument();
+    expect(screen.getByText(/derivation: repository-derived/)).toBeInTheDocument();
   });
 });

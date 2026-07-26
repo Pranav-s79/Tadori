@@ -166,24 +166,25 @@ export function installMockFetch(overrides?: {
     const params = new URLSearchParams(url.includes("?") ? url.slice(url.indexOf("?")) : "");
     const level = params.get("level");
     const pkg = params.get("packageName");
+    const packageKey = mockPackageNodes.find((node) => node.qualifiedName === pkg)?.entityKey ?? pkg;
     if (url.includes("/api/v1/snapshot")) {
       return jsonResponse(overrides?.context ?? mockContext);
     }
     if (url.includes("/api/v1/nodes")) {
       if (level === "file" && pkg !== null) {
-        return jsonResponse(mockNodesResponse(mockFileNodesByPackage[pkg] ?? []));
+        return jsonResponse(mockNodesResponse(mockFileNodesByPackage[packageKey ?? ""] ?? []));
       }
       return jsonResponse(mockNodesResponse(overrides?.nodes));
     }
     if (url.includes("/api/v1/edges")) {
       if (level === "file" && pkg !== null) {
-        return jsonResponse(mockEdgesResponse(mockFileEdgesByPackage[pkg] ?? []));
+        return jsonResponse(mockEdgesResponse(mockFileEdgesByPackage[packageKey ?? ""] ?? []));
       }
       return jsonResponse(mockEdgesResponse(overrides?.edges));
     }
     if (url.includes("/api/v1/layout")) {
       if (level === "file" && pkg !== null) {
-        return jsonResponse(mockLayoutResponse(mockFileLayoutByPackage[pkg] ?? []));
+        return jsonResponse(mockLayoutResponse(mockFileLayoutByPackage[packageKey ?? ""] ?? []));
       }
       return jsonResponse(mockLayoutResponse(overrides?.positions));
     }

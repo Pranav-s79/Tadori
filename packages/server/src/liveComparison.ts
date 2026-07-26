@@ -171,7 +171,7 @@ export async function computeLiveComparison(
       capturePath = staged.dir;
     }
 
-    const tempDbDir = mkdtempSync(path.join(tmpdir(), "tadori-live-diff-"));
+    const tempDbDir = mkdtempSync(path.join(tmpdir(), `tadori-live-diff-${String(process.pid)}-`));
     disposers.push(() => rmSync(tempDbDir, { recursive: true, force: true }));
     const tempDb = openDatabase(path.join(tempDbDir, "compare.sqlite"));
     disposers.push(() => tempDb.close());
