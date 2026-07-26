@@ -87,7 +87,10 @@ tarball in a temporary prefix and locally passed command, embedded-asset, API,
 Python structural-provenance, layout, shutdown, and confined-purge checks. CI is
 configured to repeat build, manifest audit, installation, and smoke on Ubuntu
 Node 22/24/26, Windows Node 22, and macOS Node 22; production advisory calls run
-once on the canonical Ubuntu/Node 22 leg.
+once on the canonical Ubuntu/Node 22 leg. The root gate runs the 69 non-CLI
+files first, then the 13 process-owning CLI files without file parallelism, so
+worker, listener, and loopback-server lifecycle tests do not compete with the
+rest of the repository suite on constrained hosted runners.
 
 The capability truth source is `docs/MULTILANGUAGE_CAPABILITIES.json`;
 unsupported semantic facts remain absent or explicitly unresolved. Public npm
