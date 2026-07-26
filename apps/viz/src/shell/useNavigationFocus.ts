@@ -7,7 +7,11 @@ export interface NavigationFocusController {
 }
 
 /** Transfers focus into an opened drawer and back to its toggle on close. */
-export function useNavigationFocus(open: boolean, close: () => void): NavigationFocusController {
+export function useNavigationFocus(
+  open: boolean,
+  close: () => void,
+  drawerMode = true
+): NavigationFocusController {
   const toggleRef = useRef<HTMLButtonElement | null>(null);
   const drawerRef = useRef<HTMLElement | null>(null);
   const previousOpen = useRef(open);
@@ -16,21 +20,22 @@ export function useNavigationFocus(open: boolean, close: () => void): Navigation
     if (previousOpen.current === open) return;
     previousOpen.current = open;
     if (open) {
+      if (!drawerMode) return;
       const target = drawerRef.current?.querySelector<HTMLElement>(
         "input:not([disabled]), button:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])"
       );
       (target ?? drawerRef.current)?.focus();
-    } else {
+    } else if (drawerMode) {
       toggleRef.current?.focus();
     }
-  }, [open]);
+  }, [drawerMode, open]);
 
   const onDrawerKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
-    if (event.key !== "Escape") return;
+    if (event.key !== "Escape" || !drawerMode) return;
     event.preventDefault();
     event.stopPropagation();
     close();
-  }, [close]);
+  }, [close, drawerMode]);
 
   return { toggleRef, drawerRef, onDrawerKeyDown };
 }

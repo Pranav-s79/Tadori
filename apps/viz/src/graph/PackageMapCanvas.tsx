@@ -1,6 +1,6 @@
 import Graph from "graphology";
 import Sigma from "sigma";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ApiEdge, ApiNode, LayoutPositionDto, NodeKind } from "../api/types.ts";
 import { usePackageExpansion } from "../hooks/usePackageExpansion.ts";
 import { useFileExpansion } from "../hooks/useFileExpansion.ts";
@@ -24,12 +24,206 @@ const LABEL_MAX_LENGTH = 24;
 const NO_FILTERS = defaultFilters();
 
 interface CameraLike {
-  animate(state: { x: number; y: number; ratio: number }, options: { duration: number }): void;
-  setState(state: { x: number; y: number; ratio: number }): void;
+  animate(state: Partial<CameraState>, options: { duration: number }): void;
+  setState(state: Partial<CameraState>): void;
+  getState(): CameraState;
+  on?(event: "updated", listener: () => void): void;
+  off?(event: "updated", listener: () => void): void;
 }
 
 interface RendererWithCamera {
   getCamera(): CameraLike;
+}
+
+interface CameraState {
+  x: number;
+  y: number;
+  ratio: number;
+  angle: number;
+}
+
+interface ViewportProjector extends RendererWithCamera {
+  graphToViewport(point: { x: number; y: number }): { x: number; y: number };
+}
+
+export interface ViewportPosition {
+  x: number;
+  y: number;
+}
+
+export interface RenderedGraphSnapshot {
+  nodes: ApiNode[];
+  edges: ApiEdge[];
+  selectedEntityKey: string | null;
+}
+
+export interface StoryMapTransition {
+  fromEntityKey: string;
+  toEntityKey: string | null;
+  relation: string;
+}
+
+export interface StoryMapEmphasis {
+  pathEntityKeys: readonly string[];
+  transitions: readonly StoryMapTransition[];
+  activeEntityKey: string | null;
+  unresolvedFromEntityKey: string | null;
+}
+
+export interface PackagePlate {
+  packageEntityKey: string;
+  label: string;
+  attribution: "repository-derived package boundary";
+  shape: ReturnType<typeof convexHull>;
+  labelPosition: ViewportPosition;
+}
+
+function apiNode(graph: Graph, graphKey: string): ApiNode {
+  const value = graph.getNodeAttribute(graphKey, "apiNode") as ApiNode | undefined;
+  if (value === undefined) throw new Error(`Rendered graph node ${JSON.stringify(graphKey)} has no API node backing`);
+  return value;
+}
+
+export function renderedGraphSnapshot(graph: Graph): RenderedGraphSnapshot {
+  const nodeByCanonicalKey = new Map<string, ApiNode>();
+  const selectedCanonicalKeys = new Set<string>();
+  for (const graphKey of graph.nodes().sort()) {
+    const node = apiNode(graph, graphKey);
+    if (!nodeByCanonicalKey.has(node.entityKey)) nodeByCanonicalKey.set(node.entityKey, { ...node });
+    if (graph.getNodeAttribute(graphKey, "selected") === true) selectedCanonicalKeys.add(node.entityKey);
+  }
+  const edgeByCanonicalKey = new Map<string, ApiEdge>();
+  for (const graphKey of graph.edges().sort()) {
+    const value = graph.getEdgeAttribute(graphKey, "apiEdge") as ApiEdge | undefined;
+    if (value === undefined) throw new Error(`Rendered graph edge ${JSON.stringify(graphKey)} has no API edge backing`);
+    if (
+      !edgeByCanonicalKey.has(value.entityKey)
+      && nodeByCanonicalKey.has(value.srcEntityKey)
+      && nodeByCanonicalKey.has(value.dstEntityKey)
+    ) {
+      edgeByCanonicalKey.set(value.entityKey, { ...value });
+    }
+  }
+  const nodes = [...nodeByCanonicalKey.values()].sort((a, b) => a.entityKey.localeCompare(b.entityKey));
+  const edges = [...edgeByCanonicalKey.values()].sort((a, b) => a.entityKey.localeCompare(b.entityKey));
+  return {
+    nodes,
+    edges,
+    selectedEntityKey: [...selectedCanonicalKeys].sort()[0] ?? null
+  };
+}
+
+export function projectRenderedNodePositions(
+  renderer: Pick<ViewportProjector, "graphToViewport">,
+  graph: Graph
+): ReadonlyMap<string, ViewportPosition> {
+  const positions = new Map<string, ViewportPosition>();
+  for (const graphKey of graph.nodes().sort()) {
+    const canonicalKey = apiNode(graph, graphKey).entityKey;
+    if (positions.has(canonicalKey)) continue;
+    const attrs = graph.getNodeAttributes(graphKey);
+    const point = renderer.graphToViewport({ x: Number(attrs.x), y: Number(attrs.y) });
+    if (Number.isFinite(point.x) && Number.isFinite(point.y)) {
+      positions.set(canonicalKey, point);
+    }
+  }
+  return positions;
+}
+
+export function projectedPackagePlates(
+  renderer: Pick<ViewportProjector, "graphToViewport">,
+  graph: Graph
+): PackagePlate[] {
+  const plates: PackagePlate[] = [];
+  for (const packageKey of graph.nodes().sort()) {
+    if (graph.getNodeAttribute(packageKey, "kind") !== "package"
+      || graph.getNodeAttribute(packageKey, "packageMembershipKnown") !== true) continue;
+    const memberPoints = graph.nodes()
+      .filter((nodeKey) => graph.getNodeAttribute(nodeKey, "expandedFrom") === packageKey)
+      .sort()
+      .map((nodeKey) => graph.getNodeAttributes(nodeKey))
+      .map((attrs) => renderer.graphToViewport({ x: Number(attrs.x), y: Number(attrs.y) }))
+      .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+    if (memberPoints.length === 0) continue;
+    const shape = convexHull(memberPoints);
+    const labelPosition = shape.kind === "circle"
+      ? shape.center
+      : {
+          x: shape.points.reduce((sum, point) => sum + point.x, 0) / shape.points.length,
+          y: shape.points.reduce((sum, point) => sum + point.y, 0) / shape.points.length
+        };
+    const packageNode = apiNode(graph, packageKey);
+    plates.push({
+      packageEntityKey: packageNode.entityKey,
+      label: packageNode.displayName,
+      attribution: "repository-derived package boundary",
+      shape,
+      labelPosition
+    });
+  }
+  return plates;
+}
+
+export function applyStoryGraphEmphasis(graph: Graph, emphasis: StoryMapEmphasis | null): void {
+  if (emphasis === null) {
+    graph.forEachNode((key) => graph.mergeNodeAttributes(key, { storyDimmed: false, storyActive: false }));
+    graph.forEachEdge((key) => graph.mergeEdgeAttributes(key, { storyDimmed: false, storyActive: false }));
+    return;
+  }
+  const path = new Set(emphasis.pathEntityKeys);
+  const transitions = new Set(emphasis.transitions
+    .filter((transition) => transition.toEntityKey !== null)
+    .map((transition) => `${transition.fromEntityKey}\u0000${transition.relation}\u0000${transition.toEntityKey}`));
+  graph.forEachNode((key, attrs) => {
+    const canonicalKey = apiNode(graph, key).entityKey;
+    const inPath = path.has(canonicalKey);
+    const active = canonicalKey === emphasis.activeEntityKey
+      || canonicalKey === emphasis.unresolvedFromEntityKey;
+    const baseSize = Number(attrs.baseSize ?? attrs.size ?? 4);
+    graph.mergeNodeAttributes(key, {
+      storyDimmed: !inPath,
+      storyActive: active,
+      color: inPath ? (active ? "#9a4f22" : "#b87333") : "#d6d0c3",
+      size: inPath ? baseSize + (active ? 3 : 1) : Math.max(0.75, baseSize * 0.45)
+    });
+  });
+  graph.forEachEdge((key, attrs, source, target) => {
+    const sourceKey = apiNode(graph, source).entityKey;
+    const targetKey = apiNode(graph, target).entityKey;
+    const inPath = transitions.has(`${sourceKey}\u0000${String(attrs.relation ?? "")}\u0000${targetKey}`);
+    const baseSize = Number(attrs.baseSize ?? attrs.size ?? 1);
+    graph.mergeEdgeAttributes(key, {
+      storyDimmed: !inPath,
+      storyActive: inPath,
+      color: inPath ? "#b87333" : "#ddd8cf",
+      size: inPath ? Math.max(2.5, baseSize + 1) : Math.max(0.25, baseSize * 0.4)
+    });
+  });
+}
+
+type ArrowDirection = "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown";
+
+export function directionalNeighbor(graph: Graph, fromKey: string, direction: ArrowDirection): string | null {
+  if (!graph.hasNode(fromKey)) return null;
+  const fromX = Number(graph.getNodeAttribute(fromKey, "x"));
+  const fromY = Number(graph.getNodeAttribute(fromKey, "y"));
+  const candidates: Array<{ key: string; distance: number }> = [];
+  graph.forEachNode((key, attrs) => {
+    if (key === fromKey) return;
+    const dx = Number(attrs.x) - fromX;
+    const dy = Number(attrs.y) - fromY;
+    const inDirection = direction === "ArrowLeft" ? dx < 0
+      : direction === "ArrowRight" ? dx > 0
+      : direction === "ArrowUp" ? dy < 0
+      : dy > 0;
+    if (inDirection) candidates.push({ key, distance: (dx * dx) + (dy * dy) });
+  });
+  candidates.sort((a, b) => a.distance - b.distance || a.key.localeCompare(b.key));
+  return candidates[0]?.key ?? null;
+}
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
 
 export function focusGraphEntity(
@@ -174,8 +368,18 @@ export interface PackageMapCanvasProps {
   positions: LayoutPositionDto[];
   /** Test seam: receives the live graphology graph after mount + each mutation. */
   onGraphReady?: (graph: Graph) => void;
+  /** Immutable DTO snapshot of exactly the entities currently rendered. */
+  onRenderedGraphChange?: (snapshot: RenderedGraphSnapshot) => void;
+  /** Current Sigma camera projection for exactly the rendered node set. */
+  onViewportPositionsChange?: (positions: ReadonlyMap<string, ViewportPosition>) => void;
+  /** Opens the canonical entity in the shared inspector. */
+  onInspect?: (entityKey: string) => void;
   filters?: SearchFilters;
   focusRequest?: { entityKey: string; requestId: number } | null;
+  /** False while the persistent canvas is hidden behind Table mode. */
+  active?: boolean;
+  /** Evidence-backed Story path mapped to currently rendered representatives. */
+  storyEmphasis?: StoryMapEmphasis | null;
 }
 
 export function PartialLodNotice({
@@ -203,12 +407,28 @@ export function PartialLodNotice({
  * ProvenanceLegend uses). Clicking or keyboard-activating (Enter/Space) a
  * package node toggles its expansion.
  */
-export function PackageMapCanvas({ nodes, edges, positions, onGraphReady, filters = NO_FILTERS, focusRequest = null }: PackageMapCanvasProps) {
+export function PackageMapCanvas({
+  nodes,
+  edges,
+  positions,
+  onGraphReady,
+  onRenderedGraphChange,
+  onViewportPositionsChange,
+  onInspect,
+  filters = NO_FILTERS,
+  focusRequest = null,
+  active = true,
+  storyEmphasis = null
+}: PackageMapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sigmaRef = useRef<Sigma | null>(null);
   const graphRef = useRef<Graph | null>(null);
   const prevExpandedRef = useRef<ReadonlySet<string>>(new Set());
   const prevExpandedFilesRef = useRef<ReadonlySet<string>>(new Set());
+  const publishRef = useRef<(() => void) | null>(null);
+  const [packagePlates, setPackagePlates] = useState<PackagePlate[]>([]);
+  const callbacksRef = useRef({ onGraphReady, onRenderedGraphChange, onViewportPositionsChange, onInspect });
+  callbacksRef.current = { onGraphReady, onRenderedGraphChange, onViewportPositionsChange, onInspect };
   const { expandedPackages, fileData, expand, collapse } = usePackageExpansion();
   const {
     expandedFiles,
@@ -224,6 +444,8 @@ export function PackageMapCanvas({ nodes, edges, positions, onGraphReady, filter
   expandedFilesRef.current = expandedFiles;
   const filtersRef = useRef<SearchFilters>(filters);
   filtersRef.current = filters;
+  const storyEmphasisRef = useRef<StoryMapEmphasis | null>(storyEmphasis);
+  storyEmphasisRef.current = storyEmphasis;
 
   // Build the base graph once per data input; expansion mutates it in place.
   useEffect(() => {
@@ -245,9 +467,34 @@ export function PackageMapCanvas({ nodes, edges, positions, onGraphReady, filter
     });
     sigmaRef.current = renderer;
 
-    const activate = (nodeKey: string): void => {
+    const publish = (): void => {
+      callbacksRef.current.onGraphReady?.(graph);
+      callbacksRef.current.onRenderedGraphChange?.(renderedGraphSnapshot(graph));
+      callbacksRef.current.onViewportPositionsChange?.(projectRenderedNodePositions(renderer, graph));
+      setPackagePlates(projectedPackagePlates(renderer, graph));
+    };
+    publishRef.current = publish;
+
+    const selectAndFocus = (nodeKey: string): void => {
+      if (!selectGraphEntity(graph, nodeKey)) return;
+      applyFiltersToCanvasGraph(graph, filtersRef.current);
+      applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
+      container.dataset.focusedNode = nodeKey;
+      focusGraphEntity(renderer, graph, nodeKey, prefersReducedMotion());
+      renderer.refresh();
+      publish();
+    };
+
+    const inspect = (nodeKey: string): void => {
+      if (!graph.hasNode(nodeKey)) return;
+      callbacksRef.current.onInspect?.(apiNode(graph, nodeKey).entityKey);
+    };
+
+    const activate = (nodeKey: string): boolean => {
+      if (!graph.hasNode(nodeKey)) return false;
       selectGraphEntity(graph, nodeKey);
       applyFiltersToCanvasGraph(graph, filtersRef.current);
+      applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
       container.dataset.focusedNode = nodeKey;
       renderer.refresh();
       // A file node (surfaced by a package expansion) toggles the THIRD zoom
@@ -264,8 +511,10 @@ export function PackageMapCanvas({ nodes, edges, positions, onGraphReady, filter
             void expandFile(nodeKey, filePath);
           }
         }
-        return;
+        publish();
+        return true;
       }
+      if (kind !== "package") return false;
       if (expandedPackagesRef.current.has(nodeKey)) {
         collapse(nodeKey);
       } else {
@@ -274,27 +523,116 @@ export function PackageMapCanvas({ nodes, edges, positions, onGraphReady, filter
           void expand(nodeKey, packageName);
         }
       }
+      publish();
+      return true;
     };
-    renderer.on("clickNode", ({ node }) => activate(node));
+
+    const ascend = (nodeKey: string): boolean => {
+      if (!graph.hasNode(nodeKey)) return false;
+      const expandedFromFile = graph.getNodeAttribute(nodeKey, "expandedFromFile");
+      if (typeof expandedFromFile === "string") {
+        collapseFile(expandedFromFile);
+        container.dataset.focusedNode = expandedFromFile;
+        return true;
+      }
+      const kind = graph.getNodeAttribute(nodeKey, "kind");
+      if (kind === "file" && expandedFilesRef.current.has(nodeKey)) {
+        collapseFile(nodeKey);
+        return true;
+      }
+      const expandedFrom = graph.getNodeAttribute(nodeKey, "expandedFrom");
+      if (typeof expandedFrom === "string") {
+        collapse(expandedFrom);
+        container.dataset.focusedNode = expandedFrom;
+        return true;
+      }
+      if (expandedPackagesRef.current.has(nodeKey)) {
+        collapse(nodeKey);
+        return true;
+      }
+      return false;
+    };
+
+    const updateCamera = (state: Partial<CameraState>): void => {
+      const camera = renderer.getCamera();
+      if (prefersReducedMotion()) camera.setState(state);
+      else camera.animate(state, { duration: 180 });
+    };
+
+    const pan = (direction: ArrowDirection): void => {
+      const current = renderer.getCamera().getState();
+      const delta = 0.12 * current.ratio;
+      updateCamera({
+        x: current.x + (direction === "ArrowLeft" ? -delta : direction === "ArrowRight" ? delta : 0),
+        y: current.y + (direction === "ArrowUp" ? -delta : direction === "ArrowDown" ? delta : 0)
+      });
+    };
+
+    renderer.on("clickNode", ({ node }) => {
+      inspect(node);
+      activate(node);
+    });
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== "Enter" && event.key !== " ") {
+      const focused = container.dataset.focusedNode;
+      if (event.key.startsWith("Arrow")) {
+        event.preventDefault();
+        const direction = event.key as ArrowDirection;
+        const first = graph.nodes().sort()[0];
+        const target = focused === undefined || focused === "" || !graph.hasNode(focused)
+          ? first
+          : directionalNeighbor(graph, focused, direction);
+        if (target === undefined || target === null) pan(direction);
+        else selectAndFocus(target);
         return;
       }
-      const focused = container.dataset.focusedNode;
-      if (focused !== undefined && focused !== "") {
+      if (event.key === "Enter" && focused !== undefined && focused !== "") {
         event.preventDefault();
-        activate(focused);
+        if (!activate(focused)) inspect(focused);
+        return;
+      }
+      if (event.key === " " && focused !== undefined && focused !== "") {
+        event.preventDefault();
+        inspect(focused);
+        return;
+      }
+      if (event.key === "Escape" && focused !== undefined && focused !== "") {
+        if (ascend(focused)) event.preventDefault();
+        return;
+      }
+      if (event.key === "+" || event.key === "=") {
+        event.preventDefault();
+        const current = renderer.getCamera().getState();
+        updateCamera({ ratio: Math.max(0.02, current.ratio * 0.75) });
+        return;
+      }
+      if (event.key === "-" || event.key === "_") {
+        event.preventDefault();
+        const current = renderer.getCamera().getState();
+        updateCamera({ ratio: Math.min(10, current.ratio / 0.75) });
+        return;
+      }
+      if (event.key === "0") {
+        event.preventDefault();
+        updateCamera({ x: 0.5, y: 0.5, ratio: 1, angle: 0 });
       }
     };
     container.addEventListener("keydown", onKeyDown);
 
-    onGraphReady?.(graph);
+    const camera = renderer.getCamera();
+    camera.on?.("updated", publish);
+    renderer.on("resize", publish);
+
     applyFiltersToCanvasGraph(graph, filters);
+    applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
     renderer.refresh();
+    publish();
 
     return () => {
       container.removeEventListener("keydown", onKeyDown);
+      camera.off?.("updated", publish);
+      renderer.off("resize", publish);
       renderer.kill();
+      publishRef.current = null;
       sigmaRef.current = null;
       graphRef.current = null;
     };
@@ -306,12 +644,14 @@ export function PackageMapCanvas({ nodes, edges, positions, onGraphReady, filter
     const graph = graphRef.current;
     const renderer = sigmaRef.current;
     if (graph === null || renderer === null || focusRequest === null) return;
-    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const reduced = prefersReducedMotion();
     if (focusGraphEntity(renderer, graph, focusRequest.entityKey, reduced)) {
       selectGraphEntity(graph, focusRequest.entityKey);
       applyFiltersToCanvasGraph(graph, filtersRef.current);
+      applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
       renderer.refresh();
       if (containerRef.current !== null) containerRef.current.dataset.focusedNode = focusRequest.entityKey;
+      publishRef.current?.();
     }
   }, [focusRequest]);
 
@@ -319,9 +659,10 @@ export function PackageMapCanvas({ nodes, edges, positions, onGraphReady, filter
     const graph = graphRef.current;
     if (graph === null) return;
     applyFiltersToCanvasGraph(graph, filters);
+    applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
     sigmaRef.current?.refresh();
-    onGraphReady?.(graph);
-  }, [filters, onGraphReady]);
+    publishRef.current?.();
+  }, [filters]);
 
   // Apply only the delta between the previous and current expanded sets.
   useEffect(() => {
@@ -345,9 +686,10 @@ export function PackageMapCanvas({ nodes, edges, positions, onGraphReady, filter
     prevExpandedRef.current = expandedPackages;
     applyAtlasGraphStyles(graph);
     applyFiltersToCanvasGraph(graph, filters);
+    applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
     sigmaRef.current?.refresh();
-    onGraphReady?.(graph);
-  }, [expandedPackages, fileData, filters, onGraphReady]);
+    publishRef.current?.();
+  }, [expandedPackages, fileData, filters]);
 
   // Apply only the delta between the previous and current expanded-FILE sets
   // (the third zoom level). Same additive-mutation contract as the package
@@ -373,9 +715,34 @@ export function PackageMapCanvas({ nodes, edges, positions, onGraphReady, filter
     prevExpandedFilesRef.current = expandedFiles;
     applyAtlasGraphStyles(graph);
     applyFiltersToCanvasGraph(graph, filters);
+    applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
     sigmaRef.current?.refresh();
-    onGraphReady?.(graph);
-  }, [expandedFiles, symbolData, filters, onGraphReady]);
+    publishRef.current?.();
+  }, [expandedFiles, symbolData, filters]);
+
+  useEffect(() => {
+    const graph = graphRef.current;
+    const renderer = sigmaRef.current;
+    if (graph === null || renderer === null) return;
+    applyAtlasGraphStyles(graph);
+    applyFiltersToCanvasGraph(graph, filtersRef.current);
+    applyStoryGraphEmphasis(graph, storyEmphasis);
+    const focusKey = storyEmphasis?.activeEntityKey ?? storyEmphasis?.unresolvedFromEntityKey ?? null;
+    if (focusKey !== null && graph.hasNode(focusKey)) {
+      focusGraphEntity(renderer, graph, focusKey, prefersReducedMotion());
+      if (containerRef.current !== null) containerRef.current.dataset.focusedNode = focusKey;
+    }
+    renderer.refresh();
+    publishRef.current?.();
+  }, [storyEmphasis]);
+
+  useEffect(() => {
+    const renderer = sigmaRef.current;
+    if (!active || renderer === null) return;
+    renderer.resize(true);
+    renderer.refresh();
+    publishRef.current?.();
+  }, [active]);
 
   const partialScopes = [
     ...[...expandedPackages].flatMap((key) => fileData.get(key)?.partial ? [fileData.get(key)!.partial!] : []),
@@ -384,12 +751,33 @@ export function PackageMapCanvas({ nodes, edges, positions, onGraphReady, filter
   return (
     <>
       <PartialLodNotice scopes={partialScopes} />
+      <svg className="package-plate-overlay" role="img" aria-label="Repository-derived package boundaries">
+        {packagePlates.map((plate) => (
+          <g key={plate.packageEntityKey} aria-label={`${plate.attribution}: ${plate.label}`}>
+            <title>{`${plate.attribution}: ${plate.label}`}</title>
+            {plate.shape.kind === "hull" ? (
+              <polygon points={plate.shape.points.map((point) => `${point.x},${point.y}`).join(" ")} />
+            ) : (
+              <circle cx={plate.shape.center.x} cy={plate.shape.center.y} r={Math.max(12, plate.shape.radius)} />
+            )}
+            <text x={plate.labelPosition.x} y={plate.labelPosition.y}>{plate.label}</text>
+            <text className="package-plate-attribution" x={plate.labelPosition.x} y={plate.labelPosition.y + 13}>
+              repository-derived package boundary
+            </text>
+          </g>
+        ))}
+      </svg>
+      {storyEmphasis?.unresolvedFromEntityKey !== null && storyEmphasis?.unresolvedFromEntityKey !== undefined && (
+        <p className="story-map-status" role="status">
+          {`Unresolved termination from ${storyEmphasis.unresolvedFromEntityKey}; destination unknown.`}
+        </p>
+      )}
       <div
         ref={containerRef}
         className="package-map-canvas"
         tabIndex={0}
         role="application"
-        aria-label="Package map; activate a package to expand its files, or a file to expand its symbols"
+        aria-label="Package map; arrows move focus or pan, Enter descends or inspects, Escape ascends, plus and minus zoom, zero resets"
         style={{ width: "100%", height: "100%" }}
       />
     </>

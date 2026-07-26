@@ -1,7 +1,7 @@
 import { useMemo, type ReactElement } from "react";
 import type { AccumulatedDiff } from "./useReviewDiffStore.ts";
 
-/** A 2D layout coordinate, read verbatim from the existing layout endpoint. */
+/** A Sigma graph coordinate projected into the current viewport. */
 export interface BadgePosition {
   x: number;
   y: number;
@@ -14,11 +14,10 @@ interface DiffBadgeOverlayProps {
   /** The accumulated diff (from useReviewDiffStore). */
   page: AccumulatedDiff | null;
   /**
-   * Existing layout coordinates keyed by entityKey. MUST come from the existing
-   * fetchLayout(level) — this component runs NO layout of its own (no
-   * graphology/sigma import, no force layout, no position guessing). A node
-   * absent from this map has no coordinate and is surfaced as "unplaced", never
-   * placed at 0,0.
+   * Current Sigma viewport coordinates keyed by canonical entityKey. The canvas
+   * updates them after camera, resize, and expansion changes. This component
+   * runs no layout and a node absent from the rendered graph is surfaced as
+   * "unplaced", never placed at 0,0.
    */
   positions: ReadonlyMap<string, BadgePosition>;
   /** Open evidence/source through the EXISTING inspection store (same as the list). */
@@ -90,7 +89,7 @@ function partitionBadges(
 
 /**
  * Non-moving badge overlay. Renders one badge per changed NODE at its EXISTING
- * layout coordinate (read verbatim from `positions`). It never computes a
+ * current Sigma viewport coordinate. It never computes a
  * layout: no graphology/sigma import, no force simulation, no fallback position.
  * A changed node with no coordinate goes into an explicit "unplaced" list rather
  * than being drawn at a guessed spot. Selecting a badge opens the same
@@ -118,7 +117,7 @@ export function DiffBadgeOverlay({ page, positions, onInspect }: DiffBadgeOverla
 
       {unplaced.length > 0 && (
         <div className="diff-badge-unplaced" role="status" aria-label="Unplaced diff badges">
-          <p>{`${unplaced.length} changed node${unplaced.length === 1 ? "" : "s"} without a layout position:`}</p>
+          <p>{`${unplaced.length} changed node${unplaced.length === 1 ? "" : "s"} not currently rendered on the map:`}</p>
           <ul>
             {unplaced.map((badge) => (
               <li key={badge.entityKey}>

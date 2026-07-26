@@ -15,7 +15,8 @@ describe("usePackageGraph server projection", () => {
       { entityKey: "pkg:b", kind: "package", qualifiedName: "b", displayName: "b", file: null, exported: false, fanIn: 0 }
     ];
     const projectedEdges = [
-      { entityKey: "package-projection:cross", srcEntityKey: "pkg:a", relation: "imports", dstEntityKey: "pkg:b", origin: "compiler", confidence: "certain", resolution: "resolved" }
+      { entityKey: "package-projection:imports", srcEntityKey: "pkg:a", relation: "imports", dstEntityKey: "pkg:b", origin: "compiler", confidence: "certain", resolution: "resolved" },
+      { entityKey: "package-projection:calls", srcEntityKey: "pkg:b", relation: "calls", dstEntityKey: "pkg:a", origin: "heuristic", confidence: "likely", resolution: "partial" }
     ];
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(`http://local${String(input)}`);
@@ -26,9 +27,9 @@ describe("usePackageGraph server projection", () => {
       }
       if (url.pathname.endsWith("/edges")) {
         expect(url.searchParams.get("level")).toBe("package");
-        expect(url.searchParams.get("relation")).toBe("imports");
+        expect(url.searchParams.get("relation")).toBeNull();
         expect(url.searchParams.get("limit")).toBe("1000");
-        return response({ items: projectedEdges, nextCursor: null, total: 1, omittedCount: 0 });
+        return response({ items: projectedEdges, nextCursor: null, total: 2, omittedCount: 0 });
       }
       if (url.pathname.endsWith("/layout")) return response({ positions: [
         { entityKey: "pkg:a", x: 0, y: 0, z: 0, pinned: false },

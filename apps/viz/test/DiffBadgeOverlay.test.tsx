@@ -73,7 +73,7 @@ describe("DiffBadgeOverlay placement (positions read verbatim)", () => {
     expect(screen.getByRole("button", { name: /added a/ })).toBeInTheDocument();
     // Unplaced: "missing" appears in the unplaced list, and NOT as a positioned badge.
     const unplacedRegion = screen.getByRole("status", { name: "Unplaced diff badges" });
-    expect(unplacedRegion).toHaveTextContent(/1 changed node without a layout position/);
+    expect(unplacedRegion).toHaveTextContent(/1 changed node not currently rendered on the map/);
     expect(unplacedRegion).toHaveTextContent(/missing/);
     expect(screen.queryByRole("button", { name: /added missing/ })).not.toBeInTheDocument();
   });

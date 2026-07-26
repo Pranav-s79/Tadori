@@ -6,7 +6,7 @@ export function LoadingState() {
 
 export function StaleState({ staleReason }: { staleReason: string | null }) {
   return (
-    <div role="status">
+    <div className="stale-state" role="status">
       Data may be out of date: {staleReason ?? "unknown reason"}
     </div>
   );

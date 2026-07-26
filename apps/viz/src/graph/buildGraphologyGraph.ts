@@ -22,6 +22,7 @@ export function buildGraphologyGraph(
       throw new Error(`Graph node ${JSON.stringify(node.entityKey)} has no served layout position`);
     }
     graph.addNode(node.entityKey, {
+      apiNode: node,
       kind: node.kind,
       qualifiedName: node.qualifiedName,
       displayName: node.displayName,
@@ -47,6 +48,7 @@ export function buildGraphologyGraph(
       throw new Error(`Graph edge ${JSON.stringify(edge.entityKey)} references missing target node ${JSON.stringify(edge.dstEntityKey)}`);
     }
     graph.addEdgeWithKey(edge.entityKey, edge.srcEntityKey, edge.dstEntityKey, {
+      apiEdge: edge,
       relation: edge.relation,
       origin: edge.origin,
       confidence: edge.confidence,

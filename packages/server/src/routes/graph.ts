@@ -214,11 +214,12 @@ export async function registerGraphRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(statusCode).send(payload);
     }
     const packageProjection = level === "package" ? getPackageProjection(service.graph) : null;
+    const ownershipProjection = level === "file" ? getPackageProjection(service.graph) : packageProjection ?? undefined;
     const scope = level === undefined ? null : selectLodScope(
       service.graph,
       level as Level,
       { ...(packageName === undefined ? {} : { packageName }), ...(file === undefined ? {} : { file }) },
-      packageProjection ?? undefined
+      ownershipProjection
     );
     const candidateNodes = scope?.nodes ?? service.graph.nodes;
     const filtered = candidateNodes.filter((node) => {
@@ -278,11 +279,12 @@ export async function registerGraphRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(statusCode).send(payload);
     }
     const packageProjection = level === "package" ? getPackageProjection(service.graph) : null;
+    const ownershipProjection = level === "file" ? getPackageProjection(service.graph) : packageProjection ?? undefined;
     const scope = level === undefined ? null : selectLodScope(
       service.graph,
       level as Level,
       { ...(packageName === undefined ? {} : { packageName }), ...(file === undefined ? {} : { file }) },
-      packageProjection ?? undefined
+      ownershipProjection
     );
     if (packageProjection !== null) {
       const filteredGroups = packageProjection.edges.flatMap((item) => {

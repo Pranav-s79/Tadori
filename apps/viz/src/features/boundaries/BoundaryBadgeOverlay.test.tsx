@@ -86,6 +86,20 @@ describe("BoundaryBadgeOverlay rendering", () => {
     expect(screen.getByText(/1 boundary violation\./)).toBeTruthy();
   });
 
+  it("lists violations whose source file is not currently rendered", () => {
+    render(
+      <BoundaryBadgeOverlay
+        violations={[violation]}
+        nodes={[]}
+        positions={new Map()}
+        rulesPresent
+      />
+    );
+    expect(screen.getByRole("status", { name: "Boundary violations not currently rendered" })).toHaveTextContent(
+      /1 violation in files not currently on the map/
+    );
+  });
+
   it("surfaces an error state honestly instead of a silent empty result", () => {
     render(
       <BoundaryBadgeOverlay

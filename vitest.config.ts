@@ -18,6 +18,16 @@ export default defineConfig({
   },
   test: {
     include: ["packages/*/test/**/*.test.ts"],
+    // CLI integration files start real indexers, worker threads, listeners,
+    // and loopback servers. Run that resource-owning group in one fork so
+    // parallel unit projects cannot start multiple lifecycle matrices at
+    // once on constrained CI runners.
+    poolMatchGlobs: [["packages/cli/test/**/*.test.ts", "forks"]],
+    poolOptions: {
+      forks: {
+        singleFork: true
+      }
+    },
     testTimeout: 60_000,
     hookTimeout: 60_000
   }

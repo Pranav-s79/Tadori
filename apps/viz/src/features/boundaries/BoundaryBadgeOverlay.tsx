@@ -3,7 +3,7 @@ import type { ApiNode } from "../../api/types.ts";
 import type { BoundaryViolation } from "./boundariesApi.ts";
 import { violationFilePath } from "./boundariesApi.ts";
 
-/** A 2D layout coordinate, read verbatim from the existing layout endpoint. */
+/** A Sigma graph coordinate projected into the current viewport. */
 export interface BadgePosition {
   x: number;
   y: number;
@@ -20,9 +20,9 @@ interface BoundaryBadgeOverlayProps {
    */
   nodes: readonly ApiNode[];
   /**
-   * Existing layout coordinates keyed by entityKey (from the same fetchLayout the
-   * canvas uses). This overlay runs NO layout of its own — a node absent from this
-   * map is unplaced, never drawn at 0,0.
+   * Current Sigma viewport coordinates keyed by canonical entityKey. The canvas
+   * updates this map after camera, resize, and expansion changes. A node absent
+   * from the currently rendered graph is unplaced, never drawn at 0,0.
    */
   positions: ReadonlyMap<string, BadgePosition>;
   /** True when a tadori.rules.json was found. Drives the "no rules" vs "clean" copy. */
@@ -102,8 +102,8 @@ export function partitionViolations(
 
 /**
  * Non-moving boundary-violation overlay. Renders one warning glyph per violation
- * at the EXISTING layout coordinate of the offending source file (read verbatim
- * from `positions`); it computes no layout. A violation whose source file has no
+ * at the current Sigma viewport coordinate of the offending source file; it
+ * computes no layout. A violation whose source file has no
  * placed node (its package is collapsed, so only the package hull is on screen)
  * goes into an explicit "unplaced" list with its full crossing, never a guessed
  * position. Clicking a badge opens the offending file in the inspection panel.
@@ -162,7 +162,7 @@ export function BoundaryBadgeOverlay({
       </div>
 
       {unplaced.length > 0 && (
-        <div className="boundary-unplaced" role="status" aria-label="Boundary violations without a layout position">
+        <div className="boundary-unplaced" role="status" aria-label="Boundary violations not currently rendered">
           <p>
             {`${unplaced.length} violation${unplaced.length === 1 ? "" : "s"} in files not currently on the map (expand the package to place):`}
           </p>

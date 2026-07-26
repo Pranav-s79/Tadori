@@ -95,23 +95,44 @@ export function projectSnapshotPackages(graph: ProjectionGraph): ServerPackagePr
   }
   for (const bucket of children.values()) bucket.sort();
 
-  const owners = new Map<string, string>();
-  const ambiguous = new Set<string>();
+  const ownershipCandidates = new Map<string, { distance: number; packages: Set<string> }>();
   for (const packageNode of packages) {
-    const pending = [packageNode.entityKey];
-    const visited = new Set<string>();
+    const pending: Array<{ key: string; distance: number }> = [
+      { key: packageNode.entityKey, distance: 0 }
+    ];
+    const visitedAt = new Map<string, number>();
     let pendingIndex = 0;
     while (pendingIndex < pending.length) {
-      const key = pending[pendingIndex++];
-      if (key === undefined || visited.has(key)) continue;
-      visited.add(key);
-      const prior = owners.get(key);
-      if (prior === undefined) owners.set(key, packageNode.entityKey);
-      else if (prior !== packageNode.entityKey) ambiguous.add(key);
-      pending.push(...(children.get(key) ?? []));
+      const current = pending[pendingIndex++];
+      if (current === undefined) continue;
+      const priorDistance = visitedAt.get(current.key);
+      if (priorDistance !== undefined && priorDistance <= current.distance) continue;
+      visitedAt.set(current.key, current.distance);
+
+      const candidate = ownershipCandidates.get(current.key);
+      if (candidate === undefined || current.distance < candidate.distance) {
+        ownershipCandidates.set(current.key, {
+          distance: current.distance,
+          packages: new Set([packageNode.entityKey])
+        });
+      } else if (current.distance === candidate.distance) {
+        candidate.packages.add(packageNode.entityKey);
+      }
+      for (const child of children.get(current.key) ?? []) {
+        pending.push({ key: child, distance: current.distance + 1 });
+      }
     }
   }
-  for (const key of ambiguous) owners.delete(key);
+  const owners = new Map<string, string>();
+  const ambiguous = new Set<string>();
+  for (const [key, candidate] of ownershipCandidates) {
+    if (candidate.packages.size === 1) {
+      const owner = candidate.packages.values().next().value as string | undefined;
+      if (owner !== undefined) owners.set(key, owner);
+    } else {
+      ambiguous.add(key);
+    }
+  }
 
   const nodeByKey = new Map(graph.nodes.map((node) => [node.entityKey, node]));
   const ownedNodesByPackage = new Map<string, GraphNode[]>();

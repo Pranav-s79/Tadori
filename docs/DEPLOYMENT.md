@@ -31,13 +31,19 @@ python validate_fixtures.py
 pnpm fixtures:validate
 pnpm fixtures:index
 pnpm fixtures:typecheck
+pnpm audit --prod
 pnpm package:artifact
 npm pack --dry-run --json ./dist/package
+pnpm package:smoke
 ```
 
 `pnpm package:artifact` builds the offline visualization and materializes the
 installable package under `dist/package`. `npm pack --dry-run` is the release
 manifest audit: review the emitted file list before creating a tarball.
+`pnpm package:smoke` then packs and installs that exact artifact in a temporary
+prefix and verifies the installed `diff`, `serve`, and `purge` commands,
+embedded visualization/API, mixed-language structural provenance, and local
+data confinement without publishing anything.
 
 Create and test the exact tarball that would be distributed:
 

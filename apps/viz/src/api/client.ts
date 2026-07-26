@@ -192,7 +192,7 @@ export async function fetchPackageEdges(limit?: number): Promise<ApiEdge[]> {
 }
 
 export async function fetchPackageEdgesPage(limit?: number): Promise<LodPage<ApiEdge>> {
-  return getLodPage<ApiEdge>("/edges?level=package&relation=imports", "edges", "package", "edges", limit);
+  return getLodPage<ApiEdge>("/edges?level=package", "edges", "package", "edges", limit);
 }
 
 export async function fetchLayout(level: string): Promise<{ positions: LayoutPositionDto[]; layoutVersion: number }> {

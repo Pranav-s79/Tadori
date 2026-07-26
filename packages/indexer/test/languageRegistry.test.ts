@@ -1,12 +1,23 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   LANGUAGE_BY_ID,
   LANGUAGE_REGISTRY,
+  UNKNOWN_TEXT_LANGUAGE,
   detectLanguage,
   isGeneratedPath
 } from "@tadori/indexer";
 
 describe("multi-language registry", () => {
+  it("stays in exact ID parity with the active capability matrix", () => {
+    const matrix = JSON.parse(readFileSync(
+      new URL("../../../docs/MULTILANGUAGE_CAPABILITIES.json", import.meta.url),
+      "utf8"
+    )) as { languages: Array<{ id: string }> };
+    const registryIds = [...LANGUAGE_REGISTRY.map((entry) => entry.id), UNKNOWN_TEXT_LANGUAGE.id].sort();
+    expect(registryIds).toEqual(matrix.languages.map((entry) => entry.id).sort());
+  });
+
   it("registers the required baseline languages with deterministic precedence", () => {
     expect(LANGUAGE_REGISTRY.map((entry) => entry.id)).toEqual([
       "dockerfile", "typescript", "javascript", "python", "cpp", "c", "go", "rust",

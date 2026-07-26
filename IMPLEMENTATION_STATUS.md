@@ -2,9 +2,9 @@
 
 # Current State (always overwritten)
 
-Current node: 08-10 — bounded stable 2D Atlas and deployable local package.
-Status: implementation and post-review validation are complete; GitHub
-publication is prepared.
+Current node: 08-10 — bounded stable 2D Atlas release hardening.
+Status: implementation hardening is in progress; the GitHub publication branch
+is prepared, but browser-verified visual release gates remain open.
 
 Active contract: `docs/Specs/Tadori-Multilanguage-Transition.md`. Superseded
 v2.1 documents are not product, schema, or language-scope authorities. Legacy
@@ -25,22 +25,69 @@ in one responsive shell. Server-owned LOD budgets keep package/file views at
 reporting every bounded omission. Package aggregates preserve full provenance
 breakdowns instead of promoting a representative edge.
 
-Performance evidence (2026-07-26): a 150,230-LOC corpus reached real-browser
-first data paint in 4,496.70 ms, used 3,919,728 bytes of JavaScript heap, and
-had zero package/file/symbol position-identity mismatches. The 250,330-LOC
+Multi-language projection audit (2026-07-26): package ownership now uses
+nearest containment, so nested language packages retain their legitimate
+file and symbol members. File-level LOD follows canonical graph ownership when
+manifest package names are absent, and the Atlas loads every server-projected
+relation instead of hard-coding imports. The checked-in no-`package.json`
+mixed oracle expands 40 root files plus its Protocol Buffer package file with
+zero ambiguous owners. Registered repository configuration and non-TypeScript
+project manifests produce repository-derived file nodes, while legacy
+TypeScript/JavaScript configuration remains support-only for exact fixture
+compatibility. Registry IDs are test-locked to the active capability matrix.
+
+Release-hardening update (2026-07-26): the fresh and stale shells now place the
+workspace in an explicit flexible grid row; responsive navigation starts closed,
+owns Escape/focus restoration, and reopens automatically as persistent desktop
+navigation at the breakpoint; and inspection/story evidence receives the served
+absolute repository root while retaining the existing client-side confinement
+check. Boundary and change badges now use Sigma graph-to-viewport projection and
+republish after camera, resize, and expansion changes; entities absent from the
+rendered graph remain explicitly listed. The persistent canvas publishes a
+deterministically deduplicated canonical graph to Table mode, preserving
+expansion and selection across mode changes, and exposes inspection plus the
+documented keyboard pan/focus, descend/inspect, ascend/collapse, zoom, and reset
+contract with reduced-motion camera updates. The complete Atlas suite passes 42
+files / 350 tests. Expanded packages now receive labeled, repository-derived 2D
+boundaries computed only from known file membership and its projected convex
+hull; collapsed package foundations remain the canonical structures. Story
+transport publishes its active evidenced step to the map, maps raw entity keys
+through served package representatives, dims unrelated marks, and applies copper
+emphasis only to the evidenced predecessor path. Unresolved transitions remain
+visible at their known source with an explicitly unknown destination. Stable 2D
+coordinates remain the default and no functional regions or runtime behavior are
+inferred.
+
+Performance evidence (2026-07-26): the final Atlas bundle revalidated a
+150,230-LOC real-browser cold start in 4,173.06 ms and had zero
+package/file/symbol position-identity mismatches. A prior memory run used
+3,919,728 bytes of JavaScript heap. The 250,330-LOC
 incremental benchmark passed: 945.86 ms single-file p95, 815.11 ms package
 invalidation, 176,632,456 bytes heap growth, and approximately 758,579 bytes
 per snapshot.
 
 Validation evidence (2026-07-26): project skill checks, type checking, lint,
 fixture validation/index/typecheck gates, package artifact creation, and npm
-pack audit all pass. The root suite passes 81 files / 477 tests and the Atlas
-suite passes 42 files / 335 tests. A local `tadori serve . --no-open` smoke
+pack audit all pass. The root suite passes 82 files / 483 tests and the Atlas
+suite passes 42 files / 350 tests. A local `tadori serve . --no-open` smoke
 produced a fresh snapshot with 5,735 nodes and 14,503 edges; package-level
 node and layout scopes agreed, with no missing edge endpoints. In-app browser
 visual QA could not start because the browser session omitted its required
 `sandboxPolicy` metadata; automated component, integration, real-browser
 performance, accessibility, and API checks remain green.
+
+Deployment hardening (2026-07-26): compatible overrides resolve the reported
+`fast-uri`, `find-my-way`, and `@hono/node-server` advisories to patched
+versions; `pnpm audit --prod` reports zero known vulnerabilities. The workspace
+and generated package share one `diff` implementation, so the installed binary
+exposes `diff`, `serve`, and `purge`. The generated package includes a concise
+README plus factual repository/homepage/issue metadata while remaining
+explicitly `UNLICENSED`. `pnpm package:smoke` packs and installs the real
+tarball in a temporary prefix and locally passed command, embedded-asset, API,
+Python structural-provenance, layout, shutdown, and confined-purge checks. CI is
+configured to repeat build, manifest audit, installation, and smoke on Ubuntu
+Node 22/24/26, Windows Node 22, and macOS Node 22; production advisory calls run
+once on the canonical Ubuntu/Node 22 leg.
 
 The capability truth source is `docs/MULTILANGUAGE_CAPABILITIES.json`;
 unsupported semantic facts remain absent or explicitly unresolved. Public npm

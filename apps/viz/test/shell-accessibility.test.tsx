@@ -6,10 +6,10 @@ import { useNavigationFocus } from "../src/shell/useNavigationFocus.ts";
 
 afterEach(cleanup);
 
-function DrawerHarness() {
+function DrawerHarness({ drawerMode = true }: { drawerMode?: boolean }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
-  const focus = useNavigationFocus(open, close);
+  const focus = useNavigationFocus(open, close, drawerMode);
   return (
     <>
       <button ref={focus.toggleRef} type="button" onClick={() => setOpen((value) => !value)}>Explore</button>
@@ -28,6 +28,16 @@ describe("shell accessibility", () => {
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Search repository" })).toHaveFocus());
     fireEvent.keyDown(screen.getByRole("textbox", { name: "Search repository" }), { key: "Escape" });
     await waitFor(() => expect(toggle).toHaveFocus());
+  });
+
+  it("keeps persistent desktop navigation open when Escape is pressed", async () => {
+    render(<DrawerHarness drawerMode={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Explore" }));
+    const search = screen.getByRole("textbox", { name: "Search repository" });
+    search.focus();
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect(document.querySelector("aside")).toHaveAttribute("data-open", "true");
+    expect(search).toHaveFocus();
   });
 
   it("disables map-only lenses with an accessible reason while retaining actionable lenses", () => {

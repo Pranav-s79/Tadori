@@ -1,18 +1,18 @@
-import { useCallback, useMemo, useState, type ReactElement } from "react";
-import { BoundaryBadgeOverlay, type BadgePosition as BoundaryBadgePosition } from "./features/boundaries/BoundaryBadgeOverlay.tsx";
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
+import { BoundaryBadgeOverlay } from "./features/boundaries/BoundaryBadgeOverlay.tsx";
 import { useBoundaries } from "./features/boundaries/useBoundaries.ts";
 import { InspectionPanel } from "./features/inspect/InspectionPanel.tsx";
 import { useInspectionStore } from "./features/inspect/useInspectionStore.ts";
 import { ExploreTabs } from "./features/explore/ExploreTabs.tsx";
-import { StoryView } from "./features/story/StoryView.tsx";
+import { StoryView, type StoryPlaybackState } from "./features/story/StoryView.tsx";
 import { AccessibleGraphTable } from "./features/a11y/AccessibleGraphTable.tsx";
-import { DiffBadgeOverlay, type BadgePosition } from "./features/review/DiffBadgeOverlay.tsx";
+import { DiffBadgeOverlay } from "./features/review/DiffBadgeOverlay.tsx";
 import { ObservationOverlayBadges } from "./features/review/ObservationOverlayBadges.tsx";
 import { ReviewDiffView } from "./features/review/ReviewDiffView.tsx";
 import { useReviewDiffStore } from "./features/review/useReviewDiffStore.ts";
 import { SearchPanel } from "./features/search/SearchPanel.tsx";
 import { defaultFilters, type SearchFilters } from "./features/search/filterState.ts";
-import { PackageMapCanvas } from "./graph/PackageMapCanvas.tsx";
+import { PackageMapCanvas, type RenderedGraphSnapshot, type StoryMapEmphasis, type ViewportPosition } from "./graph/PackageMapCanvas.tsx";
 import { usePackageGraph } from "./hooks/usePackageGraph.ts";
 import { useRefreshStatus } from "./hooks/useRefreshStatus.ts";
 import { useSnapshot } from "./hooks/useSnapshot.ts";
@@ -36,9 +36,74 @@ const DEFAULT_LENSES: LensState = {
   provenance: true
 };
 
+const NAVIGATION_DRAWER_QUERY = "(max-width: 860px)";
+const EMPTY_VIEWPORT_POSITIONS: ReadonlyMap<string, ViewportPosition> = new Map();
+
+function currentNavigationDrawerMode(): boolean {
+  return window.matchMedia?.(NAVIGATION_DRAWER_QUERY).matches ?? false;
+}
+
+function useNavigationDrawerMode(): boolean {
+  const [drawerMode, setDrawerMode] = useState(currentNavigationDrawerMode);
+  useEffect(() => {
+    const query = window.matchMedia?.(NAVIGATION_DRAWER_QUERY);
+    if (query === undefined) return;
+    const onChange = (event: MediaQueryListEvent): void => setDrawerMode(event.matches);
+    setDrawerMode(query.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  return drawerMode;
+}
+
 function wsUrl(): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${window.location.host}/api/v1/events`;
+}
+
+export function mapStoryPlaybackToGraph(
+  playback: StoryPlaybackState | null,
+  representativeByEntityKey: ReadonlyMap<string, string>
+): StoryMapEmphasis | null {
+  if (playback === null) return null;
+  const { story, activeStep, activeTransition } = playback;
+  const unresolved = activeStep?.entityKey === null && activeTransition?.resolution === "unresolved";
+  const rawTarget = unresolved ? activeTransition?.from ?? null : activeStep?.entityKey ?? story.entryPoint;
+  if (rawTarget === null) return null;
+
+  const reverseTransitions: Array<{ from: string; to: string; relation: string }> = [];
+  const rawPath = [rawTarget];
+  const visited = new Set(rawPath);
+  let cursor = rawTarget;
+  while (cursor !== story.entryPoint) {
+    const predecessor = story.transitions.find((transition) =>
+      transition.resolved && transition.resolution !== "unresolved" && transition.to === cursor);
+    if (predecessor === undefined || predecessor.to === null || visited.has(predecessor.from)) break;
+    reverseTransitions.push({ from: predecessor.from, to: predecessor.to, relation: predecessor.relation });
+    rawPath.push(predecessor.from);
+    visited.add(predecessor.from);
+    cursor = predecessor.from;
+  }
+  rawPath.reverse();
+  reverseTransitions.reverse();
+
+  const mappedPath = [...new Set(rawPath.flatMap((key) => {
+    const representative = representativeByEntityKey.get(key);
+    return representative === undefined ? [] : [representative];
+  }))];
+  const transitions = reverseTransitions.flatMap((transition) => {
+    const fromEntityKey = representativeByEntityKey.get(transition.from);
+    const toEntityKey = representativeByEntityKey.get(transition.to);
+    return fromEntityKey === undefined || toEntityKey === undefined
+      ? []
+      : [{ fromEntityKey, toEntityKey, relation: transition.relation }];
+  });
+  const activeEntityKey = unresolved || activeStep?.entityKey === null || activeStep?.entityKey === undefined
+    ? null : representativeByEntityKey.get(activeStep.entityKey) ?? null;
+  const unresolvedFromEntityKey = unresolved && activeTransition !== null
+    ? representativeByEntityKey.get(activeTransition.from) ?? null : null;
+  if (mappedPath.length === 0 && activeEntityKey === null && unresolvedFromEntityKey === null) return null;
+  return { pathEntityKeys: mappedPath, transitions, activeEntityKey, unresolvedFromEntityKey };
 }
 
 export function App(): ReactElement {
@@ -47,14 +112,22 @@ export function App(): ReactElement {
   const inspection = useInspectionStore();
   const reviewStore = useReviewDiffStore();
   const boundaries = useBoundaries();
+  const navigationDrawerMode = useNavigationDrawerMode();
   const [mode, setMode] = useState<WorkspaceMode>("atlas");
   const [lenses, setLenses] = useState<LensState>(DEFAULT_LENSES);
-  const [navigationOpen, setNavigationOpen] = useState(true);
+  const [navigationOpen, setNavigationOpen] = useState(() => !currentNavigationDrawerMode());
   const [storyEntityKey, setStoryEntityKey] = useState<string | null>(null);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(defaultFilters);
   const [focusRequest, setFocusRequest] = useState<{ entityKey: string; requestId: number } | null>(null);
+  const [renderedGraph, setRenderedGraph] = useState<RenderedGraphSnapshot | null>(null);
+  const [viewportPositions, setViewportPositions] = useState<ReadonlyMap<string, ViewportPosition>>(EMPTY_VIEWPORT_POSITIONS);
+  const [storyPlayback, setStoryPlayback] = useState<StoryPlaybackState | null>(null);
   const closeNavigation = useCallback(() => setNavigationOpen(false), []);
-  const navigationFocus = useNavigationFocus(navigationOpen, closeNavigation);
+  const navigationFocus = useNavigationFocus(navigationOpen, closeNavigation, navigationDrawerMode);
+
+  useEffect(() => {
+    setNavigationOpen(!navigationDrawerMode);
+  }, [navigationDrawerMode]);
 
   const openInspectionPanel = useCallback(
     (entityKey: string) => inspection.openEntity({ entityKey, entityType: "node" }),
@@ -75,27 +148,16 @@ export function App(): ReactElement {
   }, []);
 
   const openStory = useCallback((entityKey: string) => {
+    setStoryPlayback(null);
     setStoryEntityKey(entityKey);
     setMode("story");
   }, []);
 
-  const badgePositions = useMemo<ReadonlyMap<string, BadgePosition>>(() => {
-    const map = new Map<string, BadgePosition>();
-    for (const position of data?.positions ?? []) {
-      map.set(position.entityKey, { x: position.x, y: position.y });
-    }
-    return map;
-  }, [data?.positions]);
-
-  const boundaryPositions = useMemo<ReadonlyMap<string, BoundaryBadgePosition>>(() => {
-    const map = new Map<string, BoundaryBadgePosition>();
-    for (const position of boundaries.filePositions) {
-      map.set(position.entityKey, { x: position.x, y: position.y });
-    }
-    return map;
-  }, [boundaries.filePositions]);
-
   const refetchBoundaries = boundaries.refetch;
+  const storyMapEmphasis = useMemo(
+    () => mapStoryPlaybackToGraph(mode === "story" ? storyPlayback : null, data?.representativeByEntityKey ?? new Map()),
+    [data?.representativeByEntityKey, mode, storyPlayback]
+  );
   const onReconnected = useCallback(() => {
     refetchGraph();
     refetchBoundaries();
@@ -107,11 +169,24 @@ export function App(): ReactElement {
   }
 
   const graphView = data === null ? null : (
-    <PackageMapCanvas nodes={data.nodes} edges={data.edges} positions={data.positions} filters={searchFilters} focusRequest={focusRequest} />
+    <PackageMapCanvas
+      nodes={data.nodes}
+      edges={data.edges}
+      positions={data.positions}
+      filters={searchFilters}
+      focusRequest={focusRequest}
+      active={mode !== "table"}
+      onInspect={openInspectionPanel}
+      onRenderedGraphChange={setRenderedGraph}
+      onViewportPositionsChange={setViewportPositions}
+      storyEmphasis={storyMapEmphasis}
+    />
   );
   const isRefreshing = refreshStatus?.phase === "refreshing";
   const showChanges = mode === "changes" || lenses.changes;
   const showBoundaries = lenses.boundaries;
+  const visibleNodeCount = renderedGraph?.nodes.length ?? data?.nodes.length;
+  const visibleEdgeCount = renderedGraph?.edges.length ?? data?.edges.length;
 
   const mapSurface = (
     <div className="app-graph-stage" aria-label="Repository atlas">
@@ -133,13 +208,13 @@ export function App(): ReactElement {
         graphView
       )}
       {showChanges && (
-        <DiffBadgeOverlay page={reviewStore.page} positions={badgePositions} onInspect={openInspectionPanel} />
+        <DiffBadgeOverlay page={reviewStore.page} positions={viewportPositions} onInspect={openInspectionPanel} />
       )}
       {showBoundaries && (
         <BoundaryBadgeOverlay
           violations={boundaries.data?.violations ?? []}
-          nodes={boundaries.fileNodes}
-          positions={boundaryPositions}
+          nodes={renderedGraph?.nodes ?? []}
+          positions={viewportPositions}
           rulesPresent={boundaries.data?.rulesPresent ?? false}
           error={boundaries.error}
           onInspect={openInspectionPanel}
@@ -217,7 +292,7 @@ export function App(): ReactElement {
         <main id="workspace-stage" className="atlas-main" tabIndex={-1}>
           <div className="atlas-context-bar" role="status" aria-live="polite" aria-atomic="true">
             <span>{mode === "atlas" ? "Repository map" : mode === "story" ? "Static behavior" : mode === "changes" ? "Change review" : "Structured graph"}</span>
-            <span>{data === null ? "Graph unavailable" : `Showing ${data.nodes.length} nodes and ${data.edges.length} relations`}</span>
+            <span>{data === null ? "Graph unavailable" : `Showing ${visibleNodeCount} nodes and ${visibleEdgeCount} relations`}</span>
           </div>
 
           <section
@@ -226,13 +301,20 @@ export function App(): ReactElement {
             role="tabpanel"
             aria-labelledby={`mode-tab-${mode}`}
           >
-            {mode === "atlas" && mapSurface}
-            {mode === "story" && (
-              <div className="story-workspace">
+            <div
+              className={`spatial-workspace spatial-workspace-${mode}`}
+              hidden={mode === "table"}
+            >
+              {mapSurface}
+              {mode === "story" && (
+                <>
                 <StoryView
                   entityKey={storyEntityKey}
+                  repoRoot={snapshot?.repository ?? null}
                   onInspect={openInspectionPanel}
+                  onPlaybackChange={setStoryPlayback}
                   onClose={() => {
+                    setStoryPlayback(null);
                     setStoryEntityKey(null);
                     setMode("atlas");
                   }}
@@ -244,19 +326,21 @@ export function App(): ReactElement {
                     <p>Open Routes under Explore evidence to trace a static, evidence-backed behavior path.</p>
                   </div>
                 )}
-                {mapSurface}
-              </div>
-            )}
-            {mode === "changes" && (
-              <div className="changes-workspace">
-                {mapSurface}
+                </>
+              )}
+              {mode === "changes" && (
                 <div className="changes-ledger">
                   <ReviewDiffView store={reviewStore} onInspect={openInspectionPanel} />
                 </div>
-              </div>
-            )}
+              )}
+            </div>
             {mode === "table" && data !== null && (
-              <AccessibleGraphTable nodes={data.nodes} edges={data.edges} filters={searchFilters} onInspect={openInspectionPanel} />
+              <AccessibleGraphTable
+                nodes={renderedGraph?.nodes ?? data.nodes}
+                edges={renderedGraph?.edges ?? data.edges}
+                filters={searchFilters}
+                onInspect={openInspectionPanel}
+              />
             )}
             {mode === "table" && data === null && (
               <div className="mode-empty-state"><h2>Structured graph unavailable</h2></div>
@@ -265,7 +349,7 @@ export function App(): ReactElement {
         </main>
 
         <div className="atlas-inspector" hidden={inspection.current === null}>
-          <InspectionPanel store={inspection} repoRoot={null} />
+          <InspectionPanel store={inspection} repoRoot={snapshot?.repository ?? null} />
         </div>
       </div>
     </div>

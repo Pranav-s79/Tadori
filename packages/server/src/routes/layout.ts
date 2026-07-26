@@ -34,7 +34,9 @@ export async function registerLayoutRoutes(app: FastifyInstance): Promise<void> 
     // exact graph selected here.
     const service = app.graphState.current();
     try {
-      const projection = level === "package" ? getPackageProjection(service.graph) : undefined;
+      const projection = level === "package" || level === "file"
+        ? getPackageProjection(service.graph)
+        : undefined;
       const scope = selectLodScope(service.graph, level as LayoutLevel, {
         ...(request.query.packageName === undefined ? {} : { packageName: request.query.packageName }),
         ...(request.query.file === undefined ? {} : { file: request.query.file })
