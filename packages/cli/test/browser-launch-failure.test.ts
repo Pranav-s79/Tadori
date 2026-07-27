@@ -10,6 +10,7 @@ const FIXTURE_REPO_ROOT = fileURLToPath(
 );
 
 let tempDir: string | null = null;
+const STARTUP_TIMEOUT_MS = 45_000;
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -26,7 +27,7 @@ function copyFixtureRepo(): string {
   return repoRoot;
 }
 
-async function waitFor<T>(check: () => T | null, timeoutMs = 10_000): Promise<T> {
+async function waitFor<T>(check: () => T | null, timeoutMs = STARTUP_TIMEOUT_MS): Promise<T> {
   const startedAt = Date.now();
   for (;;) {
     const result = check();

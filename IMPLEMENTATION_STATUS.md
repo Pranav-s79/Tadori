@@ -88,7 +88,8 @@ Python structural-provenance, layout, shutdown, and confined-purge checks. CI is
 configured to repeat build, manifest audit, installation, and smoke on Ubuntu
 Node 22/24/26, Windows Node 22, and macOS Node 22; production advisory calls run
 once on the canonical Ubuntu/Node 22 leg. The root gate runs the 69 non-CLI
-files first, then the 13 process-owning CLI files without file parallelism, so
+files first, then the 13 process-owning CLI files through exactly one fork
+worker with file parallelism disabled, so
 worker, listener, and loopback-server lifecycle tests do not compete with the
 rest of the repository suite on constrained hosted runners. Captured project
 filesystem containment and directory enumeration canonicalize both operands
