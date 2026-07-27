@@ -90,7 +90,10 @@ Node 22/24/26, Windows Node 22, and macOS Node 22; production advisory calls run
 once on the canonical Ubuntu/Node 22 leg. The root gate runs the 69 non-CLI
 files first, then the 13 process-owning CLI files without file parallelism, so
 worker, listener, and loopback-server lifecycle tests do not compete with the
-rest of the repository suite on constrained hosted runners.
+rest of the repository suite on constrained hosted runners. Captured project
+filesystem containment and directory enumeration canonicalize both operands
+before comparison and reconstruct native paths under the served root, avoiding
+case-insensitive macOS roots being misclassified as outside the capture.
 
 The capability truth source is `docs/MULTILANGUAGE_CAPABILITIES.json`;
 unsupported semantic facts remain absent or explicitly unresolved. Public npm
