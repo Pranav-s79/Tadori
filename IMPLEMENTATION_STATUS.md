@@ -102,6 +102,10 @@ typecheck and lint passed on all five runners, but every live-server CLI test
 failed before printing its URL because `apps/viz/dist/index.html` did not yet
 exist. The build-first ordering is the bounded correction; the replacement
 matrix remains the publication gate.
+The installed CLI executable guard canonicalizes both the module URL and argv
+path before deciding whether to dispatch. This preserves direct execution when
+macOS exposes npm's temporary prefix through the equivalent `/var` and
+`/private/var` aliases; lexical aliases and POSIX symlinks are regression-tested.
 
 The capability truth source is `docs/MULTILANGUAGE_CAPABILITIES.json`;
 unsupported semantic facts remain absent or explicitly unresolved. Public npm

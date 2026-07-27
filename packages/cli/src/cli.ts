@@ -1,4 +1,5 @@
-import { pathToFileURL } from "node:url";
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { runDiff } from "./diff.js";
 import { runPurge } from "./purge.js";
 import { runServe } from "./serve.js";
@@ -23,6 +24,20 @@ export async function main(argv: readonly string[]): Promise<number> {
   return 1;
 }
 
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+/**
+ * Node may expose one executable through different filesystem aliases. macOS,
+ * for example, commonly reports `/var/...` in argv while import.meta.url uses
+ * the canonical `/private/var/...`. Compare canonical native paths so an
+ * installed binary still dispatches when npm's prefix lives below that alias.
+ */
+export function isDirectExecution(moduleUrl: string, argvPath: string): boolean {
+  try {
+    return realpathSync.native(fileURLToPath(moduleUrl)) === realpathSync.native(argvPath);
+  } catch {
+    return false;
+  }
+}
+
+if (process.argv[1] !== undefined && isDirectExecution(import.meta.url, process.argv[1])) {
   process.exitCode = await main(process.argv.slice(2));
 }
