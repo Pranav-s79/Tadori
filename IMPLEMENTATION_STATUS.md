@@ -95,6 +95,13 @@ rest of the repository suite on constrained hosted runners. Captured project
 filesystem containment and directory enumeration canonicalize both operands
 before comparison and reconstruct native paths under the served root, avoiding
 case-insensitive macOS roots being misclassified as outside the capture.
+The root test command builds the Atlas before CLI lifecycle coverage, so a fresh
+checkout has the same embedded visualization prerequisite as the populated
+development workspace. GitHub run `30309212825` exposed this clean-checkout gap:
+typecheck and lint passed on all five runners, but every live-server CLI test
+failed before printing its URL because `apps/viz/dist/index.html` did not yet
+exist. The build-first ordering is the bounded correction; the replacement
+matrix remains the publication gate.
 
 The capability truth source is `docs/MULTILANGUAGE_CAPABILITIES.json`;
 unsupported semantic facts remain absent or explicitly unresolved. Public npm
