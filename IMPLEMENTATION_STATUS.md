@@ -100,8 +100,9 @@ checkout has the same embedded visualization prerequisite as the populated
 development workspace. GitHub run `30309212825` exposed this clean-checkout gap:
 typecheck and lint passed on all five runners, but every live-server CLI test
 failed before printing its URL because `apps/viz/dist/index.html` did not yet
-exist. The build-first ordering is the bounded correction; the replacement
-matrix remains the publication gate.
+exist. The build-first ordering is the bounded correction. Replacement run
+`30314081634` passed the complete five-job matrix on Ubuntu Node 22/24/26,
+Windows Node 22, and macOS Node 22, including installed-package smoke.
 The installed CLI executable guard canonicalizes both the module URL and argv
 path before deciding whether to dispatch. This preserves direct execution when
 macOS exposes npm's temporary prefix through the equivalent `/var` and
