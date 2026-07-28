@@ -1,6 +1,6 @@
 # Tadori Systems Architecture (Step-2 global pass)
 
-> **Execution note (2026-07-19):** This is a shared decision/evidence dossier. Planning-time existence claims and source line numbers may be stale. Use `TASK_GRAPH.json`, the current execution card, and live repository semantics for preflight. Open only the sections adjacent to the current contract edge.
+> **Execution note (2026-07-27):** This is a historical decision/evidence dossier. Planning-time existence claims, TypeScript/JavaScript scope, and source line numbers are superseded. Use `docs/Specs/Tadori-Multilanguage-Transition.md`, `IMPLEMENTATION_STATUS.md`, and live repository semantics for preflight.
 
 
 Planning artifact. Resolves cross-phase contracts BEFORE Wave 1-4 blueprints
@@ -11,11 +11,12 @@ proposal keyed to an owning blueprint ID. Where an idea contradicts the
 evidence pack (`blueprints/research/EVIDENCE-BASELINE.md`), the evidence wins
 and the contradiction is called out.
 
-Frozen (never reopened here): six MCP tools only; the HTTP server is NOT an
+Current compatibility constraints: six MCP tools only; the HTTP server is NOT an
 MCP tool; stable 2D default (Sigma.js/WebGL, seeded frozen layout, semantic
 zoom packages -> files -> exported symbols); `127.0.0.1` only; no cloud;
 invalid snapshots never served; evidence/origin/confidence/resolution visible
-everywhere; fixtures authoritative; TS/JS only; no runtime tracing; hooks are
+everywhere; legacy TS/JS fixtures remain regression coverage; all registered
+languages share the canonical graph and store; no runtime tracing; hooks are
 a narrow evidence receiver, never an orchestrator/runtime; deps allowlist =
 react, sigma, graphology, fastify, simple-git, R3F (experiment flag only),
 Vite tooling; dev command `pnpm tadori serve .`; Phase 12 ships an installable

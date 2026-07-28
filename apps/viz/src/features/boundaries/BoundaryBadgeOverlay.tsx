@@ -133,7 +133,7 @@ export function BoundaryBadgeOverlay({
   const severity = worstSeverity(violations);
 
   return (
-    <div className="boundary-overlay" aria-label="Boundary violations">
+    <section className="boundary-overlay" aria-label="Boundary violations">
       <div className="boundary-badge-layer" role="group" aria-label="Placed boundary violations">
         {placed.map((badge) => (
           <button
@@ -162,7 +162,12 @@ export function BoundaryBadgeOverlay({
       </div>
 
       {unplaced.length > 0 && (
-        <div className="boundary-unplaced" role="status" aria-label="Boundary violations not currently rendered">
+        <div
+          className="boundary-unplaced"
+          role="status"
+          aria-label="Boundary violations not currently rendered"
+          tabIndex={0}
+        >
           <p>
             {`${unplaced.length} violation${unplaced.length === 1 ? "" : "s"} in files not currently on the map (expand the package to place):`}
           </p>
@@ -182,6 +187,6 @@ export function BoundaryBadgeOverlay({
           </ul>
         </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -52,7 +52,7 @@ export function ExploreTabs({ onInspect, onShowStory }: ExploreTabsProps): React
   }
 
   return (
-    <div className="explore-tabs" aria-label="Explore">
+    <section className="explore-tabs" aria-label="Explore">
       <div role="tablist" aria-label="Explore views">
         {TABS.map((tab, index) => (
           <button
@@ -77,6 +77,6 @@ export function ExploreTabs({ onInspect, onShowStory }: ExploreTabsProps): React
         {active === "tests" && <LikelyTests onInspect={onInspect} />}
         {active === "docs" && <DocumentsPanel onInspect={onInspect} />}
       </div>
-    </div>
+    </section>
   );
 }

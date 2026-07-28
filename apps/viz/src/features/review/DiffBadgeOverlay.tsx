@@ -99,7 +99,7 @@ export function DiffBadgeOverlay({ page, positions, onInspect }: DiffBadgeOverla
   const { placed, unplaced } = useMemo(() => partitionBadges(page, positions), [page, positions]);
 
   return (
-    <div className="diff-badge-overlay" aria-label="Diff badges">
+    <section className="diff-badge-overlay" aria-label="Diff badges">
       <div className="diff-badge-layer" role="group" aria-label="Placed diff badges">
         {placed.map((badge) => (
           <button
@@ -116,7 +116,7 @@ export function DiffBadgeOverlay({ page, positions, onInspect }: DiffBadgeOverla
       </div>
 
       {unplaced.length > 0 && (
-        <div className="diff-badge-unplaced" role="status" aria-label="Unplaced diff badges">
+        <div className="diff-badge-unplaced" role="status" aria-label="Unplaced diff badges" tabIndex={0}>
           <p>{`${unplaced.length} changed node${unplaced.length === 1 ? "" : "s"} not currently rendered on the map:`}</p>
           <ul>
             {unplaced.map((badge) => (
@@ -133,6 +133,6 @@ export function DiffBadgeOverlay({ page, positions, onInspect }: DiffBadgeOverla
           </ul>
         </div>
       )}
-    </div>
+    </section>
   );
 }

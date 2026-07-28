@@ -20,6 +20,7 @@ uniform float u_correctionRatio;
 uniform vec2 u_viewport;
 varying vec4 v_color;
 varying float v_distance;
+varying float v_side;
 const float bias = 255.0 / 254.0;
 void main() {
   vec2 normal = a_normal * a_normalCoef;
@@ -30,6 +31,7 @@ void main() {
   vec2 clipStart = (u_matrix * vec3(a_positionStart, 1)).xy;
   vec2 clipEnd = (u_matrix * vec3(a_positionEnd, 1)).xy;
   v_distance = a_positionCoef * length((clipEnd - clipStart) * u_viewport * 0.5);
+  v_side = a_normalCoef;
   gl_Position = vec4((u_matrix * vec3(position + unitNormal * webGLThickness, 1)).xy, 0, 1);
   #ifdef PICKING_MODE
   v_color = a_id;
@@ -49,11 +51,15 @@ function fragmentShader(pattern: AtlasEdgePattern): string {
 precision mediump float;
 varying vec4 v_color;
 varying float v_distance;
+varying float v_side;
 void main() {
   #ifndef PICKING_MODE
   ${discard}
-  #endif
+  float circuitCore = 1.0 - smoothstep(0.10, 0.52, abs(v_side));
+  gl_FragColor = vec4(mix(v_color.rgb, vec3(0.88, 0.58, 0.24), circuitCore * 0.52), v_color.a);
+  #else
   gl_FragColor = v_color;
+  #endif
 }`;
 }
 

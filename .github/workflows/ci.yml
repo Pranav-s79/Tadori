@@ -76,6 +76,8 @@ jobs:
       - run: pnpm package:smoke
         env:
           TADORI_PACKAGE_AUDIT: ${{ matrix.os == 'ubuntu-latest' && matrix.node == '22.14.0' && '1' || '0' }}
+      - run: pnpm verify:viz:e2e
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '22.14.0'
       - run: pnpm benchmark:layout
       - run: pnpm tadori diff .
       - run: git diff --check

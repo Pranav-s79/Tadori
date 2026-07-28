@@ -8,7 +8,7 @@ import {
 interface ObservationOverlayBadgesProps {
   /** Bump to refetch after a snapshot rotation (same pattern as the diff store). */
   generation?: number;
-  onInspectFile?: (file: string) => void;
+  onInspectFile?: (file: string) => boolean | Promise<boolean>;
 }
 
 type OverlayState =
@@ -43,6 +43,21 @@ export function ObservationOverlayBadges({
   onInspectFile
 }: ObservationOverlayBadgesProps): ReactElement | null {
   const [state, setState] = useState<OverlayState>({ status: "loading" });
+  const [inspectionError, setInspectionError] = useState<string | null>(null);
+
+  const inspectFile = async (file: string): Promise<void> => {
+    if (onInspectFile === undefined) return;
+    setInspectionError(null);
+    try {
+      if (!(await onInspectFile(file))) {
+        setInspectionError(`No indexed entity was found for ${file}.`);
+      }
+    } catch (error: unknown) {
+      setInspectionError(
+        `Could not inspect ${file}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +99,7 @@ export function ObservationOverlayBadges({
   return (
     <section className="observation-overlay" aria-label="Agent-change review overlay">
       <h3>Agent-change review</h3>
+      {inspectionError !== null && <p role="alert">{inspectionError}</p>}
       {flagged.length === 0 ? (
         <p role="status" className="observation-overlay-clean">
           Every changed file was planned and read before the change.
@@ -92,9 +108,11 @@ export function ObservationOverlayBadges({
         <ul>
           {flagged.map(({ path, flags }) => (
             <li key={path} className="observation-overlay-file">
-              <button type="button" onClick={() => onInspectFile?.(path)}>
-                {path}
-              </button>
+              {onInspectFile === undefined ? (
+                <span>{path}</span>
+              ) : (
+                <button type="button" onClick={() => void inspectFile(path)}>{path}</button>
+              )}
               {flags.map((flag) => (
                 <span key={flag} className="observation-overlay-flag">
                   {flag}

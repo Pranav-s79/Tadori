@@ -19,7 +19,7 @@ interface EdgeViewProps {
 export function EdgeView({ edge, repoRoot, onPivot }: EdgeViewProps): React.ReactElement {
   return (
     <div className="inspect-edge">
-      <header>
+      <div className="inspect-entity-header">
         <h3>{edge.relation}</h3>
         <ul className="inspect-badges" aria-label="Provenance">
           <li className="badge badge-origin">{`origin: ${edge.origin}`}</li>
@@ -54,7 +54,7 @@ export function EdgeView({ edge, repoRoot, onPivot }: EdgeViewProps): React.Reac
             <dd>{edge.stale ? `stale (${edge.staleReason ?? "unknown"})` : edge.freshness}</dd>
           </div>
         </dl>
-      </header>
+      </div>
 
       <EvidenceList evidence={edge.evidence} omittedCount={edge.evidenceOmittedCount} repoRoot={repoRoot} />
     </div>

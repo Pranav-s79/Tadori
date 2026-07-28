@@ -32,13 +32,16 @@
     "benchmark:serve:coldstart": "tsx scripts/benchmark-serve-coldstart.mts",
     "benchmark:serve:positions": "tsx scripts/benchmark-serve-positions-identity.mts",
     "benchmark:serve:memory": "tsx scripts/benchmark-serve-memory.mts",
+    "verify:viz:e2e": "pnpm --filter @tadori/viz build && tsx scripts/verify-viz-e2e.mts",
     "tadori": "tsx scripts/tadori.mts"
   },
   "devDependencies": {
     "@eslint/js": "^9.7.0",
     "@types/node": "^20.14.0",
+    "axe-core": "4.12.1",
     "esbuild": "0.28.1",
     "eslint": "^9.7.0",
+    "playwright-core": "1.62.0",
     "tsx": "^4.16.0",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.0",

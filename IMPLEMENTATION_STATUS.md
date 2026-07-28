@@ -3,8 +3,8 @@
 # Current State (always overwritten)
 
 Current node: 08-10 — bounded stable 2D Atlas release hardening.
-Status: implementation hardening is in progress; the GitHub publication branch
-is prepared, but browser-verified visual release gates remain open.
+Status: browser-verified visual hardening is green locally; the candidate still
+requires an exact-SHA GitHub matrix before release work proceeds.
 
 Active contract: `docs/Specs/Tadori-Multilanguage-Transition.md`. Superseded
 v2.1 documents are not product, schema, or language-scope authorities. Legacy
@@ -14,11 +14,15 @@ Implemented: the multi-language registry and extraction stack; explicit
 language/capability/derivation provenance; evidence-backed cross-language
 relations; deterministic mixed-language fixtures; snapshot, diff, API, MCP,
 layout, and local serving paths; an installable package and confined purge
-workflow; and the accessible stable 2D archaeological-circuit Atlas.
+workflow; and the accessible stable 2D Atlas. Its archaeological-circuit visual
+language is graph-derived and intentionally remains short of fictional
+functional districts until the API supplies evidenced region attribution.
 
-The Atlas uses graph facts for every mark: package foundations, file tiles,
-symbol markers, documentation tablets, test scaffolds, unresolved termini,
-and provenance circuit traces. Search, shared filters, inspection, story,
+The Atlas uses graph facts for every mark: package foundations, file slabs,
+function pillars, method stelae, class colonnades, interface gateways, type
+seals, route gatehouses, documentation tablets, test scaffolds,
+external-dependency outposts, unresolved termini, and provenance circuit-core
+traces. Search, shared filters, inspection, story,
 changes, boundaries, agent-review, and accessible-table surfaces are composed
 in one responsive shell. Server-owned LOD budgets keep package/file views at
 500 nodes, symbol views at 1,000 nodes, edges at 1,000, and labels at 200 while
@@ -47,8 +51,15 @@ rendered graph remain explicitly listed. The persistent canvas publishes a
 deterministically deduplicated canonical graph to Table mode, preserving
 expansion and selection across mode changes, and exposes inspection plus the
 documented keyboard pan/focus, descend/inspect, ascend/collapse, zoom, and reset
-contract with reduced-motion camera updates. The complete Atlas suite passes 42
-files / 350 tests. Expanded packages now receive labeled, repository-derived 2D
+contract with reduced-motion camera updates. The persistent Sigma canvas uses
+its supported invalid-container guard during transient zero-size responsive
+layouts, retaining expansion and camera state without crashing. Renderer
+initialization failures are caught at the map boundary, switch to the canonical
+Table view, and announce the fallback instead of unmounting the shell. Node
+connection pivots register the already-served edge DTO
+inside the inspection panel, so edge provenance is available immediately and
+remains available when one-level back navigation returns to that edge. Expanded
+packages now receive labeled, repository-derived 2D
 boundaries computed only from known file membership and its projected convex
 hull; collapsed package foundations remain the canonical structures. Story
 transport publishes its active evidenced step to the map, maps raw entity keys
@@ -66,15 +77,22 @@ incremental benchmark passed: 945.86 ms single-file p95, 815.11 ms package
 invalidation, 176,632,456 bytes heap growth, and approximately 758,579 bytes
 per snapshot.
 
-Validation evidence (2026-07-26): project skill checks, type checking, lint,
+Validation evidence (2026-07-27): the real Chrome gate exercises painted
+offline Atlas canvases, keyboard package expansion, live Path/Routes/Tests/Docs,
+Story, Changes, Table parity, node-edge inspection pivots, 320px navigation,
+reduced motion, forced colors, and axe WCAG/best-practice rules with zero
+violations and zero browser errors. Project skill checks, type checking, lint,
 fixture validation/index/typecheck gates, package artifact creation, and npm
-pack audit all pass. The root suite passes 82 files / 483 tests and the Atlas
-suite passes 42 files / 350 tests. A local `tadori serve . --no-open` smoke
+pack audit all pass. The non-Atlas suites pass 82 files / 485 tests and the
+Atlas suite passes 42 files / 355 tests. The gate waits for the served snapshot to
+settle, preserves expanded package/file state across graph refresh, uses
+Sigma-normalized camera coordinates, and verifies projected package boundaries
+remain inside the viewport. A local `tadori serve . --no-open` smoke
 produced a fresh snapshot with 5,735 nodes and 14,503 edges; package-level
-node and layout scopes agreed, with no missing edge endpoints. In-app browser
-visual QA could not start because the browser session omitted its required
-`sandboxPolicy` metadata; automated component, integration, real-browser
-performance, accessibility, and API checks remain green.
+node and layout scopes agreed, with no missing edge endpoints. The in-app
+browser could not start because the session omitted required `sandboxPolicy`
+metadata, so the checked-in Playwright-Core harness uses an installed Chrome,
+Edge, or Chromium executable and runs in the canonical Ubuntu/Node 22 CI job.
 
 Deployment hardening (2026-07-26): compatible overrides resolve the reported
 `fast-uri`, `find-my-way`, and `@hono/node-server` advisories to patched
@@ -201,7 +219,7 @@ merged; 08-03 file expansion merged PR #14; 08-02 scaffold PR #13)
 
 ## Current milestone
 
-**Phase 8 — Guided 2D visualization** (frozen v2.1 Phase F). Phase 7 local
+**Phase 8 — Guided 2D visualization.** Phase 7 local
 serving is validated through 07-03 and merged. 08-01 supplies the deterministic
 server-owned layout and persistence boundary required before the visualization
 app can be built. Weeks 1–7 remain complete and frozen; Phase 0 CI remains

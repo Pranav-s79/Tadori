@@ -6,7 +6,8 @@ import {
   fetchSource,
   type LinkedDoc,
   type NodeDetailResult,
-  type SourceSliceResult
+  type SourceSliceResult,
+  type ToolEdge
 } from "./inspectApi.ts";
 import { SourceView } from "./SourceView.tsx";
 
@@ -17,7 +18,7 @@ interface NodeViewProps {
   entityKey: string;
   repoRoot: string | null;
   /** Pivot to inspect an edge endpoint / linked entity. */
-  onPivot(entityKey: string, entityType: "node" | "edge"): void;
+  onPivot(entityKey: string, entityType: "node" | "edge", edge?: ToolEdge): void;
 }
 
 /**
@@ -81,7 +82,7 @@ export function NodeView({ entityKey, repoRoot, onPivot }: NodeViewProps): React
 
   return (
     <div className="inspect-node">
-      <header>
+      <div className="inspect-entity-header">
         <h3>{node.displayName}</h3>
         <dl className="inspect-meta">
           <div><dt>Kind</dt><dd>{node.kind}</dd></div>
@@ -94,7 +95,7 @@ export function NodeView({ entityKey, repoRoot, onPivot }: NodeViewProps): React
           <div><dt>Fan-in</dt><dd>{node.fanIn}</dd></div>
           <div><dt>Freshness</dt><dd>{node.stale ? `stale (${node.staleReason ?? "unknown"})` : node.freshness}</dd></div>
         </dl>
-      </header>
+      </div>
 
       <EvidenceList evidence={node.evidence} omittedCount={node.evidenceOmittedCount} repoRoot={repoRoot} />
 
@@ -115,7 +116,7 @@ export function NodeView({ entityKey, repoRoot, onPivot }: NodeViewProps): React
         <ul>
           {node.outEdges.slice(0, 20).map((edge) => (
             <li key={edge.entityKey}>
-              <button type="button" onClick={() => onPivot(edge.entityKey, "edge")}>
+              <button type="button" onClick={() => onPivot(edge.entityKey, "edge", edge)}>
                 {`${edge.relation} → ${edge.dstQualifiedName}`}
               </button>
             </li>

@@ -850,7 +850,7 @@ blocked instead of guessing.
 
 ## TADORI NON-NEGOTIABLES
 
-Frozen v2.1; TS/JS only; exactly six MCP tools (unaffected by this
+Active multi-language contract; legacy TS/JS fixtures are compatibility coverage only; exactly six MCP tools (unaffected by this
 blueprint); stable 2D default (`--mode 2d` is the only mode actually served
 in Phase 7); no generic admin dashboard (the status page explicitly is not
 one); invalid snapshots never served; `tadori serve .` is the normal

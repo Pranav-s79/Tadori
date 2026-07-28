@@ -1,8 +1,7 @@
 /**
- * Tadori database migrations. Versions 1-5 are copied verbatim from
- * "Tadori v2.1 - Frozen Implementation Corrections", section 9. Do not edit
- * those migrations. Later additive migrations must cite a proven defect in
- * the implementation status document.
+ * Tadori database migrations. Versions 1-5 are the immutable compatibility
+ * baseline for existing databases and snapshots; current multi-language work
+ * extends them through additive migrations. Never rewrite an applied migration.
  */
 
 export interface Migration {

@@ -51,6 +51,9 @@ vi.mock("sigma", () => ({
     graphToViewport(point: { x: number; y: number }) {
       return { x: point.x + viewportOffset, y: point.y + viewportOffset };
     }
+    getNodeDisplayData() {
+      return { x: 0.5, y: 0.5 };
+    }
     getCamera() {
       return {
         animate: cameraAnimateMock,
@@ -103,9 +106,11 @@ describe("PackageMapCanvas mount/unmount", () => {
     const { unmount } = render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} />);
     expect(sigmaConstructorMock).toHaveBeenCalledTimes(1);
     const settings = sigmaConstructorMock.mock.calls[0]?.[2] as {
+      allowInvalidContainer: boolean;
       nodeProgramClasses: Record<string, unknown>;
       edgeProgramClasses: Record<string, unknown>;
     };
+    expect(settings.allowInvalidContainer).toBe(true);
     expect(settings.nodeProgramClasses["atlas-foundation-unknown"]).toBeTypeOf("function");
     expect(Object.keys(settings.edgeProgramClasses).sort()).toEqual(["dashed", "dotted", "solid"]);
     unmount();
@@ -121,6 +126,25 @@ describe("PackageMapCanvas mount/unmount", () => {
     const { unmount } = render(<PackageMapCanvas nodes={[]} edges={[]} positions={[]} />);
     expect(sigmaConstructorMock).toHaveBeenCalledTimes(1);
     unmount();
+  });
+
+  it("reports renderer initialization failures without unmounting the shell", () => {
+    const onRendererError = vi.fn();
+    sigmaConstructorMock.mockImplementationOnce(() => {
+      throw new Error("WebGL unavailable");
+    });
+
+    expect(() =>
+      render(
+        <PackageMapCanvas
+          nodes={nodes}
+          edges={edges}
+          positions={positions}
+          onRendererError={onRendererError}
+        />
+      )
+    ).not.toThrow();
+    expect(onRendererError).toHaveBeenCalledWith(expect.objectContaining({ message: "WebGL unavailable" }));
   });
 });
 
@@ -150,15 +174,18 @@ describe("camera focus and render-only filters", () => {
   it("focuses the real graph entity through the Sigma camera", () => {
     const graph = new Graph();
     graph.addNode("target", { x: 4, y: 7 });
-    const renderer = { getCamera: () => ({
-      animate: cameraAnimateMock,
-      setState: cameraSetStateMock,
-      getState: () => ({ x: 0.5, y: 0.5, ratio: 1, angle: 0 })
-    }) };
+    const renderer = {
+      getNodeDisplayData: (entityKey: string) => entityKey === "target" ? { x: 0.42, y: 0.61 } : undefined,
+      getCamera: () => ({
+        animate: cameraAnimateMock,
+        setState: cameraSetStateMock,
+        getState: () => ({ x: 0.5, y: 0.5, ratio: 1, angle: 0 })
+      })
+    };
     expect(focusGraphEntity(renderer, graph, "target", false)).toBe(true);
-    expect(cameraAnimateMock).toHaveBeenCalledWith({ x: 4, y: 7, ratio: 0.2 }, { duration: 350 });
+    expect(cameraAnimateMock).toHaveBeenCalledWith({ x: 0.42, y: 0.61, ratio: 0.2 }, { duration: 350 });
     expect(focusGraphEntity(renderer, graph, "target", true)).toBe(true);
-    expect(cameraSetStateMock).toHaveBeenCalledWith({ x: 4, y: 7, ratio: 0.2 });
+    expect(cameraSetStateMock).toHaveBeenCalledWith({ x: 0.42, y: 0.61, ratio: 0.2 });
     expect(focusGraphEntity(renderer, graph, "missing", false)).toBe(false);
   });
 
@@ -254,7 +281,7 @@ describe("camera focus and render-only filters", () => {
     render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} storyEmphasis={{
       pathEntityKeys: ["pkg:a"], transitions: [], activeEntityKey: "pkg:a", unresolvedFromEntityKey: null
     }} />);
-    expect(cameraSetStateMock).toHaveBeenCalledWith({ x: 0, y: 0, ratio: 0.2 });
+    expect(cameraSetStateMock).toHaveBeenCalledWith({ x: 0.5, y: 0.5, ratio: 0.2 });
   });
 
   it("finds the nearest node in the requested keyboard direction", () => {

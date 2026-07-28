@@ -37,7 +37,8 @@ The fixtures expect these v1 node kinds only:
 
 `package`, `file`, `function`, `method`, `class`, `interface`, `route`, `test`, `adr`, `external_dep`, and `unresolved`.
 
-The schemas permit the full frozen v2.1 enum, but these fixtures do not add new relations or product scope.
+The canonical schemas permit the full compatibility vocabulary, but these legacy
+fixtures do not define current language support, new relations, or product scope.
 
 Deliberate contract decisions:
 

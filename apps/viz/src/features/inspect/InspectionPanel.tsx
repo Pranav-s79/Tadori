@@ -28,10 +28,14 @@ export function InspectionPanel({ store, repoRoot, edgesByKey }: InspectionPanel
   const panelRef = useRef<HTMLDivElement | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const wasOpenRef = useRef(false);
+  const registeredEdgesRef = useRef<Map<string, ToolEdge>>(new Map());
   const { current, previous, openEntity, goBack, close } = store;
 
   const onPivot = useCallback(
-    (entityKey: string, entityType: "node" | "edge") => {
+    (entityKey: string, entityType: "node" | "edge", edge?: ToolEdge) => {
+      if (entityType === "edge" && edge !== undefined) {
+        registeredEdgesRef.current.set(edge.entityKey, edge);
+      }
       openEntity({ entityKey, entityType });
     },
     [openEntity]
@@ -68,9 +72,7 @@ export function InspectionPanel({ store, repoRoot, edgesByKey }: InspectionPanel
   return (
     <aside
       className="inspection-panel"
-      role="dialog"
       aria-label="Inspection"
-      aria-modal="false"
       tabIndex={-1}
       ref={panelRef}
       onKeyDown={onKeyDown}
@@ -89,7 +91,11 @@ export function InspectionPanel({ store, repoRoot, edgesByKey }: InspectionPanel
       {current.entityType === "node" ? (
         <NodeView entityKey={current.entityKey} repoRoot={repoRoot} onPivot={onPivot} />
       ) : (
-        <EdgeContent edge={edgesByKey?.get(current.entityKey)} repoRoot={repoRoot} onPivot={onPivot} />
+        <EdgeContent
+          edge={edgesByKey?.get(current.entityKey) ?? registeredEdgesRef.current.get(current.entityKey)}
+          repoRoot={repoRoot}
+          onPivot={onPivot}
+        />
       )}
     </aside>
   );

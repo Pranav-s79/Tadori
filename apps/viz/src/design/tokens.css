@@ -13,7 +13,7 @@
   /* Relationship materials. Their text labels remain mandatory. */
   --tadori-copper: #9b5d2b;
   --tadori-bronze: #7c6239;
-  --tadori-verdigris: #587c6d;
+  --tadori-verdigris: #3f6958;
   --tadori-clay: #9b917d;
 
   /* Interaction and state. These are not capability colors. */
@@ -138,6 +138,22 @@
 }
 
 @media (forced-colors: active) {
+  :root {
+    --tadori-ground: Canvas;
+    --tadori-ground-deep: Canvas;
+    --tadori-panel: Canvas;
+    --tadori-panel-raised: Canvas;
+    --tadori-ink: CanvasText;
+    --tadori-ink-muted: CanvasText;
+    --tadori-rule: CanvasText;
+    --tadori-copper: LinkText;
+    --tadori-bronze: LinkText;
+    --tadori-verdigris: CanvasText;
+    --tadori-clay: CanvasText;
+    --tadori-change: LinkText;
+    --tadori-danger: LinkText;
+  }
+
   :where(button, a, input, select, textarea, [tabindex]):focus-visible {
     outline-color: Highlight;
     box-shadow: none;

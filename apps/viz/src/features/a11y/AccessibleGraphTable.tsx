@@ -95,7 +95,11 @@ export function AccessibleGraphTable({
             {nodes.map((node) => (
               <tr key={node.entityKey} data-filter-dimmed={nodeEmphasis.get(node.entityKey) === false ? "true" : "false"}>
                 <th scope="row">
-                  <button type="button" onClick={() => onInspect?.(node.entityKey)}>
+                  <button
+                    type="button"
+                    data-entity-key={node.entityKey}
+                    onClick={() => onInspect?.(node.entityKey)}
+                  >
                     {node.displayName}
                   </button>
                 </th>

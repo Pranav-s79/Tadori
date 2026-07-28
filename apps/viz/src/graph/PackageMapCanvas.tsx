@@ -33,6 +33,7 @@ interface CameraLike {
 
 interface RendererWithCamera {
   getCamera(): CameraLike;
+  getNodeDisplayData(entityKey: string): { x: number; y: number } | undefined;
 }
 
 interface CameraState {
@@ -233,8 +234,12 @@ export function focusGraphEntity(
   reducedMotion: boolean
 ): boolean {
   if (!graph.hasNode(entityKey)) return false;
-  const x = Number(graph.getNodeAttribute(entityKey, "x"));
-  const y = Number(graph.getNodeAttribute(entityKey, "y"));
+  // Sigma's camera uses normalized framed-graph coordinates, not the raw
+  // server layout coordinates stored on graphology nodes. Raw coordinates can
+  // move the camera completely outside the graph after semantic expansion.
+  const displayData = renderer.getNodeDisplayData(entityKey);
+  const x = Number(displayData?.x);
+  const y = Number(displayData?.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
   const state = { x, y, ratio: 0.2 };
   if (reducedMotion) renderer.getCamera().setState(state);
@@ -374,6 +379,8 @@ export interface PackageMapCanvasProps {
   onViewportPositionsChange?: (positions: ReadonlyMap<string, ViewportPosition>) => void;
   /** Opens the canonical entity in the shared inspector. */
   onInspect?: (entityKey: string) => void;
+  /** Reports an unavailable WebGL renderer so the shell can expose Table mode. */
+  onRendererError?: (error: Error) => void;
   filters?: SearchFilters;
   focusRequest?: { entityKey: string; requestId: number } | null;
   /** False while the persistent canvas is hidden behind Table mode. */
@@ -415,6 +422,7 @@ export function PackageMapCanvas({
   onRenderedGraphChange,
   onViewportPositionsChange,
   onInspect,
+  onRendererError,
   filters = NO_FILTERS,
   focusRequest = null,
   active = true,
@@ -427,8 +435,8 @@ export function PackageMapCanvas({
   const prevExpandedFilesRef = useRef<ReadonlySet<string>>(new Set());
   const publishRef = useRef<(() => void) | null>(null);
   const [packagePlates, setPackagePlates] = useState<PackagePlate[]>([]);
-  const callbacksRef = useRef({ onGraphReady, onRenderedGraphChange, onViewportPositionsChange, onInspect });
-  callbacksRef.current = { onGraphReady, onRenderedGraphChange, onViewportPositionsChange, onInspect };
+  const callbacksRef = useRef({ onGraphReady, onRenderedGraphChange, onViewportPositionsChange, onInspect, onRendererError });
+  callbacksRef.current = { onGraphReady, onRenderedGraphChange, onViewportPositionsChange, onInspect, onRendererError };
   const { expandedPackages, fileData, expand, collapse } = usePackageExpansion();
   const {
     expandedFiles,
@@ -455,16 +463,40 @@ export function PackageMapCanvas({
     }
 
     const graph: Graph = buildGraphologyGraph(nodes, edges, positions);
+    const restoredPackages = new Set<string>();
+    for (const packageKey of expandedPackagesRef.current) {
+      const expansionData = fileData.get(packageKey);
+      if (expansionData === undefined) continue;
+      applyExpansion(graph, packageKey, expansionData);
+      restoredPackages.add(packageKey);
+    }
+    const restoredFiles = new Set<string>();
+    for (const fileKey of expandedFilesRef.current) {
+      const expansionData = symbolData.get(fileKey);
+      if (expansionData === undefined || !graph.hasNode(fileKey)) continue;
+      applySymbolExpansion(graph, fileKey, expansionData);
+      restoredFiles.add(fileKey);
+    }
     applyAtlasGraphStyles(graph);
 
     graphRef.current = graph;
-    prevExpandedRef.current = new Set();
-    prevExpandedFilesRef.current = new Set();
-    const renderer = new Sigma(graph, container, {
-      nodeProgramClasses: { ...ATLAS_NODE_PROGRAMS },
-      nodeHoverProgramClasses: { ...ATLAS_NODE_PROGRAMS },
-      edgeProgramClasses: { ...ATLAS_EDGE_PROGRAMS }
-    });
+    prevExpandedRef.current = restoredPackages;
+    prevExpandedFilesRef.current = restoredFiles;
+    let renderer: Sigma;
+    try {
+      renderer = new Sigma(graph, container, {
+        allowInvalidContainer: true,
+        nodeProgramClasses: { ...ATLAS_NODE_PROGRAMS },
+        nodeHoverProgramClasses: { ...ATLAS_NODE_PROGRAMS },
+        edgeProgramClasses: { ...ATLAS_EDGE_PROGRAMS }
+      });
+    } catch (error) {
+      graphRef.current = null;
+      callbacksRef.current.onRendererError?.(
+        error instanceof Error ? error : new Error(String(error))
+      );
+      return;
+    }
     sigmaRef.current = renderer;
 
     const publish = (): void => {
@@ -753,7 +785,7 @@ export function PackageMapCanvas({
       <PartialLodNotice scopes={partialScopes} />
       <svg className="package-plate-overlay" role="img" aria-label="Repository-derived package boundaries">
         {packagePlates.map((plate) => (
-          <g key={plate.packageEntityKey} aria-label={`${plate.attribution}: ${plate.label}`}>
+          <g key={plate.packageEntityKey} role="group" aria-label={`${plate.attribution}: ${plate.label}`}>
             <title>{`${plate.attribution}: ${plate.label}`}</title>
             {plate.shape.kind === "hull" ? (
               <polygon points={plate.shape.points.map((point) => `${point.x},${point.y}`).join(" ")} />

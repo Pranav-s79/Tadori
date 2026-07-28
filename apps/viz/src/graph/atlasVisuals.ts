@@ -11,10 +11,16 @@ import { edgeVisualStyle } from "../legend.ts";
 
 export type AtlasNodeShape =
   | "foundation"
-  | "tile"
-  | "marker"
+  | "slab"
+  | "pillar"
+  | "stele"
+  | "colonnade"
+  | "gateway"
+  | "seal"
+  | "gatehouse"
   | "tablet"
   | "scaffold"
+  | "outpost"
   | "terminus";
 
 export type AtlasCapability = ExtractionCapability | "mixed" | "unknown";
@@ -46,11 +52,17 @@ const CAPABILITY_COLORS: Readonly<Record<AtlasCapability, string>> = {
 };
 
 const SHAPE_LABELS: Readonly<Record<AtlasNodeShape, string>> = {
-  foundation: "foundation block",
-  tile: "inscribed tile",
-  marker: "carved marker",
+  foundation: "package foundation",
+  slab: "file slab",
+  pillar: "function pillar",
+  stele: "method stele",
+  colonnade: "class colonnade",
+  gateway: "interface gateway",
+  seal: "type seal",
+  gatehouse: "route gatehouse",
   tablet: "documentation tablet",
   scaffold: "test scaffold",
+  outpost: "external dependency outpost",
   terminus: "unresolved terminus"
 };
 
@@ -64,11 +76,22 @@ const CAPABILITY_LABELS: Readonly<Record<AtlasCapability, string>> = {
 
 export function atlasShapeForKind(kind: NodeKind): AtlasNodeShape {
   if (kind === "package") return "foundation";
-  if (kind === "file") return "tile";
+  if (kind === "file") return "slab";
+  if (kind === "function") return "pillar";
+  if (kind === "method") return "stele";
+  if (kind === "class") return "colonnade";
+  if (kind === "interface") return "gateway";
+  if (kind === "type") return "seal";
+  if (kind === "route") return "gatehouse";
   if (kind === "adr" || kind === "doc_section") return "tablet";
   if (kind === "test") return "scaffold";
+  if (kind === "external_dep") return "outpost";
   if (kind === "unresolved") return "terminus";
-  return "marker";
+  return assertNever(kind);
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unsupported graph node kind: ${String(value)}`);
 }
 
 export function atlasCapabilityForNode(
@@ -82,9 +105,9 @@ export function atlasCapabilityForNode(
 }
 
 function atlasNodeSize(kind: NodeKind, fanIn: number, selected: boolean): number {
-  const kindBase = kind === "package" ? 8 : kind === "file" ? 6 : 4.5;
-  const fanInScale = Math.min(7, Math.log2(Math.max(0, fanIn) + 1) * 1.6);
-  return kindBase + fanInScale + (selected ? 2.5 : 0);
+  const kindBase = kind === "package" ? 13 : kind === "file" ? 11 : 9;
+  const fanInScale = Math.min(6, Math.log2(Math.max(0, fanIn) + 1) * 1.35);
+  return kindBase + fanInScale + (selected ? 3 : 0);
 }
 
 export function atlasNodeVisual(

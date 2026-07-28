@@ -584,7 +584,7 @@ other frozen fixture/schema, stop and report blocked rather than guessing.
 
 ## TADORI NON-NEGOTIABLES
 
-Frozen v2.1; TS/JS only; ATLAS separate; exactly six MCP tools; stable 2D
+Active multi-language contract; legacy TS/JS fixtures are compatibility coverage only; ATLAS separate; exactly six MCP tools; stable 2D
 default; deterministic positions; every visible relation keeps evidence,
 origin, confidence, resolution; unresolved stays visibly unresolved;
 `tadori serve .` is the normal command; localhost default; no cloud

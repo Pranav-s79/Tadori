@@ -54,7 +54,7 @@ export function DocumentsPanel({ onInspect }: DocumentsPanelProps): ReactElement
   const ungrounded = state.result.docs.filter((d) => d.documents.length === 0);
 
   return (
-    <div className="explore-docs" aria-label="Documents">
+    <section className="explore-docs" aria-label="Documents">
       {grounded.length > 0 && (
         <section aria-label="Documents that cite an entity">
           <ul>
@@ -74,7 +74,7 @@ export function DocumentsPanel({ onInspect }: DocumentsPanelProps): ReactElement
 
       {ungrounded.length > 0 && (
         <section aria-label="Documents with no outgoing citation">
-          <h4>{`Ungrounded (${ungrounded.length}) — no entity cited`}</h4>
+          <h2>{`Ungrounded (${ungrounded.length}) — no entity cited`}</h2>
           <ul>
             {ungrounded.map(({ node, body }) => (
               <li key={node.entityKey}>
@@ -88,6 +88,6 @@ export function DocumentsPanel({ onInspect }: DocumentsPanelProps): ReactElement
           </ul>
         </section>
       )}
-    </div>
+    </section>
   );
 }

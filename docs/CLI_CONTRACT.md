@@ -1,9 +1,8 @@
 # Tadori CLI compatibility contract
 
-This document freezes the contract for Tadori's normal visual command before
-the visualization milestone implements it. It is a contract, not an
-implementation: nothing here authorizes building the CLI ahead of the
-Weeks 7–8 visualization phase.
+This document records the implemented compatibility contract for Tadori's
+normal local visualization command. Language scope and graph semantics are
+governed by `docs/Specs/Tadori-Multilanguage-Transition.md`.
 
 ## The normal command
 
@@ -19,8 +18,7 @@ workspace script fulfills the same contract.
 `tadori serve <path>` must, in order:
 
 1. **Resolve the repository** — normalize `<path>` to a repository root;
-   fail with an actionable message if the path is not a supported
-   TypeScript/JavaScript repository.
+   fail with an actionable message if the path is not a supported repository.
 2. **Load configuration** — project configuration, `.gitignore` /
    `.tadoriignore` exclusions, and any `tadori.rules.json`.
 3. **Reuse or refresh a valid graph snapshot** — reuse the newest valid
@@ -38,20 +36,21 @@ workspace script fulfills the same contract.
 9. **Stop all child processes on Ctrl+C** — API, watcher, and frontend all
    terminate; no orphan processes.
 
-## Frozen flags
+## Flags
 
 ```text
 --port <number>       Port for the local server (default: an open port).
 --no-open             Do not launch a browser.
 --reindex             Force a full reindex before serving.
 --mode 2d             Stable default 2D interface.
---mode 2.5d           Depth-experiment mode (same data, added depth channel).
---mode 3d-experiment  Explicitly experimental free-orbit mode.
+--mode 2.5d           Reserved; currently exits with an actionable unsupported-mode error.
+--mode 3d-experiment  Reserved; currently exits with an actionable unsupported-mode error.
 --snapshot <id>       Serve a specific stored snapshot.
 ```
 
-Default mode: `2d`. All modes render the same entities and relations; depth
-must derive from named queryable fields, never decoration.
+Default and currently implemented mode: `2d`. Reserved depth modes must not be
+presented as available until they render the same canonical entities and
+relations from named queryable fields, never decoration.
 
 ## Non-negotiables
 

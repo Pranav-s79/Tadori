@@ -27,9 +27,12 @@ vi.mock("../src/graph/PackageMapCanvas.tsx", () => ({
     nodes: Array<{ entityKey: string; kind: "package" | "file"; qualifiedName: string; displayName: string; file: string | null; exported: boolean; fanIn: number }>;
     edges: never[];
     selectedEntityKey: string | null;
-  }) => void }) => (
+  }) => void; onRendererError?: (error: Error) => void }) => (
     <div>
       map
+      <button type="button" onClick={() => props.onRendererError?.(new Error("WebGL unavailable"))}>
+        Fail renderer
+      </button>
       <button type="button" onClick={() => props.onRenderedGraphChange?.({
         nodes: [
           { entityKey: "pkg", kind: "package", qualifiedName: "pkg", displayName: "pkg", file: null, exported: false, fanIn: 0 },
@@ -93,11 +96,11 @@ describe("App focus ownership", () => {
     const opener = screen.getByRole("button", { name: "Open package inspection" });
     opener.focus();
     fireEvent.click(opener);
-    await waitFor(() => expect(screen.getByRole("dialog", { name: "Inspection" })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("complementary", { name: "Inspection" })).toHaveFocus());
     expect(screen.getByText("node detail · repo")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Close inspection panel" }));
     await waitFor(() => expect(opener).toHaveFocus());
-    expect(screen.queryByRole("dialog", { name: "Inspection" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Inspection" })).not.toBeInTheDocument();
   });
 
   it("closes responsive navigation with Escape and restores persistent desktop navigation", async () => {
@@ -128,6 +131,17 @@ describe("App focus ownership", () => {
     expect(screen.getByRole("button", { name: "Agent review lens" })).toBeEnabled();
   });
 
+  it("falls back to the structured graph when the map renderer is unavailable", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Fail renderer" }));
+
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Table" })).toHaveAttribute("aria-selected", "true"));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "The repository map renderer is unavailable. Showing the structured graph instead."
+    );
+    expect(screen.getByText("1 node")).toBeInTheDocument();
+  });
+
   it("keeps the rendered expansion available to Table mode and its inspector", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Publish expanded graph" }));
@@ -136,7 +150,9 @@ describe("App focus ownership", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Table" }));
     expect(screen.getByText("2 nodes")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "expanded.py" }));
-    await waitFor(() => expect(screen.getByRole("dialog", { name: "Inspection" })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("complementary", { name: "Inspection" })).toBeInTheDocument()
+    );
 
     fireEvent.click(screen.getByRole("tab", { name: "Atlas" }));
     expect(screen.getByRole("button", { name: "Publish expanded graph" })).toBeInTheDocument();

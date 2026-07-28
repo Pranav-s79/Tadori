@@ -11,6 +11,7 @@ import { ObservationOverlayBadges } from "./features/review/ObservationOverlayBa
 import { ReviewDiffView } from "./features/review/ReviewDiffView.tsx";
 import { useReviewDiffStore } from "./features/review/useReviewDiffStore.ts";
 import { SearchPanel } from "./features/search/SearchPanel.tsx";
+import { fetchSearch } from "./features/search/searchApi.ts";
 import { defaultFilters, type SearchFilters } from "./features/search/filterState.ts";
 import { PackageMapCanvas, type RenderedGraphSnapshot, type StoryMapEmphasis, type ViewportPosition } from "./graph/PackageMapCanvas.tsx";
 import { usePackageGraph } from "./hooks/usePackageGraph.ts";
@@ -114,7 +115,11 @@ export function App(): ReactElement {
   const boundaries = useBoundaries();
   const navigationDrawerMode = useNavigationDrawerMode();
   const [mode, setMode] = useState<WorkspaceMode>("atlas");
-  const [lenses, setLenses] = useState<LensState>(DEFAULT_LENSES);
+  const [rendererError, setRendererError] = useState(false);
+  const [lenses, setLenses] = useState<LensState>(() => ({
+    ...DEFAULT_LENSES,
+    boundaries: !currentNavigationDrawerMode()
+  }));
   const [navigationOpen, setNavigationOpen] = useState(() => !currentNavigationDrawerMode());
   const [storyEntityKey, setStoryEntityKey] = useState<string | null>(null);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(defaultFilters);
@@ -133,6 +138,15 @@ export function App(): ReactElement {
     (entityKey: string) => inspection.openEntity({ entityKey, entityType: "node" }),
     [inspection]
   );
+  const inspectObservationFile = useCallback(async (file: string): Promise<boolean> => {
+    const normalize = (value: string): string => value.replaceAll("\\", "/").replace(/^\.\//, "");
+    const normalizedFile = normalize(file);
+    const result = await fetchSearch(file, defaultFilters(), { limit: 100, offset: 0 }, 0);
+    const match = result.rows.find((row) => row.file !== null && normalize(row.file) === normalizedFile);
+    if (match === undefined) return false;
+    inspection.openEntity({ entityKey: match.entityKey, entityType: "node" });
+    return true;
+  }, [inspection]);
 
   const focusEntity = useCallback((entityKey: string) => {
     const representative = data?.representativeByEntityKey.get(entityKey);
@@ -164,7 +178,7 @@ export function App(): ReactElement {
   }, [refetchGraph, refetchBoundaries]);
   const refreshStatus = useRefreshStatus(wsUrl(), onReconnected);
 
-  if (snapshotLoading || graphLoading) {
+  if ((snapshotLoading && snapshot === null) || (graphLoading && data === null)) {
     return <LoadingState />;
   }
 
@@ -176,6 +190,10 @@ export function App(): ReactElement {
       filters={searchFilters}
       focusRequest={focusRequest}
       active={mode !== "table"}
+      onRendererError={() => {
+        setRendererError(true);
+        setMode("table");
+      }}
       onInspect={openInspectionPanel}
       onRenderedGraphChange={setRenderedGraph}
       onViewportPositionsChange={setViewportPositions}
@@ -189,7 +207,7 @@ export function App(): ReactElement {
   const visibleEdgeCount = renderedGraph?.edges.length ?? data?.edges.length;
 
   const mapSurface = (
-    <div className="app-graph-stage" aria-label="Repository atlas">
+    <div className="app-graph-stage" role="region" aria-label="Repository atlas">
       <div className="atlas-ground" aria-hidden="true" />
       {data?.bounded !== undefined && (data.bounded.omittedNodes > 0 || data.bounded.omittedEdges > 0) && (
         <p className="bounded-notice" role="status">
@@ -233,11 +251,11 @@ export function App(): ReactElement {
     <div className={`app-shell${inspection.current === null ? "" : " has-inspector"}`}>
       <a className="skip-link" href="#workspace-stage">Skip to repository view</a>
       <header className="atlas-header">
-        <div className="atlas-brand" aria-label="Tadori archaeological circuit atlas">
+        <div className="atlas-brand">
           <h1>Tadori</h1>
           <small>Archaeological circuit atlas</small>
         </div>
-        <div className="atlas-snapshot" aria-label="Served snapshot">
+        <div className="atlas-snapshot" role="group" aria-label="Served snapshot">
           <strong>{snapshot?.repository ?? "Repository"}</strong>
           <span>{snapshot === null ? "No active snapshot" : `#${snapshot.snapshotId} · ${snapshot.snapshotKind}`}</span>
           <span className={`freshness freshness-${snapshot?.freshness ?? "unknown"}`}>
@@ -254,7 +272,13 @@ export function App(): ReactElement {
         >
           Explore
         </button>
-        <ModeTabs active={mode} onChange={setMode} />
+        <ModeTabs
+          active={mode}
+          onChange={(nextMode) => {
+            if (nextMode !== "table") setRendererError(false);
+            setMode(nextMode);
+          }}
+        />
       </header>
 
       {snapshot?.stale === true && <StaleState staleReason={snapshot.staleReason} />}
@@ -286,7 +310,7 @@ export function App(): ReactElement {
             <summary>Explore evidence</summary>
             <ExploreTabs onInspect={openInspectionPanel} onShowStory={openStory} />
           </details>
-          {lenses.observations && <ObservationOverlayBadges />}
+          {lenses.observations && <ObservationOverlayBadges onInspectFile={inspectObservationFile} />}
         </aside>
 
         <main id="workspace-stage" className="atlas-main" tabIndex={-1}>
@@ -335,12 +359,19 @@ export function App(): ReactElement {
               )}
             </div>
             {mode === "table" && data !== null && (
-              <AccessibleGraphTable
-                nodes={renderedGraph?.nodes ?? data.nodes}
-                edges={renderedGraph?.edges ?? data.edges}
-                filters={searchFilters}
-                onInspect={openInspectionPanel}
-              />
+              <>
+                {rendererError && (
+                  <p className="bounded-notice" role="alert">
+                    The repository map renderer is unavailable. Showing the structured graph instead.
+                  </p>
+                )}
+                <AccessibleGraphTable
+                  nodes={renderedGraph?.nodes ?? data.nodes}
+                  edges={renderedGraph?.edges ?? data.edges}
+                  filters={searchFilters}
+                  onInspect={openInspectionPanel}
+                />
+              </>
             )}
             {mode === "table" && data === null && (
               <div className="mode-empty-state"><h2>Structured graph unavailable</h2></div>

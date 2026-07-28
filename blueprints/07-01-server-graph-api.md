@@ -885,7 +885,7 @@ binding beyond `127.0.0.1`, stop and report blocked instead of guessing.
 
 ## TADORI NON-NEGOTIABLES
 
-Frozen v2.1; TS/JS only; exactly six MCP tools (this server is not a
+Active multi-language contract; legacy TS/JS fixtures are compatibility coverage only; exactly six MCP tools (this server is not a
 seventh); stable 2D default is out of scope here (08-02 owns it); no
 generic admin dashboard; every visible node/edge keeps evidence/origin/
 confidence/resolution; unresolved stays visibly unresolved; agent

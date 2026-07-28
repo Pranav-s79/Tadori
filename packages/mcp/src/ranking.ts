@@ -2,7 +2,7 @@ import type { Confidence, GraphEdge, GraphNode } from "@tadori/core";
 
 export const RANKING_POLICY_VERSION = "tadori-v2.1-week5-linear-v1";
 
-/** Frozen v2.1 linear weights. Unavailable signals remain explicit and contribute zero. */
+/** Compatibility-stable linear weights. Unavailable signals remain explicit and contribute zero. */
 export const RANKING_WEIGHTS = Object.freeze({
   bm25: 3,
   proximity: 2.5,

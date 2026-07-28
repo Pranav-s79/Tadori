@@ -30,6 +30,9 @@ vi.mock("sigma", () => ({
     graphToViewport(point: { x: number; y: number }) {
       return point;
     }
+    getNodeDisplayData(entityKey: string) {
+      return entityKey.length > 0 ? { x: 0.5, y: 0.5 } : undefined;
+    }
     getCamera() {
       return {
         animate: cameraAnimateMock,

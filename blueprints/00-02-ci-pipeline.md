@@ -319,6 +319,6 @@ Linux, stop and report the finding — do not weaken the gate.
 
 ## TADORI NON-NEGOTIABLES
 
-Frozen v2.1; never weaken golden fixtures; no publish/tag automation; gates
+Active multi-language contract; legacy TS/JS fixtures are compatibility coverage only; never weaken golden fixtures; no publish/tag automation; gates
 run through pnpm under the Node-22 pin; LF checkout is load-bearing for
 fixture hashes.
