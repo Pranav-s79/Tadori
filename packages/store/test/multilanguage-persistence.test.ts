@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { sha256Hex, type ExtractionProvenance } from "@tadori/core";
+import {
+  sha256Hex,
+  type ExtractionProvenance,
+  type SnapshotGraphInput
+} from "@tadori/core";
 import {
   MIGRATIONS,
   diffSnapshotProjects,
@@ -95,6 +99,20 @@ describe("migration 7 multi-language persistence", () => {
     expect(stored.nodes[0]).not.toHaveProperty("provenance");
     expect(stored.extractors).toEqual([]);
     expect(stored.projects).toEqual([]);
+  });
+
+  it("normalizes omitted project memberships before insert and reuse", () => {
+    const current = makeGraph({ files: [], nodes: [], edges: [] });
+    const { projects: omittedProjects, ...legacyGraph } = current;
+    expect(omittedProjects).toEqual([]);
+    const input: SnapshotGraphInput = legacyGraph;
+
+    const first = insertSnapshotGraph(db, input);
+    expect(first.reused).toBe(false);
+    expect(loadSnapshotGraph(db, first.snapshotId).projects).toEqual([]);
+
+    const second = insertSnapshotGraph(db, input);
+    expect(second).toMatchObject({ snapshotId: first.snapshotId, reused: true });
   });
 
   it("loads a snapshot created before migration 8 with an empty project inventory", () => {

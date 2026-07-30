@@ -12,6 +12,7 @@ import type {
   RepoStateKind,
   Resolution,
   SnapshotGraph,
+  SnapshotGraphInput,
   SnapshotExtractor,
   ExtractionCapability,
   ExtractionDerivation
@@ -357,10 +358,10 @@ export function activateSnapshot(
  */
 export function insertSnapshotGraph(
   db: Database,
-  graph: SnapshotGraph,
+  graphInput: SnapshotGraphInput,
   options: InsertSnapshotOptions = {}
 ): InsertSnapshotResult {
-  snapshotGraphSchema.parse(graph);
+  const graph = snapshotGraphSchema.parse(graphInput);
   const run = db.transaction((): InsertSnapshotResult => {
     throwIfAborted(options.signal);
     const repoId = ensureRepository(db, graph.repoRootPath);

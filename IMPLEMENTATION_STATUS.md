@@ -66,7 +66,7 @@ region summaries; loading, error, and no-region states remain explicit.
 
 Project-region validation evidence (2026-07-29): `pnpm skills:check`, strict
 typecheck, ESLint, and `git diff --check` pass. The root test command passes 71
-non-CLI files / 428 tests, 13 serialized CLI files / 64 passed with 3
+non-CLI files / 429 tests, 13 serialized CLI files / 64 passed with 3
 platform-specific skips, and 46 Atlas files / 371 tests. Python and TypeScript
 fixture validation pass; exact indexing matches all five legacy graphs and both
 diff/boundary oracles with zero dangling endpoints and zero
@@ -79,6 +79,19 @@ derived endpoints, Story, Changes, Table, inspection, mobile/media states, zero
 axe violations, zero browser errors, and zero external resources. CI is wired
 to repeat the installed GUI smoke in Firefox on the canonical Ubuntu/Node 22
 leg; that exact-SHA remote result is not yet claimed.
+
+Project-region CI correction (2026-07-29): initial PR #53 run `30514433954`
+passed typecheck, lint, the full test suite, fixtures, artifact creation, and
+installed-package smoke before Ubuntu Node 24/26 reached the layout benchmark.
+That benchmark supplied a valid legacy snapshot payload without `projects`;
+`insertSnapshotGraph` validated it with a schema that defaults the field to
+`[]`, but then discarded the normalized result and iterated the original input.
+The store boundary now accepts `SnapshotGraphInput` and operates exclusively on
+the parsed `SnapshotGraph`. A regression covers both first insert and immutable
+reuse with omitted project memberships. Focused store tests pass 18/18 and the
+complete Node 24 layout benchmark passes every timing and byte-identical reuse
+budget locally. A replacement exact-SHA matrix remains required before this
+correction is claimed green remotely.
 
 Release-hardening update (2026-07-26): the fresh and stale shells now place the
 workspace in an explicit flexible grid row; responsive navigation starts closed,
