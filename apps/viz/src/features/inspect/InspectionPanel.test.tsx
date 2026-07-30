@@ -75,12 +75,12 @@ describe("InspectionPanel", () => {
 
     fireEvent.click(screen.getByText("open-a"));
     await waitFor(() => expect(screen.getByText("Alpha")).toBeInTheDocument());
-    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(screen.getAllByRole("complementary", { name: "Inspection" })).toHaveLength(1);
 
     fireEvent.click(screen.getByText("open-b"));
     await waitFor(() => expect(screen.getByText("Beta")).toBeInTheDocument());
     // Exactly one panel root, and the previous content is gone.
-    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(screen.getAllByRole("complementary", { name: "Inspection" })).toHaveLength(1);
     expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
   });
 
@@ -93,13 +93,45 @@ describe("InspectionPanel", () => {
     );
   });
 
+  it("shows multi-language extraction attribution without upgrading legacy facts", async () => {
+    routeFetch({
+      a: {
+        ...nodeBody("a", "Alpha"),
+        language: "python",
+        provenance: {
+          extractorId: "tadori-tree-sitter",
+          extractorVersion: "1",
+          capability: "structural",
+          derivation: "parser-derived",
+          unresolvedReason: null
+        }
+      }
+    });
+    render(<Harness />);
+    fireEvent.click(screen.getByText("open-a"));
+    await waitFor(() => expect(screen.getByText("python")).toBeInTheDocument());
+    expect(screen.getByText("structural")).toBeInTheDocument();
+    expect(screen.getByText("parser-derived")).toBeInTheDocument();
+  });
+
   it("Escape closes the panel", async () => {
     routeFetch({ a: nodeBody("a", "Alpha") });
     render(<Harness />);
     fireEvent.click(screen.getByText("open-a"));
-    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
-    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("complementary", { name: "Inspection" })).toBeInTheDocument());
+    fireEvent.keyDown(screen.getByRole("complementary", { name: "Inspection" }), { key: "Escape" });
+    expect(screen.queryByRole("complementary", { name: "Inspection" })).not.toBeInTheDocument();
+  });
+
+  it("restores focus to the actual opener after close", async () => {
+    routeFetch({ a: nodeBody("a", "Alpha") });
+    render(<Harness />);
+    const opener = screen.getByText("open-a");
+    opener.focus();
+    fireEvent.click(opener);
+    await waitFor(() => expect(screen.getByRole("complementary", { name: "Inspection" })).toHaveFocus());
+    fireEvent.click(screen.getByRole("button", { name: "Close inspection panel" }));
+    await waitFor(() => expect(opener).toHaveFocus());
   });
 
   it("edge view shows all three provenance badges", () => {
@@ -117,7 +149,15 @@ describe("InspectionPanel", () => {
       evidenceOmittedCount: 0,
       freshness: "fresh",
       stale: false,
-      staleReason: null
+      staleReason: null,
+      language: null,
+      provenance: {
+        extractorId: "tadori-cross-language-boundaries",
+        extractorVersion: "1",
+        capability: "repository",
+        derivation: "repository-derived",
+        unresolvedReason: null
+      }
     };
     routeFetch({});
     function EdgeHarness() {
@@ -136,5 +176,46 @@ describe("InspectionPanel", () => {
     expect(screen.getByText(/origin: compiler/)).toBeInTheDocument();
     expect(screen.getByText(/confidence: certain/)).toBeInTheDocument();
     expect(screen.getByText(/resolution: resolved/)).toBeInTheDocument();
+    expect(screen.getByText(/capability: repository/)).toBeInTheDocument();
+    expect(screen.getByText(/derivation: repository-derived/)).toBeInTheDocument();
+  });
+
+  it("registers a node connection for edge inspection and preserves it for back navigation", async () => {
+    const edge: ToolEdge = {
+      entityKey: "e1",
+      srcEntityKey: "a",
+      srcQualifiedName: "pkg/Alpha",
+      relation: "calls",
+      dstEntityKey: "b",
+      dstQualifiedName: "pkg/Beta",
+      origin: "compiler",
+      confidence: "certain",
+      resolution: "resolved",
+      evidence: [],
+      evidenceOmittedCount: 0,
+      freshness: "fresh",
+      stale: false,
+      staleReason: null,
+      language: "typescript",
+      provenance: null
+    };
+    routeFetch({
+      a: { ...nodeBody("a", "Alpha"), outEdges: [edge] },
+      b: nodeBody("b", "Beta")
+    });
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("open-a"));
+    await waitFor(() => expect(screen.getByText("Alpha")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "calls → pkg/Beta" }));
+    expect(screen.queryByText("Edge details are unavailable.")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "calls" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "pkg/Beta" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Beta" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Back to previous entity" }));
+
+    expect(screen.getByRole("heading", { name: "calls" })).toBeInTheDocument();
+    expect(screen.queryByText("Edge details are unavailable.")).not.toBeInTheDocument();
   });
 });

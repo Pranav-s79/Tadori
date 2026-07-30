@@ -619,7 +619,7 @@ frozen-contract/security violations, not implementation details.
 
 ## TADORI NON-NEGOTIABLES
 
-Frozen v2.1; TS/JS only; ATLAS separate; exactly six MCP tools (HTTP only
+Active multi-language contract; legacy TS/JS fixtures are compatibility coverage only; ATLAS separate; exactly six MCP tools (HTTP only
 here); stable 2D default; no permanent dual sidebars (this blueprint's
 entire premise); every visible relation keeps evidence/origin/confidence/
 resolution; unresolved stays visibly unresolved; design rationale only from

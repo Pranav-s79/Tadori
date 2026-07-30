@@ -104,7 +104,7 @@ export async function captureStagedTree(rootPath: string): Promise<StagedTreeCap
   const root = path.resolve(rootPath);
   await assertGitRepository(root);
 
-  const parent = mkdtempSync(path.join(tmpdir(), "tadori-staged-"));
+  const parent = mkdtempSync(path.join(tmpdir(), `tadori-staged-${String(process.pid)}-`));
   const dispose = (): void => {
     rmSync(parent, { recursive: true, force: true });
   };

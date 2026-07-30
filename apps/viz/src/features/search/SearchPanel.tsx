@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useRef } from "react";
 import {
   CONFIDENCES,
+  CAPABILITIES,
+  DERIVATIONS,
   NODE_KINDS,
   ORIGINS,
   RELATIONS,
@@ -144,6 +146,24 @@ export function SearchPanel(props: SearchStoreCallbacks = {}): React.ReactElemen
           options={RESOLUTIONS}
           selected={store.filters.resolutions}
           onToggle={(v) => patch({ resolutions: toggleValue(store.filters.resolutions, v) })}
+        />
+        <FilterGroup
+          label="Filter by language"
+          options={props.languageOptions ?? []}
+          selected={store.filters.languages}
+          onToggle={(v) => patch({ languages: toggleValue(store.filters.languages, v) })}
+        />
+        <FilterGroup
+          label="Filter by capability"
+          options={CAPABILITIES}
+          selected={store.filters.capabilities}
+          onToggle={(v) => patch({ capabilities: toggleValue(store.filters.capabilities, v) })}
+        />
+        <FilterGroup
+          label="Filter by derivation"
+          options={DERIVATIONS}
+          selected={store.filters.derivations}
+          onToggle={(v) => patch({ derivations: toggleValue(store.filters.derivations, v) })}
         />
       </div>
 

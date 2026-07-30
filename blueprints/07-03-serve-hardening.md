@@ -799,7 +799,7 @@ finding a new one should treat it as a genuine finding, not paper over it.
 
 ## TADORI NON-NEGOTIABLES
 
-Frozen v2.1; TS/JS only; exactly six MCP tools (unaffected); localhost
+Active multi-language contract; legacy TS/JS fixtures are compatibility coverage only; exactly six MCP tools (unaffected); localhost
 default; invalid snapshots never served (this blueprint's core guarantee);
 `tadori serve .` is the normal command; no orphan processes (CLI_CONTRACT.md
 step 9, this blueprint's core guarantee); no cloud dependency; Graphify is

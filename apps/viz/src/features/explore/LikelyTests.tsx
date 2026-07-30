@@ -63,7 +63,7 @@ export function LikelyTests({ forEntity, onInspect }: LikelyTestsProps): ReactEl
 
   return (
     <section className="explore-tests" aria-label={HEADING}>
-      <h3>{HEADING}</h3>
+      <h2>{HEADING}</h2>
       <p className="explore-tests-caption">{NOT_OBSERVED}</p>
 
       {state.status === "loading" && <p role="status">Loading tests…</p>}

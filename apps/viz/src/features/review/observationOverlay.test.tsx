@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ObservationOverlayBadges } from "./ObservationOverlayBadges.tsx";
 import type { FileObservationOverlay } from "./observationOverlayApi.ts";
 
@@ -57,6 +57,18 @@ describe("ObservationOverlayBadges", () => {
     await waitFor(() => expect(screen.getByText("src/secret.ts")).toBeTruthy());
     expect(screen.getByText("changed without being read")).toBeTruthy();
     expect(screen.getByText("changed outside the plan")).toBeTruthy();
+  });
+
+  it("opens a flagged file through the supplied inspection resolver", async () => {
+    const onInspectFile = vi.fn().mockResolvedValue(true);
+    stubFetch({
+      taskPresent: true,
+      files: [file({ file: "src/secret.ts", modifiedActual: true, modifiedButNotRetrieved: true })]
+    });
+    render(<ObservationOverlayBadges onInspectFile={onInspectFile} />);
+    const fileButton = await screen.findByRole("button", { name: "src/secret.ts" });
+    fireEvent.click(fileButton);
+    await waitFor(() => expect(onInspectFile).toHaveBeenCalledWith("src/secret.ts"));
   });
 
   it("does not list a clean file (planned + read + modified, no risk)", async () => {

@@ -11,6 +11,9 @@ visual supervision layer (`tadori serve .`) serves that graph over a
 local-first: indexing, serving, and visualization run entirely on your machine,
 with no cloud dependency and no external runtime fetch.
 
+Production packaging and local deployment are documented in
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
 ## Status
 
 The active contract is the multi-language transition specification. TypeScript
@@ -24,12 +27,12 @@ repository/interface extraction. Unknown safe text remains visible at repository
 - Phase 7 `tadori serve .` local server (graph/layout/search/source/inspection
   HTTP APIs + WebSocket refresh) is merged and validated.
 - Phase 8 visualization (`apps/viz`): deterministic server-owned layout, guided
-  package→file→symbol zoom, search & filters, inspection & evidence panels.
-- Phase 9 review-diff in progress: `GET /api/v1/review/diff` compares two
-  snapshots, or the live working tree / git index against the active snapshot
+  package→file→symbol zoom, shared search/filter state, camera focus,
+  inspection/evidence panels, and an accessible table peer.
+- Phase 9 review surfaces: `GET /api/v1/review/diff` compares two snapshots, or
+  the live working tree / git index against the active snapshot
   (`kind=snapshot|working_tree|staged`), with pagination, omission accounting,
-  and honest errors — never a silent substitution of one comparison kind for
-  another. The on-map diff-badge visualization is the remaining slice.
+  honest errors, and stable-coordinate on-map diff and boundary overlays.
 
 The legacy TS/JS fixtures remain compatibility coverage, not a product-scope limit.
 See `docs/MULTILANGUAGE_CAPABILITIES.json` for precise per-feature support.
@@ -81,6 +84,13 @@ layout, search, source, inspection, and review-diff APIs plus a WebSocket
 refresh channel) that the `apps/viz` visualization consumes.
 
 ```bash
+pnpm tadori purge .
+```
+
+Removes only the repository's local `.tadori` index after confinement checks;
+source files are never removed.
+
+```bash
 pnpm mcp:stdio --db .tadori/tadori.sqlite --repo .
 ```
 
@@ -101,7 +111,7 @@ Workspace packages:
 | `packages/harness` | Golden-fixture validation, indexing comparison, and fixture typecheck CLIs |
 | `packages/mcp` | The frozen six-tool MCP interface: snapshot queries, FTS5 search, explainable ranking, budgeting, stdio transport |
 | `packages/server` | `127.0.0.1`-only HTTP/WebSocket product surface: graph, layout, search, source, inspection, and review-diff APIs |
-| `packages/cli` | `tadori` CLI: `diff` (snapshot + edge diff) and `serve` (runs the local server) |
+| `packages/cli` | `tadori` CLI: `diff` (snapshot + edge diff), `serve` (local server), and `purge` (confined local-index deletion) |
 | `apps/viz` | Local 2D visualization app consuming the server over HTTP/WS (no `@tadori/*` import; offline bundle) |
 
 `packages/fixtures/` is the golden-fixture corpus — it is a fixture data
@@ -115,8 +125,9 @@ directory, not a workspace package (absent from `pnpm-workspace.yaml`); see
 - Exactly six MCP tools: `repo_overview`, `find_symbol`, `symbol_context`,
   `find_tests`, `impact`, `path`. No seventh tool.
 - Legacy golden fixtures remain byte-stable compatibility checks.
-- The governing specification is `docs/Specs/Tadori-Multilanguage-Transition.md`;
-  older v2.1 documents are historical references only.
+- The sole governing specification is
+  `docs/Specs/Tadori-Multilanguage-Transition.md`; superseded contracts are not
+  product, schema, or scope authorities.
 
 ## Roadmap
 
@@ -140,4 +151,7 @@ Remaining work is tracked in `BACKLOG.md` (phase backlog) and
 | `pnpm skills:check` | Verify synced skills are byte-identical to canonical |
 | `pnpm benchmark:incremental` | Incremental-indexing latency and memory gates |
 | `pnpm tadori diff .` | Snapshot the working tree and diff against the previous head |
+| `pnpm tadori serve .` | Build/refresh the index and open the localhost visualization |
+| `pnpm tadori purge .` | Remove only the confined local `.tadori` index |
+| `pnpm package:artifact` | Build the offline visualization and installable package artifact |
 | `pnpm mcp:stdio --db .tadori/tadori.sqlite --repo .` | Six-tool MCP server over stdio |

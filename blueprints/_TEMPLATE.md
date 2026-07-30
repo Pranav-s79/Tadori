@@ -113,7 +113,7 @@ Require only:
 
 ## Global invariants
 
-Frozen v2.1; TS/JS only; exactly six MCP tools; stable 2D default; 2.5D/3D
+Active multi-language contract; legacy TS/JS fixtures are compatibility coverage only; exactly six MCP tools; stable 2D default; 2.5D/3D
 experimental; no city metaphor or default hairball; progressive disclosure;
 evidence/origin/confidence/resolution preserved; unresolved remains visible;
 static test linkage is not runtime coverage; “not observed inspected” honesty;

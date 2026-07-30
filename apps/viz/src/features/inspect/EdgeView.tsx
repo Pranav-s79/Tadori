@@ -19,12 +19,14 @@ interface EdgeViewProps {
 export function EdgeView({ edge, repoRoot, onPivot }: EdgeViewProps): React.ReactElement {
   return (
     <div className="inspect-edge">
-      <header>
+      <div className="inspect-entity-header">
         <h3>{edge.relation}</h3>
         <ul className="inspect-badges" aria-label="Provenance">
           <li className="badge badge-origin">{`origin: ${edge.origin}`}</li>
           <li className="badge badge-confidence">{`confidence: ${edge.confidence}`}</li>
           <li className="badge badge-resolution">{`resolution: ${edge.resolution}`}</li>
+          <li className="badge badge-capability">{`capability: ${edge.provenance?.capability ?? "legacy snapshot"}`}</li>
+          <li className="badge badge-derivation">{`derivation: ${edge.provenance?.derivation ?? "not attributed"}`}</li>
         </ul>
         <dl className="inspect-meta">
           <div>
@@ -44,11 +46,15 @@ export function EdgeView({ edge, repoRoot, onPivot }: EdgeViewProps): React.Reac
             </dd>
           </div>
           <div>
+            <dt>Language</dt>
+            <dd>{edge.language ?? "cross-language or not attributed"}</dd>
+          </div>
+          <div>
             <dt>Freshness</dt>
             <dd>{edge.stale ? `stale (${edge.staleReason ?? "unknown"})` : edge.freshness}</dd>
           </div>
         </dl>
-      </header>
+      </div>
 
       <EvidenceList evidence={edge.evidence} omittedCount={edge.evidenceOmittedCount} repoRoot={repoRoot} />
     </div>

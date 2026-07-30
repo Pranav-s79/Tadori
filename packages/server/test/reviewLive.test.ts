@@ -84,8 +84,10 @@ async function diff(
 
 /** Count of temp dirs this feature leaves in the OS temp dir (leak guard). */
 function liveTempDirCount(): number {
+  const processSuffix = `${String(process.pid)}-`;
   return readdirSync(tmpdir()).filter(
-    (name) => name.startsWith("tadori-live-diff-") || name.startsWith("tadori-staged-")
+    (name) => name.startsWith(`tadori-live-diff-${processSuffix}`)
+      || name.startsWith(`tadori-staged-${processSuffix}`)
   ).length;
 }
 

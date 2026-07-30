@@ -367,7 +367,7 @@ detail.
 
 ## TADORI NON-NEGOTIABLES
 
-Frozen v2.1; TS/JS only; exactly six MCP tools; never weaken golden
+Active multi-language contract; legacy TS/JS fixtures are compatibility coverage only; exactly six MCP tools; never weaken golden
 fixtures; deterministic output; evidence/origin/confidence/resolution
 honest; invalid snapshots never served; localhost only; no runtime tracing;
 Graphify ignored reference only.

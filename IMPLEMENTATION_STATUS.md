@@ -2,38 +2,140 @@
 
 # Current State (always overwritten)
 
-Current node: ML-00 — multi-language repository intelligence transition.
-Status: implementation and local validation complete in the working tree.
-Active contract: `docs/Specs/Tadori-Multilanguage-Transition.md`. The v2.1
-documents are historical compatibility references and no longer constrain
-language scope.
+Current node: 08-10 — bounded stable 2D Atlas release hardening.
+Status: browser-verified visual hardening is green locally; the candidate still
+requires an exact-SHA GitHub matrix before release work proceeds.
 
-Implemented: central language registry and universal safe-text scanning;
-compiler-backed TypeScript/JavaScript adapter parity; pinned/checksummed
-Tree-sitter WASM extraction for Python, C, C++, Go, Rust, and Java;
-repository/interface extraction for Proto, Terraform, YAML, Dockerfile,
-Markdown, JSON, shell/Make, TOML, and CMake; explicit evidenced cross-language
-HTTP, generated-binding, FFI, subprocess, and build-link edges; per-item
-language/capability/provenance persistence and API exposure; syntax-failure
-isolation; deterministic mixed-language oracle; cross-version coalescing guard;
-production visualization serving; and an installable package build.
+Active contract: `docs/Specs/Tadori-Multilanguage-Transition.md`. Superseded
+v2.1 documents are not product, schema, or language-scope authorities. Legacy
+TypeScript/JavaScript fixtures remain regression coverage only.
 
-Validation evidence (2026-07-24): `pnpm skills:check`, `pnpm typecheck`,
-`pnpm lint`, `python validate_fixtures.py`, `pnpm fixtures:validate`,
-`pnpm fixtures:index`, and `pnpm fixtures:typecheck` pass; full Vitest is
-78/78 files and 472/472 tests. The deterministic mixed oracle passes twice
-without mutation. A packed `tadori@0.1.0` tarball installed outside the
-monorepo, indexed GoogleCloudPlatform/microservices-demo at pinned commit
-`9a4616e77f0f9cbcbecaf27d711c38890dda1404` (324 files, 6,568 nodes,
-7,433 edges), served the built visualization and API, and purged its local
-index with a clean git worktree afterward. The capability truth source is
-`docs/MULTILANGUAGE_CAPABILITIES.json`; unsupported semantic facts remain
-absent or explicitly unresolved.
+Implemented: the multi-language registry and extraction stack; explicit
+language/capability/derivation provenance; evidence-backed cross-language
+relations; deterministic mixed-language fixtures; snapshot, diff, API, MCP,
+layout, and local serving paths; an installable package and confined purge
+workflow; and the accessible stable 2D Atlas. Its archaeological-circuit visual
+language is graph-derived and intentionally remains short of fictional
+functional districts until the API supplies evidenced region attribution.
 
-Current node: 08-11 — accessible non-canvas graph table (viz a11y slice): IMPLEMENTED on branch bp/08-11-a11y, pending CI/merge. 11-03 profile model MERGED (#48=7c975f2). 11-01/02 bench (#46/#47). 12-01 s1/s2 (#44/#45). 09-05 (#43). 08-04 (#42).
-Branch: bp/08-11-a11y (off main 7c975f2)
-Latest commit: 7c975f2 main (PR #48 merged — 11-03 bench competitor-profile model, CI green both OSes). 11-02 (#47). 11-01 (#46). 12-01 s2 (#45). 12-01 s1 (#44). 09-05 (#43). 08-04 (#42). 08-07E (#41). 08-07D (#40). 08-07C (#39). 08-07B (#38). 08-07A (#37). 08-07 (#36). 09-04 (#35).
-Open PR: 08-11 a11y slice to be opened after push.
+The Atlas uses graph facts for every mark: package foundations, file slabs,
+function pillars, method stelae, class colonnades, interface gateways, type
+seals, route gatehouses, documentation tablets, test scaffolds,
+external-dependency outposts, unresolved termini, and provenance circuit-core
+traces. Search, shared filters, inspection, story,
+changes, boundaries, agent-review, and accessible-table surfaces are composed
+in one responsive shell. Server-owned LOD budgets keep package/file views at
+500 nodes, symbol views at 1,000 nodes, edges at 1,000, and labels at 200 while
+reporting every bounded omission. Package aggregates preserve full provenance
+breakdowns instead of promoting a representative edge.
+
+Multi-language projection audit (2026-07-26): package ownership now uses
+nearest containment, so nested language packages retain their legitimate
+file and symbol members. File-level LOD follows canonical graph ownership when
+manifest package names are absent, and the Atlas loads every server-projected
+relation instead of hard-coding imports. The checked-in no-`package.json`
+mixed oracle expands 40 root files plus its Protocol Buffer package file with
+zero ambiguous owners. Registered repository configuration and non-TypeScript
+project manifests produce repository-derived file nodes, while legacy
+TypeScript/JavaScript configuration remains support-only for exact fixture
+compatibility. Registry IDs are test-locked to the active capability matrix.
+
+Release-hardening update (2026-07-26): the fresh and stale shells now place the
+workspace in an explicit flexible grid row; responsive navigation starts closed,
+owns Escape/focus restoration, and reopens automatically as persistent desktop
+navigation at the breakpoint; and inspection/story evidence receives the served
+absolute repository root while retaining the existing client-side confinement
+check. Boundary and change badges now use Sigma graph-to-viewport projection and
+republish after camera, resize, and expansion changes; entities absent from the
+rendered graph remain explicitly listed. The persistent canvas publishes a
+deterministically deduplicated canonical graph to Table mode, preserving
+expansion and selection across mode changes, and exposes inspection plus the
+documented keyboard pan/focus, descend/inspect, ascend/collapse, zoom, and reset
+contract with reduced-motion camera updates. The persistent Sigma canvas uses
+its supported invalid-container guard during transient zero-size responsive
+layouts, retaining expansion and camera state without crashing. Renderer
+initialization failures are caught at the map boundary, switch to the canonical
+Table view, and announce the fallback instead of unmounting the shell. Node
+connection pivots register the already-served edge DTO
+inside the inspection panel, so edge provenance is available immediately and
+remains available when one-level back navigation returns to that edge. Expanded
+packages now receive labeled, repository-derived 2D
+boundaries computed only from known file membership and its projected convex
+hull; collapsed package foundations remain the canonical structures. Story
+transport publishes its active evidenced step to the map, maps raw entity keys
+through served package representatives, dims unrelated marks, and applies copper
+emphasis only to the evidenced predecessor path. Unresolved transitions remain
+visible at their known source with an explicitly unknown destination. Stable 2D
+coordinates remain the default and no functional regions or runtime behavior are
+inferred.
+
+Performance evidence (2026-07-26): the final Atlas bundle revalidated a
+150,230-LOC real-browser cold start in 4,173.06 ms and had zero
+package/file/symbol position-identity mismatches. A prior memory run used
+3,919,728 bytes of JavaScript heap. The 250,330-LOC
+incremental benchmark passed: 945.86 ms single-file p95, 815.11 ms package
+invalidation, 176,632,456 bytes heap growth, and approximately 758,579 bytes
+per snapshot.
+
+Validation evidence (2026-07-27): the real Chrome gate exercises painted
+offline Atlas canvases, keyboard package expansion, live Path/Routes/Tests/Docs,
+Story, Changes, Table parity, node-edge inspection pivots, 320px navigation,
+reduced motion, forced colors, and axe WCAG/best-practice rules with zero
+violations and zero browser errors. Project skill checks, type checking, lint,
+fixture validation/index/typecheck gates, package artifact creation, and npm
+pack audit all pass. The non-Atlas suites pass 82 files / 485 tests and the
+Atlas suite passes 42 files / 355 tests. The gate waits for the served snapshot to
+settle, preserves expanded package/file state across graph refresh, uses
+Sigma-normalized camera coordinates, and verifies projected package boundaries
+remain inside the viewport. A local `tadori serve . --no-open` smoke
+produced a fresh snapshot with 5,735 nodes and 14,503 edges; package-level
+node and layout scopes agreed, with no missing edge endpoints. The in-app
+browser could not start because the session omitted required `sandboxPolicy`
+metadata, so the checked-in Playwright-Core harness uses an installed Chrome,
+Edge, or Chromium executable and runs in the canonical Ubuntu/Node 22 CI job.
+
+Deployment hardening (2026-07-26): compatible overrides resolve the reported
+`fast-uri`, `find-my-way`, and `@hono/node-server` advisories to patched
+versions; `pnpm audit --prod` reports zero known vulnerabilities. The workspace
+and generated package share one `diff` implementation, so the installed binary
+exposes `diff`, `serve`, and `purge`. The generated package includes a concise
+README plus factual repository/homepage/issue metadata while remaining
+explicitly `UNLICENSED`. `pnpm package:smoke` packs and installs the real
+tarball in a temporary prefix and locally passed command, embedded-asset, API,
+Python structural-provenance, layout, shutdown, and confined-purge checks. CI is
+configured to repeat build, manifest audit, installation, and smoke on Ubuntu
+Node 22/24/26, Windows Node 22, and macOS Node 22; production advisory calls run
+once on the canonical Ubuntu/Node 22 leg. The root gate runs the 69 non-CLI
+files first, then the 13 process-owning CLI files through exactly one fork
+worker with file parallelism disabled, so
+worker, listener, and loopback-server lifecycle tests do not compete with the
+rest of the repository suite on constrained hosted runners. Captured project
+filesystem containment and directory enumeration canonicalize both operands
+before comparison and reconstruct native paths under the served root, avoiding
+case-insensitive macOS roots being misclassified as outside the capture.
+The root test command builds the Atlas before CLI lifecycle coverage, so a fresh
+checkout has the same embedded visualization prerequisite as the populated
+development workspace. GitHub run `30309212825` exposed this clean-checkout gap:
+typecheck and lint passed on all five runners, but every live-server CLI test
+failed before printing its URL because `apps/viz/dist/index.html` did not yet
+exist. The build-first ordering is the bounded correction. Replacement run
+`30314081634` passed the complete five-job matrix on Ubuntu Node 22/24/26,
+Windows Node 22, and macOS Node 22, including installed-package smoke.
+The installed CLI executable guard canonicalizes both the module URL and argv
+path before deciding whether to dispatch. This preserves direct execution when
+macOS exposes npm's temporary prefix through the equivalent `/var` and
+`/private/var` aliases; lexical aliases and POSIX symlinks are regression-tested.
+
+The capability truth source is `docs/MULTILANGUAGE_CAPABILITIES.json`;
+unsupported semantic facts remain absent or explicitly unresolved. Public npm
+release remains intentionally unauthorized while the generated package is
+`UNLICENSED`; private local tarball installation is supported.
+
+Prior merged delivery record: 08-11 accessible non-canvas graph table, plus
+11-01/02/03 benchmark models, 12-01 local-data lifecycle, 09-05 agent-change
+overlays, and the 08-04 package→file→symbol zoom foundation. The following
+notes are retained as implementation evidence; their former branch/PR state is
+superseded by the current Atlas work above.
 08-11 a11y slice done (branch): AccessibleGraphTable — the WCAG-AA NON-CANVAS alternative to the Sigma graph that 08-11 names ("accessible list/table alternative for visible graph content"). Renders the SAME usePackageGraph nodes/edges as a real semantic <table> (caption, <th scope=col> headers, <th scope=row> per node) so the graph is fully reachable by screen readers + keyboard alone — every node's kind/name/file/fan-in + an outgoing-relation text summary ("calls → 3, imports → 1"), no info available only visually. Rows link into the existing inspection panel. Mounted in App.tsx beside the canvas (gated on data). VERIFIED END-TO-END LOCALLY (viz is local-runnable): AccessibleGraphTable.test 5/5 (semantic table roles, edge summary, none-state, inspect link, empty), viz 289/289 (+5), tsc/eslint/vite build 0, confined to apps/viz. DEFERRED (needs Playwright + SQLite serve, infeasible locally): the Chromium full-flow / Firefox smoke E2E suites — the browser-driver half of 08-11.
 11-03 done (MERGED #48): the bench COMPETITOR-PROFILE MODEL (code half of 11-03; install recipes/protocol docs + corpora are content, separate). Added to @tadori/bench: benchProfileSchema (Zod .strict) — {id, kind, installSteps[], invocation, isolation, status, statusReason?}. Closed PROFILE_KINDS enum (plain_claude_code/codebase_memory_mcp/codegraph/tadori_mcp/tadori_visual). "FAILURES DOCUMENTED NOT GUESSED" (BACKLOG 11-03) enforced by schema refinement: a non-available profile (install_failed/unavailable) MUST carry a documented statusReason — an install failure is recorded verbatim, never inferred, never silently treated as available. `isolation` field documents how each profile is kept from contaminating others. parseProfile(untrusted)→validated (throws on missing reason / unknown kind); availableProfiles() filters runnable subset. VERIFIED END-TO-END LOCALLY (pure TS): profile.test 6/6 + task 8 + harness 13 = 27/27, root tsc 0, eslint 0. Bench harness now has the full structured model: metrics+recorder+seeds (11-01), tasks+traps (11-02), profiles (11-03).
 11-02 done (MERGED #47): the bench TASK-SET MODEL (the code half of 11-02; the actual 3×50-150k-LOC corpora are content-authoring, separate). Added to @tadori/bench: benchTaskSchema (Zod .strict) — {id, prompt, corpus, successCommand, isSeededTrap, trapKind?}. successCommand is the HELD-OUT check that DEFINES success (run after the change, exit 0 = pass) — the agent never scores itself. Closed TRAP_KINDS enum (boundary_violation/unsupported_claim/missing_dependency_edit/wrong_symbol_same_name/hidden_dynamic_dispatch/stale_doc_drift). Refinement invariant: trapKind present IFF isSeededTrap. benchTaskSetSchema enforces unique task ids + non-empty. parseTaskSet(untrusted)→validated (throws on any violation, malformed set never enters the bench); seededTraps(set) filters the trap subset. VERIFIED END-TO-END LOCALLY (pure TS): task.test 8/8 + bench.test 13/13 = 21/21, root tsc 0 (incl. @ts-expect-error on invalid trapKind), eslint 0. NOTE this branch was originally cut for 11-01; that context in prior status line is superseded.
@@ -117,7 +219,7 @@ merged; 08-03 file expansion merged PR #14; 08-02 scaffold PR #13)
 
 ## Current milestone
 
-**Phase 8 — Guided 2D visualization** (frozen v2.1 Phase F). Phase 7 local
+**Phase 8 — Guided 2D visualization.** Phase 7 local
 serving is validated through 07-03 and merged. 08-01 supplies the deterministic
 server-owned layout and persistence boundary required before the visualization
 app can be built. Weeks 1–7 remain complete and frozen; Phase 0 CI remains

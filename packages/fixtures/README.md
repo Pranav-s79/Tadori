@@ -1,6 +1,8 @@
 # Tadori Golden Fixtures
 
-This package implements the frozen Tadori v2.1 golden-fixture specification.
+This package preserves the legacy TS/JS golden fixtures as regression coverage
+under the active multi-language transition contract. It is not a product-scope
+or language-support authority.
 
 ## Contents
 

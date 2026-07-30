@@ -1,18 +1,19 @@
 import { useCallback, useRef, useState } from "react";
-import { fetchFileEdges, fetchFileLayout, fetchFileNodes } from "../api/client.ts";
+import { fetchFileEdgesPage, fetchFileLayout, fetchFileNodesPage } from "../api/client.ts";
 import type { ApiEdge, ApiNode, LayoutPositionDto } from "../api/types.ts";
 
 export interface FileLevelData {
   nodes: ApiNode[];
   edges: ApiEdge[];
   positions: LayoutPositionDto[];
+  partial: { omittedNodes: number; omittedEdges: number } | null;
 }
 
 export interface UsePackageExpansionResult {
   expandedPackages: ReadonlySet<string>;
   /** Loaded file-level data per package (cached; survives collapse/re-expand). */
   fileData: ReadonlyMap<string, FileLevelData>;
-  expand: (packageKey: string) => Promise<void>;
+  expand: (packageKey: string, packageName: string) => Promise<void>;
   collapse: (packageKey: string) => void;
 }
 
@@ -31,14 +32,24 @@ export function usePackageExpansion(): UsePackageExpansionResult {
   // Mirror the cache into state only to expose a stable, render-visible Map.
   const [fileData, setFileData] = useState<ReadonlyMap<string, FileLevelData>>(new Map());
 
-  const expand = useCallback(async (packageKey: string): Promise<void> => {
+  const expand = useCallback(async (packageKey: string, packageName: string): Promise<void> => {
     if (!cacheRef.current.has(packageKey)) {
-      const [nodes, edges, positions] = await Promise.all([
-        fetchFileNodes(packageKey),
-        fetchFileEdges(packageKey),
-        fetchFileLayout(packageKey)
+      const [nodePage, edgePage, positions] = await Promise.all([
+        fetchFileNodesPage(packageName),
+        fetchFileEdgesPage(packageName),
+        fetchFileLayout(packageName)
       ]);
-      cacheRef.current.set(packageKey, { nodes, edges, positions });
+      const nodes = nodePage.items;
+      const nodeKeys = new Set(nodes.map((node) => node.entityKey));
+      const scopedEdges = edgePage.items.filter((edge) => nodeKeys.has(edge.srcEntityKey) && nodeKeys.has(edge.dstEntityKey));
+      const omittedNodes = Math.max(nodePage.scope?.omittedNodeCount ?? 0, edgePage.scope?.omittedNodeCount ?? 0);
+      const omittedEdges = edgePage.omittedCount;
+      cacheRef.current.set(packageKey, {
+        nodes,
+        edges: scopedEdges,
+        positions,
+        partial: omittedNodes > 0 || omittedEdges > 0 ? { omittedNodes, omittedEdges } : null
+      });
       setFileData(new Map(cacheRef.current));
     }
     setExpandedPackages((prev) => {

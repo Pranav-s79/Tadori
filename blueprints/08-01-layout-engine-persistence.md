@@ -671,7 +671,7 @@ or invented relation.
 
 ## TADORI NON-NEGOTIABLES
 
-Frozen v2.1; TypeScript/JavaScript only; ATLAS separate; exactly six MCP
+Active multi-language contract; legacy TS/JS fixtures are compatibility coverage only; ATLAS separate; exactly six MCP
 tools; stable 2D default; 2.5D optional; 3D experimental only; no city
 metaphor; no default hairball; progressive package -> file -> task-region
 symbol disclosure; deterministic persisted positions; evidence/origin/

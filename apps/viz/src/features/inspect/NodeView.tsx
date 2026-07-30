@@ -6,7 +6,8 @@ import {
   fetchSource,
   type LinkedDoc,
   type NodeDetailResult,
-  type SourceSliceResult
+  type SourceSliceResult,
+  type ToolEdge
 } from "./inspectApi.ts";
 import { SourceView } from "./SourceView.tsx";
 
@@ -17,7 +18,7 @@ interface NodeViewProps {
   entityKey: string;
   repoRoot: string | null;
   /** Pivot to inspect an edge endpoint / linked entity. */
-  onPivot(entityKey: string, entityType: "node" | "edge"): void;
+  onPivot(entityKey: string, entityType: "node" | "edge", edge?: ToolEdge): void;
 }
 
 /**
@@ -81,17 +82,20 @@ export function NodeView({ entityKey, repoRoot, onPivot }: NodeViewProps): React
 
   return (
     <div className="inspect-node">
-      <header>
+      <div className="inspect-entity-header">
         <h3>{node.displayName}</h3>
         <dl className="inspect-meta">
           <div><dt>Kind</dt><dd>{node.kind}</dd></div>
+          <div><dt>Language</dt><dd>{node.language ?? "not attributed"}</dd></div>
+          <div><dt>Extraction capability</dt><dd>{node.provenance?.capability ?? "legacy snapshot"}</dd></div>
+          <div><dt>Derivation</dt><dd>{node.provenance?.derivation ?? "not attributed"}</dd></div>
           <div><dt>Qualified name</dt><dd>{node.qualifiedName}</dd></div>
           <div><dt>Location</dt><dd>{location}</dd></div>
           <div><dt>Exported</dt><dd>{node.exported ? "yes" : "no"}</dd></div>
           <div><dt>Fan-in</dt><dd>{node.fanIn}</dd></div>
           <div><dt>Freshness</dt><dd>{node.stale ? `stale (${node.staleReason ?? "unknown"})` : node.freshness}</dd></div>
         </dl>
-      </header>
+      </div>
 
       <EvidenceList evidence={node.evidence} omittedCount={node.evidenceOmittedCount} repoRoot={repoRoot} />
 
@@ -112,7 +116,7 @@ export function NodeView({ entityKey, repoRoot, onPivot }: NodeViewProps): React
         <ul>
           {node.outEdges.slice(0, 20).map((edge) => (
             <li key={edge.entityKey}>
-              <button type="button" onClick={() => onPivot(edge.entityKey, "edge")}>
+              <button type="button" onClick={() => onPivot(edge.entityKey, "edge", edge)}>
                 {`${edge.relation} → ${edge.dstQualifiedName}`}
               </button>
             </li>

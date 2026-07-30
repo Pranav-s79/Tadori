@@ -25,6 +25,10 @@ const TSX_LOADER = pathToFileURL(require.resolve("tsx/esm")).href;
 
 /** §16: bounded wait for process-exit to become observable to the OS table. */
 const GRACE_PERIOD_MS = 2_000;
+// A cold tsx + indexer start can exceed 20 seconds on constrained/current-
+// release hosted runners; the production package smoke retains its own 90s cap.
+const STARTUP_TIMEOUT_MS = 60_000;
+const LIFECYCLE_TEST_TIMEOUT_MS = 90_000;
 
 const tempDirs: string[] = [];
 const spawned: ChildProcess[] = [];
@@ -60,7 +64,7 @@ async function delay(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function waitFor<T>(check: () => T | null, timeoutMs = 20_000): Promise<T> {
+async function waitFor<T>(check: () => T | null, timeoutMs = STARTUP_TIMEOUT_MS): Promise<T> {
   const startedAt = Date.now();
   for (;;) {
     const result = check();
@@ -161,7 +165,7 @@ describe("orphan supervision — OS-level process cleanup (§10 matrix / §15)",
 
       expect(pidAlive(pid)).toBe(false);
     },
-    40_000
+    LIFECYCLE_TEST_TIMEOUT_MS
   );
 
   it.skipIf(!LISTING.ok)(
@@ -177,7 +181,7 @@ describe("orphan supervision — OS-level process cleanup (§10 matrix / §15)",
 
       expect(pidAlive(pid)).toBe(false);
     },
-    40_000
+    LIFECYCLE_TEST_TIMEOUT_MS
   );
 
   it.skipIf(!LISTING.ok)(
@@ -194,7 +198,7 @@ describe("orphan supervision — OS-level process cleanup (§10 matrix / §15)",
       // A worker_threads.Worker cannot outlive its owning process: no orphan.
       expect(pidAlive(pid)).toBe(false);
     },
-    40_000
+    LIFECYCLE_TEST_TIMEOUT_MS
   );
 });
 
@@ -215,7 +219,7 @@ describe("orphan supervision — spawn/signal/exit checks always run", () => {
         expect(result).toEqual({ code: 0, signal: null });
         expect(readFileSync(markerFile, "utf8")).toContain("exit");
       }
-    }, 40_000);
+    }, LIFECYCLE_TEST_TIMEOUT_MS);
   }
 
   it("SIGKILL: the real spawned process exits even without cleanup handlers", async () => {
@@ -227,7 +231,7 @@ describe("orphan supervision — spawn/signal/exit checks always run", () => {
 
     expect(child.kill("SIGKILL")).toBe(true);
     expect(await exited).toEqual({ code: null, signal: "SIGKILL" });
-  }, 40_000);
+  }, LIFECYCLE_TEST_TIMEOUT_MS);
 });
 
 describe("graceful teardown exit codes (in-process AbortSignal path)", () => {
@@ -350,5 +354,5 @@ describe("worker crash mid-session (§8 / §10 row 4)", () => {
     // idempotent even with the worker already gone.
     controller.abort();
     expect(await runPromise).toBe(0);
-  }, 40_000);
+  }, LIFECYCLE_TEST_TIMEOUT_MS);
 });

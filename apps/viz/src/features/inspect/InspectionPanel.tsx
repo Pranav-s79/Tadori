@@ -26,18 +26,32 @@ interface InspectionPanelProps {
  */
 export function InspectionPanel({ store, repoRoot, edgesByKey }: InspectionPanelProps): ReactElement | null {
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
+  const registeredEdgesRef = useRef<Map<string, ToolEdge>>(new Map());
   const { current, previous, openEntity, goBack, close } = store;
 
   const onPivot = useCallback(
-    (entityKey: string, entityType: "node" | "edge") => {
+    (entityKey: string, entityType: "node" | "edge", edge?: ToolEdge) => {
+      if (entityType === "edge" && edge !== undefined) {
+        registeredEdgesRef.current.set(edge.entityKey, edge);
+      }
       openEntity({ entityKey, entityType });
     },
     [openEntity]
   );
 
   useEffect(() => {
-    if (current !== null) {
+    if (current !== null && !wasOpenRef.current) {
+      const active = document.activeElement;
+      openerRef.current = active instanceof HTMLElement && !panelRef.current?.contains(active) ? active : null;
+      wasOpenRef.current = true;
       panelRef.current?.focus();
+    } else if (current === null && wasOpenRef.current) {
+      wasOpenRef.current = false;
+      const opener = openerRef.current;
+      openerRef.current = null;
+      if (opener?.isConnected === true) opener.focus();
     }
   }, [current]);
 
@@ -58,9 +72,7 @@ export function InspectionPanel({ store, repoRoot, edgesByKey }: InspectionPanel
   return (
     <aside
       className="inspection-panel"
-      role="dialog"
       aria-label="Inspection"
-      aria-modal="false"
       tabIndex={-1}
       ref={panelRef}
       onKeyDown={onKeyDown}
@@ -79,7 +91,11 @@ export function InspectionPanel({ store, repoRoot, edgesByKey }: InspectionPanel
       {current.entityType === "node" ? (
         <NodeView entityKey={current.entityKey} repoRoot={repoRoot} onPivot={onPivot} />
       ) : (
-        <EdgeContent edge={edgesByKey?.get(current.entityKey)} repoRoot={repoRoot} onPivot={onPivot} />
+        <EdgeContent
+          edge={edgesByKey?.get(current.entityKey) ?? registeredEdgesRef.current.get(current.entityKey)}
+          repoRoot={repoRoot}
+          onPivot={onPivot}
+        />
       )}
     </aside>
   );

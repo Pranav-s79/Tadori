@@ -77,6 +77,18 @@ describe("SearchPanel states", () => {
     expect(openInspectionPanel).toHaveBeenCalledWith("fn:target");
   });
 
+  it("keyboard activation focuses and inspects the selected result", async () => {
+    installSearchFetch(() => ({ matches: [row("fn:keyboard")], total: 1 }));
+    const focusEntity = vi.fn();
+    const openInspectionPanel = vi.fn();
+    render(<SearchPanel focusEntity={focusEntity} openInspectionPanel={openInspectionPanel} />);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "keyboard" } });
+    await waitFor(() => expect(screen.getByRole("option")).toBeInTheDocument());
+    fireEvent.keyDown(screen.getByRole("option"), { key: "Enter" });
+    expect(focusEntity).toHaveBeenCalledWith("fn:keyboard");
+    expect(openInspectionPanel).toHaveBeenCalledWith("fn:keyboard");
+  });
+
   it("toggling a filter issues NO new network call (render-only overlay)", async () => {
     const fetchMock = installSearchFetch(() => ({ matches: [row("fn:a")], total: 1 }));
     render(<SearchPanel />);
@@ -92,10 +104,10 @@ describe("SearchPanel states", () => {
     expect(fetchMock.mock.calls.length).toBe(callsAfterSearch);
   });
 
-  it("exposes all five filter groups as labeled groups", () => {
+  it("exposes canonical graph and extraction filter groups", () => {
     installSearchFetch(() => ({ matches: [], total: 0 }));
     render(<SearchPanel />);
-    for (const label of ["Filter by kind", "Filter by relation", "Filter by origin", "Filter by confidence", "Filter by resolution"]) {
+    for (const label of ["Filter by kind", "Filter by relation", "Filter by origin", "Filter by confidence", "Filter by resolution", "Filter by language", "Filter by capability", "Filter by derivation"]) {
       expect(screen.getByRole("group", { name: label })).toBeInTheDocument();
     }
   });

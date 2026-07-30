@@ -5,14 +5,25 @@ import {
   type BehaviorStory,
   type StoryError,
   type StoryStep,
-  type StoryStepLabel
+  type StoryStepLabel,
+  type StoryTransition
 } from "./storyApi.ts";
+
+export interface StoryPlaybackState {
+  story: BehaviorStory;
+  activeStepIndex: number;
+  activeStep: StoryStep | null;
+  activeTransition: StoryTransition | null;
+}
 
 interface StoryViewProps {
   /** The route entity to tell the story of; null hides the view. */
   entityKey: string | null;
+  /** Absolute repository root for confined evidence deep links. */
+  repoRoot?: string | null;
   onInspect?: (entityKey: string) => void;
   onClose?: () => void;
+  onPlaybackChange?: (playback: StoryPlaybackState | null) => void;
 }
 
 /** Human text for each honesty label — exhaustive, never an execution claim. */
@@ -55,15 +66,19 @@ type StoryState =
 function StepRow({
   step,
   index,
-  onInspect
+  repoRoot,
+  onInspect,
+  active
 }: {
   step: StoryStep;
   index: number;
+  repoRoot: string | null;
   onInspect?: (entityKey: string) => void;
+  active: boolean;
 }): ReactElement {
   const name = step.entityKey ?? "(unresolved)";
   return (
-    <li className={`story-step story-step-${step.label}`}>
+    <li className={`story-step story-step-${step.label}${active ? " story-step-active" : ""}`} aria-current={active ? "step" : undefined}>
       <div className="story-step-head">
         <span className="story-step-index" aria-hidden="true">{`${index + 1}.`}</span>
         {step.entityKey !== null ? (
@@ -78,9 +93,21 @@ function StepRow({
       <div className="story-step-provenance">
         {`${step.origin} · ${step.confidence} · ${step.resolution}`}
       </div>
-      <EvidenceList evidence={step.evidence} omittedCount={0} repoRoot={null} />
+      <EvidenceList evidence={step.evidence} omittedCount={0} repoRoot={repoRoot} />
     </li>
   );
+}
+
+export function transitionForStoryStep(story: BehaviorStory, stepIndex: number): StoryTransition | null {
+  const step = story.steps[stepIndex];
+  if (step === undefined) return null;
+  if (step.entityKey !== null) {
+    return story.transitions.find((transition) => transition.to === step.entityKey) ?? null;
+  }
+  const unresolvedIndex = story.steps.slice(0, stepIndex + 1)
+    .filter((candidate) => candidate.entityKey === null).length - 1;
+  const transition = story.unresolvedTransitions[unresolvedIndex] ?? null;
+  return transition === null ? null : { ...transition, to: null, resolved: false, resolution: "unresolved" };
 }
 
 /**
@@ -92,11 +119,14 @@ function StepRow({
  * was executed or observed. Each resolved step links into the existing
  * inspection panel. Reads the DTO only — no graph mutation.
  */
-export function StoryView({ entityKey, onInspect, onClose }: StoryViewProps): ReactElement | null {
+export function StoryView({ entityKey, repoRoot = null, onInspect, onClose, onPlaybackChange }: StoryViewProps): ReactElement | null {
   const [state, setState] = useState<StoryState>({ status: "loading" });
+  const [activeStepIndex, setActiveStepIndex] = useState(-1);
 
   useEffect(() => {
     if (entityKey === null) {
+      setState({ status: "loading" });
+      setActiveStepIndex(-1);
       return;
     }
     let cancelled = false;
@@ -107,8 +137,10 @@ export function StoryView({ entityKey, onInspect, onClose }: StoryViewProps): Re
           return;
         }
         if (typeof result === "string") {
+          setActiveStepIndex(-1);
           setState({ status: "refused", error: result });
         } else {
+          setActiveStepIndex(result.steps.length === 0 ? -1 : 0);
           setState({ status: "ready", story: result });
         }
       })
@@ -121,6 +153,21 @@ export function StoryView({ entityKey, onInspect, onClose }: StoryViewProps): Re
       cancelled = true;
     };
   }, [entityKey]);
+
+  useEffect(() => {
+    if (state.status !== "ready") {
+      onPlaybackChange?.(null);
+      return;
+    }
+    onPlaybackChange?.({
+      story: state.story,
+      activeStepIndex,
+      activeStep: state.story.steps[activeStepIndex] ?? null,
+      activeTransition: transitionForStoryStep(state.story, activeStepIndex)
+    });
+  }, [activeStepIndex, onPlaybackChange, state]);
+
+  useEffect(() => () => onPlaybackChange?.(null), [onPlaybackChange]);
 
   if (entityKey === null) {
     return null;
@@ -155,12 +202,24 @@ export function StoryView({ entityKey, onInspect, onClose }: StoryViewProps): Re
           <p className="story-trigger">{`Trigger: ${state.story.trigger}`}</p>
           <p className="story-confidence">{`Overall confidence: ${state.story.confidence}`}</p>
 
+          {state.story.steps.length > 0 && (
+            <nav className="story-transport" aria-label="Story step transport">
+              <button type="button" disabled={activeStepIndex <= 0} onClick={() => setActiveStepIndex((index) => Math.max(0, index - 1))}>
+                Previous evidenced step
+              </button>
+              <span role="status">{`Step ${activeStepIndex + 1} of ${state.story.steps.length}`}</span>
+              <button type="button" disabled={activeStepIndex >= state.story.steps.length - 1} onClick={() => setActiveStepIndex((index) => Math.min(state.story.steps.length - 1, index + 1))}>
+                Next evidenced step
+              </button>
+            </nav>
+          )}
+
           {state.story.steps.length === 0 ? (
             <p role="status">No reachable steps from this route in the snapshot.</p>
           ) : (
             <ol className="story-steps" aria-label="Story steps">
               {state.story.steps.map((step, index) => (
-                <StepRow key={step.id} step={step} index={index} onInspect={onInspect} />
+                <StepRow key={step.id} step={step} index={index} repoRoot={repoRoot} onInspect={onInspect} active={index === activeStepIndex} />
               ))}
             </ol>
           )}

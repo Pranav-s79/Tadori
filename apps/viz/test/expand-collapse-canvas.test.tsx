@@ -7,16 +7,40 @@ import { installMockFetch } from "./mockServer.ts";
 
 // Mock sigma (no WebGL in jsdom). The fake captures event handlers so the test
 // can emit a clickNode, exercising the real activate -> expand/collapse path.
-const handlers = new Map<string, (payload: { node: string }) => void>();
+const handlers = new Map<string, (payload?: { node: string }) => void>();
+const cameraHandlers = new Map<string, () => void>();
 const refreshMock = vi.fn();
 const killMock = vi.fn();
+const cameraAnimateMock = vi.fn();
+const cameraSetStateMock = vi.fn();
 vi.mock("sigma", () => ({
   default: class FakeSigma {
-    on(event: string, handler: (payload: { node: string }) => void) {
+    on(event: string, handler: (payload?: { node: string }) => void) {
       handlers.set(event, handler);
+    }
+    off(event: string) {
+      handlers.delete(event);
     }
     refresh() {
       refreshMock();
+    }
+    resize() {
+      // jsdom has no renderer dimensions.
+    }
+    graphToViewport(point: { x: number; y: number }) {
+      return point;
+    }
+    getNodeDisplayData(entityKey: string) {
+      return entityKey.length > 0 ? { x: 0.5, y: 0.5 } : undefined;
+    }
+    getCamera() {
+      return {
+        animate: cameraAnimateMock,
+        setState: cameraSetStateMock,
+        getState: () => ({ x: 0.5, y: 0.5, ratio: 1, angle: 0 }),
+        on: (event: string, handler: () => void) => cameraHandlers.set(event, handler),
+        off: (event: string) => cameraHandlers.delete(event)
+      };
     }
     kill() {
       killMock();
@@ -28,8 +52,11 @@ let restore: (() => void) | null = null;
 afterEach(() => {
   cleanup();
   handlers.clear();
+  cameraHandlers.clear();
   refreshMock.mockClear();
   killMock.mockClear();
+  cameraAnimateMock.mockClear();
+  cameraSetStateMock.mockClear();
   restore?.();
   restore = null;
 });
@@ -60,7 +87,8 @@ describe("expand/collapse canvas byte-stability", () => {
   it("expanding one package leaves every other package's node position Object.is-unchanged, and collapse restores exactly", async () => {
     restore = installMockFetch();
     let graph: Graph | null = null;
-    render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} onGraphReady={(g) => (graph = g)} />);
+    const onInspect = vi.fn();
+    const { container } = render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} onGraphReady={(g) => (graph = g)} onInspect={onInspect} />);
     expect(graph).not.toBeNull();
     const g = graph as unknown as Graph;
 
@@ -72,9 +100,13 @@ describe("expand/collapse canvas byte-stability", () => {
     await act(async () => {
       handlers.get("clickNode")?.({ node: "pkg:core" });
     });
+    expect(onInspect).toHaveBeenCalledWith("pkg:core");
     await waitFor(() => {
       expect(g.hasNode("pkg:core::file:core/a.ts")).toBe(true);
     });
+    await waitFor(() => expect(container.querySelector(
+      'g[aria-label="repository-derived package boundary: @tadori/core"]'
+    )).not.toBeNull());
 
     // Other packages' positions are Object.is-unchanged; pkg:core's own anchor too.
     expect(Object.is(g.getNodeAttribute("pkg:store", "x"), before["pkg:store"]?.x)).toBe(true);
@@ -92,6 +124,9 @@ describe("expand/collapse canvas byte-stability", () => {
     await waitFor(() => {
       expect(g.hasNode("pkg:core::file:core/a.ts")).toBe(false);
     });
+    await waitFor(() => expect(container.querySelector(
+      'g[aria-label="repository-derived package boundary: @tadori/core"]'
+    )).toBeNull());
     expect(g.order).toBe(beforeCount);
     const after = snapshotPositions(g);
     expect(after).toEqual(before);
@@ -117,5 +152,26 @@ describe("expand/collapse canvas byte-stability", () => {
     await waitFor(() => {
       expect(g.hasNode("pkg:store::file:store/index.ts")).toBe(true);
     });
+  });
+
+  it("supports keyboard focus movement, zoom, reset, and leaf inspection", () => {
+    restore = installMockFetch();
+    const onInspect = vi.fn();
+    const { container } = render(
+      <PackageMapCanvas nodes={nodes} edges={edges} positions={positions} onInspect={onInspect} />
+    );
+    const canvas = container.querySelector(".package-map-canvas") as HTMLDivElement;
+    canvas.dataset.focusedNode = "pkg:core";
+
+    canvas.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+    expect(canvas.dataset.focusedNode).toBe("pkg:store");
+    canvas.dispatchEvent(new KeyboardEvent("keydown", { key: "+", bubbles: true }));
+    expect(cameraAnimateMock).toHaveBeenLastCalledWith({ ratio: 0.75 }, { duration: 180 });
+    canvas.dispatchEvent(new KeyboardEvent("keydown", { key: "0", bubbles: true }));
+    expect(cameraAnimateMock).toHaveBeenLastCalledWith({ x: 0.5, y: 0.5, ratio: 1, angle: 0 }, { duration: 180 });
+
+    canvas.dataset.focusedNode = "pkg:server";
+    canvas.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+    expect(onInspect).toHaveBeenCalledWith("pkg:server");
   });
 });

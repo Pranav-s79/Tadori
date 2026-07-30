@@ -93,6 +93,24 @@ describe("layout route", () => {
     }
   });
 
+  it("scopes symbol layout positions to the requested file", async () => {
+    const instance = await setup();
+    const service = instance.graphState.current();
+    const file = service.graph.nodes.find((node) =>
+      node.kind !== "package" && node.kind !== "file" && node.file !== null
+    )!.file!;
+    const expected = service.graph.nodes.filter((node) =>
+      node.kind !== "package" && node.kind !== "file" && node.file === file
+    ).map((node) => node.entityKey).sort();
+    const response = await instance.inject({
+      method: "GET",
+      url: `/api/v1/layout?level=symbol&file=${encodeURIComponent(file)}`
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as LayoutDto;
+    expect(body.positions.map((position) => position.entityKey)).toEqual(expected);
+  });
+
   it("captures GraphState.current exactly once for a coherent request graph", async () => {
     const instance = await setup();
     const current = vi.spyOn(instance.graphState, "current");
@@ -142,7 +160,11 @@ describe("layout route", () => {
 
     const response = await instance.inject({ method: "GET", url: "/api/v1/layout?level=package" });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ positions: [], layoutVersion: CURRENT_LAYOUT_VERSION });
+    expect(response.json()).toEqual({
+      positions: [],
+      layoutVersion: CURRENT_LAYOUT_VERSION,
+      scope: { totalNodeCount: 0, boundedNodeCount: 0, omittedNodeCount: 0 }
+    });
   });
 
   it("does not leak persisted positions for entities outside the active snapshot", async () => {

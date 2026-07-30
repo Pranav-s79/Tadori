@@ -83,7 +83,7 @@ describe("batched repository watcher", () => {
     ]);
   });
 
-  it("turns a native file save into a normalized change batch", async () => {
+  it("turns a native file save into a normalized mutation batch", async () => {
     const repository = root();
     mkdirSync(path.join(repository, "src"));
     const source = path.join(repository, "src", "a.ts");
@@ -112,7 +112,12 @@ describe("batched repository watcher", () => {
         setTimeout(() => reject(new Error("native watcher did not report the save")), 2_000)
       )
     ]);
-    expect(batch.changes).toContainEqual({ path: "src/a.ts", kind: "change" });
+    const sourceChange = batch.changes.find((change) => change.path === "src/a.ts");
+    expect(sourceChange).toBeDefined();
+    // fs.watch event names are platform hints: macOS commonly reports an
+    // atomic file replacement as `rename`, while Windows/Linux may report the
+    // same save as `change`. Both force the required repository reconciliation.
+    expect(["change", "rename"]).toContain(sourceChange?.kind);
   });
 
   it("flushes pending saves before close and rejects invalid batching bounds", async () => {

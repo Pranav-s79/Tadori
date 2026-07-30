@@ -26,7 +26,7 @@ function installFetch(): void {
   }) as unknown as typeof fetch;
 }
 
-function row(entityKey: string, exact = false) {
+function row(entityKey: string, exact = false, representativePackageKey: string | null = null) {
   return {
     node_id: 1,
     entity_key: entityKey,
@@ -39,7 +39,8 @@ function row(entityKey: string, exact = false) {
     line_end: null,
     exported: 1,
     rank: -1,
-    exact_match: exact ? 1 : 0
+    exact_match: exact ? 1 : 0,
+    representative_package_key: representativePackageKey
   };
 }
 
@@ -162,6 +163,20 @@ describe("useSearchStore selectResult", () => {
     const { result } = renderHook(() => useSearchStore({ focusEntity, openInspectionPanel }));
     act(() => result.current.selectResult("fn:target"));
     expect(focusEntity).toHaveBeenCalledWith("fn:target");
+    expect(openInspectionPanel).toHaveBeenCalledWith("fn:target");
+  });
+
+  it("focuses the evidence-derived package while inspecting the original result", async () => {
+    const focusEntity = vi.fn();
+    const openInspectionPanel = vi.fn();
+    const { result } = renderHook(() => useSearchStore({ focusEntity, openInspectionPanel }));
+    act(() => result.current.setQuery("target"));
+    act(() => vi.advanceTimersByTime(300));
+    await act(async () => {
+      pending[0]!.resolve({ matches: [row("fn:target", false, "pkg:owner")], total: 1 });
+    });
+    act(() => result.current.selectResult("fn:target"));
+    expect(focusEntity).toHaveBeenCalledWith("pkg:owner");
     expect(openInspectionPanel).toHaveBeenCalledWith("fn:target");
   });
 });

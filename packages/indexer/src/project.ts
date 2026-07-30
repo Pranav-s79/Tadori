@@ -86,8 +86,9 @@ function createCapturedFileSystem(
     };
   }
   const resolvedRoot = path.resolve(root);
+  const canonicalRoot = canonicalAbsolute(resolvedRoot);
   const insideCapturedRepository = (candidate: string): boolean => {
-    const relative = path.relative(resolvedRoot, path.resolve(candidate));
+    const relative = path.relative(canonicalRoot, canonicalAbsolute(candidate));
     if (relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative))) {
       return !relative.split(path.sep).some((segment) => LIVE_REPOSITORY_DIRECTORIES.has(segment));
     }
@@ -96,7 +97,9 @@ function createCapturedFileSystem(
   let fileCache: string[] | null = null;
   let directoryCache: Set<string> | null = null;
   const capturedFiles = (): string[] => {
-    fileCache ??= [...capturedTexts.keys()].map((file) => path.resolve(file));
+    fileCache ??= [...capturedTexts.keys()].map((file) =>
+      path.resolve(resolvedRoot, path.relative(canonicalRoot, canonicalAbsolute(file)))
+    );
     return fileCache;
   };
   const capturedDirectories = (): Set<string> => {
@@ -131,10 +134,10 @@ function createCapturedFileSystem(
       if (!insideCapturedRepository(directoryName)) {
         return [...ts.sys.readDirectory(directoryName, extensions, _excludes, _includes, depth)];
       }
-      const resolvedDirectory = path.resolve(directoryName);
+      const canonicalDirectory = canonicalAbsolute(directoryName);
       return capturedFiles()
         .filter((fileName) => {
-          const relative = path.relative(resolvedDirectory, fileName);
+          const relative = path.relative(canonicalDirectory, canonicalAbsolute(fileName));
           if (relative.startsWith("..") || path.isAbsolute(relative)) {
             return false;
           }
@@ -154,12 +157,11 @@ function createCapturedFileSystem(
       if (!insideCapturedRepository(directoryName)) {
         return ts.sys.getDirectories(directoryName);
       }
-      const resolvedDirectory = path.resolve(directoryName);
+      const canonicalDirectory = canonicalAbsolute(directoryName);
       const children = new Set<string>();
       for (const directory of capturedDirectories()) {
-        const nativeDirectory = path.resolve(directory);
-        if (path.dirname(nativeDirectory) === resolvedDirectory && nativeDirectory !== resolvedDirectory) {
-          children.add(nativeDirectory);
+        if (canonicalAbsolute(path.dirname(directory)) === canonicalDirectory && directory !== canonicalDirectory) {
+          children.add(path.resolve(resolvedRoot, path.relative(canonicalRoot, directory)));
         }
       }
       return [...children].sort();

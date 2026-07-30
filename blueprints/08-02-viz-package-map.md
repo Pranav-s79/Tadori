@@ -780,7 +780,7 @@ polish) rather than shipping a dishonest "done" on a partial state surface.
 
 ## TADORI NON-NEGOTIABLES
 
-Frozen v2.1; TS/JS only; ATLAS separate; exactly six MCP tools; stable 2D
+Active multi-language contract; legacy TS/JS fixtures are compatibility coverage only; ATLAS separate; exactly six MCP tools; stable 2D
 default (Sigma.js/WebGL); 2.5D optional; 3D experimental only; no city
 metaphor; no default hairball; no generic admin dashboard or permanent dual
 sidebars; progressive disclosure package → file → task-region symbols;

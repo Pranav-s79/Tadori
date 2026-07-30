@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { NodeKind, Relation } from "./enums.js";
 
 /**
- * Escapes one canonical-identity field per the frozen v2.1 rule:
+ * Escapes one canonical-identity field per the active compatibility rule:
  * backslashes first, then pipes, so the escaped form round-trips.
  */
 export function escapeIdentityField(field: string): string {
@@ -27,7 +27,7 @@ export function nodeCanonicalIdentity(kind: NodeKind, qualifiedName: string): st
 /**
  * Edge canonical identity: `edge|<source node key>|<relation>|<destination node key>`.
  * The node keys are the 64-char hex entity keys of the endpoints, matching the
- * golden fixtures and the frozen corrections document.
+ * compatibility fixtures and persisted identity behavior.
  */
 export function edgeCanonicalIdentity(
   srcEntityKey: string,
@@ -51,7 +51,7 @@ export function sha256HexBytes(bytes: Uint8Array): string {
  * Entity key for a canonical identity. When `collisionIndex` is greater than
  * zero (a true SHA-256 collision between different canonical identities), the
  * index is appended as an extra pipe-delimited field and the key is rehashed,
- * per the frozen corrections document.
+ * per fixture-locked compatibility behavior.
  */
 export function entityKey(canonicalIdentity: string, collisionIndex = 0): string {
   if (!Number.isInteger(collisionIndex) || collisionIndex < 0) {

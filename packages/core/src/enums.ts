@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Frozen v2.1 node kinds (migration 001 CHECK constraint). */
+/** Canonical compatibility vocabulary currently implemented and retained by migration 001. */
 export const NODE_KINDS = [
   "package",
   "file",
@@ -19,7 +19,7 @@ export const NODE_KINDS = [
 export type NodeKind = (typeof NODE_KINDS)[number];
 export const nodeKindSchema = z.enum(NODE_KINDS);
 
-/** Frozen v2.1 edge relations (migration 001 CHECK constraint). */
+/** Canonical compatibility vocabulary currently implemented and retained by migration 001. */
 export const RELATIONS = [
   "contains",
   "imports",
@@ -36,27 +36,27 @@ export const RELATIONS = [
 export type Relation = (typeof RELATIONS)[number];
 export const relationSchema = z.enum(RELATIONS);
 
-/** Frozen v2.1 edge origins. */
+/** Canonical evidence origins shared by every language extractor. */
 export const ORIGINS = ["compiler", "heuristic", "git", "doc", "human", "llm"] as const;
 export type Origin = (typeof ORIGINS)[number];
 export const originSchema = z.enum(ORIGINS);
 
-/** Frozen v2.1 coarse confidence enum. */
+/** Canonical coarse confidence values shared by every language extractor. */
 export const CONFIDENCES = ["certain", "likely", "inferred"] as const;
 export type Confidence = (typeof CONFIDENCES)[number];
 export const confidenceSchema = z.enum(CONFIDENCES);
 
-/** Frozen v2.1 resolution enum. */
+/** Canonical resolution states shared by every language extractor. */
 export const RESOLUTIONS = ["resolved", "partial", "unresolved"] as const;
 export type Resolution = (typeof RESOLUTIONS)[number];
 export const resolutionSchema = z.enum(RESOLUTIONS);
 
-/** Frozen v2.1 repository-state kinds. */
+/** Canonical repository-state kinds. */
 export const REPO_STATE_KINDS = ["commit", "working_tree", "staged", "patch"] as const;
 export type RepoStateKind = (typeof REPO_STATE_KINDS)[number];
 export const repoStateKindSchema = z.enum(REPO_STATE_KINDS);
 
-/** Frozen v2.1 evidence kinds (evidence_items CHECK constraint). */
+/** Canonical evidence kinds retained by the active multi-language contract. */
 export const EVIDENCE_KINDS = [
   "source",
   "documentation",

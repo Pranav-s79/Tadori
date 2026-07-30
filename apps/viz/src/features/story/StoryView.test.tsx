@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import { StoryView, storyStepLabelText } from "./StoryView.tsx";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { StoryView, storyStepLabelText, transitionForStoryStep } from "./StoryView.tsx";
 import type { BehaviorStory, StoryStepLabel } from "./storyApi.ts";
 
 function stubFetch(body: unknown, status = 200): void {
@@ -88,16 +88,29 @@ describe("StoryView", () => {
             origin: "compiler",
             confidence: "certain",
             resolution: "resolved",
-            evidence: []
+            evidence: [{
+              file: "src/handler.ts",
+              kind: "source",
+              lineStart: 12,
+              lineEnd: 12,
+              columnStart: null,
+              columnEnd: null,
+              commitSha: null,
+              excerptHash: null
+            }]
           }
         ]
       })
     );
-    render(<StoryView entityKey="k-route" />);
+    render(<StoryView entityKey="k-route" repoRoot="/repo" />);
     await waitFor(() =>
       expect(screen.getByText("Statically resolved (compiler-verified reference)")).toBeTruthy()
     );
     expect(screen.getByRole("button", { name: "function: k-handler" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /src\/handler\.ts/ })).toHaveAttribute(
+      "href",
+      "vscode://file//repo/src/handler.ts:12"
+    );
   });
 
   it("renders an unresolved wall explicitly, never a destination", async () => {
@@ -133,6 +146,39 @@ describe("StoryView", () => {
     render(<StoryView entityKey="k-route" />);
     await waitFor(() => expect(screen.getByText("Unresolved wall (dynamic dispatch)")).toBeTruthy());
     expect(screen.getByText(/Unresolved walls \(1\)/)).toBeTruthy();
+  });
+
+  it("exposes accessible previous/next playback to the map owner", async () => {
+    const loaded = story({
+      steps: [
+        { id: "step:0:a", entityKey: "a", kind: "function", resolved: true, label: "statically-resolved", origin: "compiler", confidence: "certain", resolution: "resolved", evidence: [] },
+        { id: "step:1:b", entityKey: "b", kind: "function", resolved: true, label: "documented", origin: "doc", confidence: "likely", resolution: "resolved", evidence: [] }
+      ],
+      transitions: [
+        { from: "k-route", to: "a", relation: "routes_to", origin: "compiler", confidence: "certain", resolution: "resolved", resolved: true, evidence: [] },
+        { from: "a", to: "b", relation: "calls", origin: "doc", confidence: "likely", resolution: "resolved", resolved: true, evidence: [] }
+      ]
+    });
+    stubFetch(loaded);
+    const onPlaybackChange = vi.fn();
+    render(<StoryView entityKey="k-route" onPlaybackChange={onPlaybackChange} />);
+    await waitFor(() => expect(screen.getByText("Step 1 of 2")).toBeTruthy());
+    expect(screen.getByRole("button", { name: "Previous evidenced step" })).toBeDisabled();
+    await waitFor(() => expect(onPlaybackChange).toHaveBeenLastCalledWith(expect.objectContaining({ activeStepIndex: 0, activeTransition: loaded.transitions[0] })));
+
+    fireEvent.click(screen.getByRole("button", { name: "Next evidenced step" }));
+    expect(screen.getByText("Step 2 of 2")).toBeTruthy();
+    await waitFor(() => expect(onPlaybackChange).toHaveBeenLastCalledWith(expect.objectContaining({ activeStepIndex: 1, activeTransition: loaded.transitions[1] })));
+    expect(screen.getByRole("button", { name: "Next evidenced step" })).toBeDisabled();
+  });
+
+  it("normalizes an unresolved transition to an unknown destination", () => {
+    const loaded = story({
+      steps: [{ id: "step:0:unresolved", entityKey: null, kind: "unresolved", resolved: false, label: "unresolved", origin: "heuristic", confidence: "inferred", resolution: "unresolved", evidence: [] }],
+      transitions: [{ from: "a", to: "unresolved:synthetic", relation: "calls", origin: "heuristic", confidence: "inferred", resolution: "unresolved", resolved: false, evidence: [] }],
+      unresolvedTransitions: [{ from: "a", to: "unresolved:synthetic", relation: "calls", origin: "heuristic", confidence: "inferred", resolution: "unresolved", resolved: false, evidence: [] }]
+    });
+    expect(transitionForStoryStep(loaded, 0)).toEqual(expect.objectContaining({ from: "a", to: null, resolved: false }));
   });
 
   it("explains a not-a-route refusal instead of a generic error", async () => {

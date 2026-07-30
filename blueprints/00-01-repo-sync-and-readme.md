@@ -312,7 +312,7 @@ force-push.
 
 ## TADORI NON-NEGOTIABLES (every blueprint)
 
-Frozen v2.1; TS/JS only; ATLAS separate; exactly six MCP tools; stable 2D
+Active multi-language contract; legacy TS/JS fixtures are compatibility coverage only; ATLAS separate; exactly six MCP tools; stable 2D
 default; evidence/origin/confidence/resolution always visible; invalid
 snapshots never served; localhost default; no cloud dependency; Graphify is
 ignored reference only — never import/copy/ship; never weaken golden fixtures;

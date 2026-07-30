@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchEdges, fetchLayout, fetchNodes } from "../api/client.ts";
+import { fetchLayout, fetchPackageEdgesPage, fetchPackageNodesPage, type ProjectionAccounting } from "../api/client.ts";
 import type { ApiEdge, ApiNode, LayoutPositionDto } from "../api/types.ts";
 
 export interface PackageGraphData {
@@ -7,6 +7,14 @@ export interface PackageGraphData {
   edges: ApiEdge[];
   positions: LayoutPositionDto[];
   layoutVersion: number;
+  representativeByEntityKey: ReadonlyMap<string, string>;
+  bounded: {
+    nodeTotal: number | null;
+    edgeTotal: number | null;
+    omittedNodes: number;
+    omittedEdges: number;
+    projection: ProjectionAccounting | null;
+  };
 }
 
 export interface UsePackageGraphResult {
@@ -31,11 +39,25 @@ export function usePackageGraph(): UsePackageGraphResult {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    Promise.all([fetchNodes({ level: "package" }), fetchEdges(), fetchLayout("package")])
-      .then(([nodes, edges, layout]) => {
+    Promise.all([fetchPackageNodesPage(), fetchPackageEdgesPage(), fetchLayout("package")])
+      .then(([nodePage, edgePage, layout]) => {
         if (!cancelled) {
-          const packageNodes = nodes.filter((n) => n.kind === "package");
-          setData({ nodes: packageNodes, edges, positions: layout.positions, layoutVersion: layout.layoutVersion });
+          const nodes = nodePage.items;
+          const edges = edgePage.items;
+          setData({
+            nodes,
+            edges,
+            positions: layout.positions,
+            layoutVersion: layout.layoutVersion,
+            representativeByEntityKey: new Map(nodes.map((node) => [node.entityKey, node.entityKey])),
+            bounded: {
+              nodeTotal: nodePage.total,
+              edgeTotal: edgePage.total,
+              omittedNodes: nodePage.omittedCount,
+              omittedEdges: edgePage.omittedCount,
+              projection: edgePage.projection ?? nodePage.projection
+            }
+          });
           setError(null);
         }
       })

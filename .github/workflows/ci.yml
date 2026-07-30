@@ -17,7 +17,7 @@ jobs:
         # Supported alpha runtime matrix: maintained LTS lines only. Node 24 is
         # the prioritized line; Node 26 is the current release; Node 22 is kept
         # for compatibility. Node 25 (non-LTS/out-of-maintenance) is NOT targeted.
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         node: ["22.14.0", "24.18.0", "26.5.0"]
         exclude:
           # Windows + Node >=24 aborts inside libuv's recursive fs.watch
@@ -31,6 +31,12 @@ jobs:
             node: "24.18.0"
           - os: windows-latest
             node: "26.5.0"
+          # One installed-artifact gate covers the documented macOS support;
+          # the Linux legs retain the full supported Node runtime matrix.
+          - os: macos-latest
+            node: "24.18.0"
+          - os: macos-latest
+            node: "26.5.0"
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     env:
@@ -38,18 +44,20 @@ jobs:
       # it per matrix leg so the matrix Node — not the pinned one — runs here.
       npm_config_use_node_version: ${{ matrix.node }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       # validate_fixtures.py degrades to exit 1 without jsonschema installed.
       - run: python -m pip install jsonschema
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '22.14.0'
       # Explicit better-sqlite3 load check on this exact OS + Node combination:
       # require the native binding to load and run a query, proving a prebuilt
       # binary exists for this ABI (never a silent source-build fallback).
@@ -63,6 +71,13 @@ jobs:
       - run: pnpm fixtures:validate
       - run: pnpm fixtures:index
       - run: pnpm fixtures:typecheck
+      - run: pnpm package:artifact
+      - run: npm pack --dry-run --json ./dist/package
+      - run: pnpm package:smoke
+        env:
+          TADORI_PACKAGE_AUDIT: ${{ matrix.os == 'ubuntu-latest' && matrix.node == '22.14.0' && '1' || '0' }}
+      - run: pnpm verify:viz:e2e
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '22.14.0'
       - run: pnpm benchmark:layout
       - run: pnpm tadori diff .
       - run: git diff --check

@@ -7,26 +7,41 @@
     "node": ">=22"
   },
   "packageManager": "pnpm@9.15.9",
+  "pnpm": {
+    "overrides": {
+      "@hono/node-server@<2.0.5": "2.0.12",
+      "fast-uri@>=3.0.0 <3.1.4": "3.1.4",
+      "fast-uri@>=4.0.0 <4.1.1": "4.1.1",
+      "find-my-way@>=9.0.0 <9.7.0": "9.7.0"
+    }
+  },
   "scripts": {
     "skills:sync": "node scripts/sync-skills.mjs",
     "skills:check": "node scripts/check-skills.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "pnpm --filter @tadori/viz build && vitest run --exclude=packages/cli/test/**/*.test.ts && vitest run packages/cli/test --pool=forks --minWorkers=1 --maxWorkers=1 --no-file-parallelism && pnpm --filter @tadori/viz test",
     "package:artifact": "pnpm --filter @tadori/viz build && node scripts/build-package.mjs",
+    "package:smoke": "node scripts/smoke-package.mjs",
     "mcp:stdio": "tsx packages/mcp/src/cli.ts",
     "fixtures:validate": "tsx packages/harness/src/cli-validate.ts",
     "fixtures:index": "tsx packages/harness/src/cli-index.ts",
     "fixtures:typecheck": "tsx packages/harness/src/cli-typecheck-fixtures.ts",
     "benchmark:layout": "tsx scripts/benchmark-layout.mts",
     "benchmark:incremental": "tsx scripts/benchmark-incremental.mts",
+    "benchmark:serve:coldstart": "tsx scripts/benchmark-serve-coldstart.mts",
+    "benchmark:serve:positions": "tsx scripts/benchmark-serve-positions-identity.mts",
+    "benchmark:serve:memory": "tsx scripts/benchmark-serve-memory.mts",
+    "verify:viz:e2e": "pnpm --filter @tadori/viz build && tsx scripts/verify-viz-e2e.mts",
     "tadori": "tsx scripts/tadori.mts"
   },
   "devDependencies": {
     "@eslint/js": "^9.7.0",
     "@types/node": "^20.14.0",
+    "axe-core": "4.12.1",
     "esbuild": "0.28.1",
     "eslint": "^9.7.0",
+    "playwright-core": "1.62.0",
     "tsx": "^4.16.0",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.0",

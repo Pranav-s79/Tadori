@@ -726,7 +726,7 @@ implementation details.
 
 ## TADORI NON-NEGOTIABLES
 
-Frozen v2.1; TS/JS only; ATLAS separate; exactly six MCP tools, no
+Active multi-language contract; legacy TS/JS fixtures are compatibility coverage only; ATLAS separate; exactly six MCP tools, no
 seventh — viz consumes HTTP only, this blueprint's path display never
 calls MCP directly; stable 2D default; every visible relation keeps
 evidence/origin/confidence/resolution; static test linkage is never

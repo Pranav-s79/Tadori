@@ -99,12 +99,22 @@ export interface FileLevelData {
 export function applyExpansion(graph: Graph, packageKey: string, data: FileLevelData): void {
   const positionByKey = new Map(data.positions.map((p) => [p.entityKey, p]));
   for (const node of data.nodes) {
+    if (!positionByKey.has(node.entityKey)) {
+      throw new Error(`Expanded file node ${JSON.stringify(node.entityKey)} has no served layout position`);
+    }
+  }
+  if (!graph.hasNode(packageKey)) {
+    throw new Error(`Expanded package ${JSON.stringify(packageKey)} is not present in the rendered graph`);
+  }
+  graph.setNodeAttribute(packageKey, "packageMembershipKnown", true);
+  for (const node of data.nodes) {
     const nodeId = fileNodeId(packageKey, node.entityKey);
     if (graph.hasNode(nodeId)) {
       continue;
     }
-    const pos = positionByKey.get(node.entityKey);
+    const pos = positionByKey.get(node.entityKey)!;
     graph.addNode(nodeId, {
+      apiNode: node,
       kind: node.kind,
       qualifiedName: node.qualifiedName,
       displayName: node.displayName,
@@ -112,9 +122,11 @@ export function applyExpansion(graph: Graph, packageKey: string, data: FileLevel
       file: node.file,
       exported: node.exported,
       fanIn: node.fanIn,
-      x: pos?.x ?? 0,
-      y: pos?.y ?? 0,
-      pinned: pos?.pinned ?? false,
+      language: node.language ?? null,
+      provenance: node.provenance ?? null,
+      x: pos.x,
+      y: pos.y,
+      pinned: pos.pinned,
       expandedFrom: packageKey,
       size: 4,
       color: "#26de81"
@@ -128,10 +140,13 @@ export function applyExpansion(graph: Graph, packageKey: string, data: FileLevel
       continue;
     }
     graph.addEdgeWithKey(edgeId, src, dst, {
+      apiEdge: edge,
       relation: edge.relation,
       origin: edge.origin,
       confidence: edge.confidence,
       resolution: edge.resolution,
+      language: edge.language ?? null,
+      provenance: edge.provenance ?? null,
       expandedFrom: packageKey
     });
   }
@@ -157,6 +172,9 @@ export function applyCollapse(graph: Graph, packageKey: string, data: FileLevelD
       graph.dropNode(nodeId);
     }
   }
+  if (graph.hasNode(packageKey) && graph.hasNodeAttribute(packageKey, "packageMembershipKnown")) {
+    graph.removeNodeAttribute(packageKey, "packageMembershipKnown");
+  }
 }
 
 export function fileNodeId(packageKey: string, entityKey: string): string {
@@ -177,12 +195,18 @@ const SYMBOL_LABEL_MAX = 18;
 export function applySymbolExpansion(graph: Graph, fileKey: string, data: FileLevelData): void {
   const positionByKey = new Map(data.positions.map((p) => [p.entityKey, p]));
   for (const node of data.nodes) {
+    if (!positionByKey.has(node.entityKey)) {
+      throw new Error(`Expanded symbol node ${JSON.stringify(node.entityKey)} has no served layout position`);
+    }
+  }
+  for (const node of data.nodes) {
     const nodeId = symbolNodeId(fileKey, node.entityKey);
     if (graph.hasNode(nodeId)) {
       continue;
     }
-    const pos = positionByKey.get(node.entityKey);
+    const pos = positionByKey.get(node.entityKey)!;
     graph.addNode(nodeId, {
+      apiNode: node,
       kind: node.kind,
       qualifiedName: node.qualifiedName,
       displayName: node.displayName,
@@ -190,9 +214,11 @@ export function applySymbolExpansion(graph: Graph, fileKey: string, data: FileLe
       file: node.file,
       exported: node.exported,
       fanIn: node.fanIn,
-      x: pos?.x ?? 0,
-      y: pos?.y ?? 0,
-      pinned: pos?.pinned ?? false,
+      language: node.language ?? null,
+      provenance: node.provenance ?? null,
+      x: pos.x,
+      y: pos.y,
+      pinned: pos.pinned,
       expandedFromFile: fileKey,
       size: 3,
       color: "#fd9644"
@@ -206,10 +232,13 @@ export function applySymbolExpansion(graph: Graph, fileKey: string, data: FileLe
       continue;
     }
     graph.addEdgeWithKey(edgeId, src, dst, {
+      apiEdge: edge,
       relation: edge.relation,
       origin: edge.origin,
       confidence: edge.confidence,
       resolution: edge.resolution,
+      language: edge.language ?? null,
+      provenance: edge.provenance ?? null,
       expandedFromFile: fileKey
     });
   }

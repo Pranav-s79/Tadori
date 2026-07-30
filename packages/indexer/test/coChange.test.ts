@@ -114,7 +114,7 @@ describe("computeCoChangeEdges", () => {
     expect(edge?.dstEntityKey).toBe(expectedDst);
   });
 
-  it("fails closed on a directory that is not a git repository", () => {
+  it("fails closed without leaking Git's fatal stderr on a non-repository", () => {
     const notRepo = mkdtempSync(path.join(tmpdir(), "tadori-notgit-"));
     try {
       expect(computeCoChangeEdges(notRepo, [fileNode("a.ts")], { minSharedCommits: 1 })).toEqual([]);

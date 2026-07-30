@@ -1,11 +1,12 @@
 import { useCallback, useRef, useState } from "react";
-import { fetchSymbolEdges, fetchSymbolLayout, fetchSymbolNodes } from "../api/client.ts";
+import { fetchSymbolEdgesPage, fetchSymbolLayout, fetchSymbolNodesPage } from "../api/client.ts";
 import type { ApiEdge, ApiNode, LayoutPositionDto } from "../api/types.ts";
 
 export interface SymbolLevelData {
   nodes: ApiNode[];
   edges: ApiEdge[];
   positions: LayoutPositionDto[];
+  partial: { omittedNodes: number; omittedEdges: number } | null;
 }
 
 export interface UseFileExpansionResult {
@@ -32,12 +33,22 @@ export function useFileExpansion(): UseFileExpansionResult {
 
   const expand = useCallback(async (fileKey: string, filePath: string): Promise<void> => {
     if (!cacheRef.current.has(fileKey)) {
-      const [nodes, edges, positions] = await Promise.all([
-        fetchSymbolNodes(filePath),
-        fetchSymbolEdges(filePath),
+      const [nodePage, edgePage, positions] = await Promise.all([
+        fetchSymbolNodesPage(filePath),
+        fetchSymbolEdgesPage(filePath),
         fetchSymbolLayout(filePath)
       ]);
-      cacheRef.current.set(fileKey, { nodes, edges, positions });
+      const nodes = nodePage.items;
+      const nodeKeys = new Set(nodes.map((node) => node.entityKey));
+      const scopedEdges = edgePage.items.filter((edge) => nodeKeys.has(edge.srcEntityKey) && nodeKeys.has(edge.dstEntityKey));
+      const omittedNodes = Math.max(nodePage.scope?.omittedNodeCount ?? 0, edgePage.scope?.omittedNodeCount ?? 0);
+      const omittedEdges = edgePage.omittedCount;
+      cacheRef.current.set(fileKey, {
+        nodes,
+        edges: scopedEdges,
+        positions,
+        partial: omittedNodes > 0 || omittedEdges > 0 ? { omittedNodes, omittedEdges } : null
+      });
       setSymbolData(new Map(cacheRef.current));
     }
     setExpandedFiles((prev) => {

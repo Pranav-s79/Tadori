@@ -14,7 +14,7 @@ describe("LoadingState", () => {
 describe("StaleState", () => {
   it("includes the staleReason value in its message", () => {
     render(<StaleState staleReason="watched file changed 4 minutes ago" />);
-    expect(screen.getByText(/Data may be out of date/)).toBeInTheDocument();
+    expect(screen.getByText(/Data may be out of date/)).toHaveClass("stale-state");
     expect(screen.getByText(/watched file changed 4 minutes ago/)).toBeInTheDocument();
   });
 

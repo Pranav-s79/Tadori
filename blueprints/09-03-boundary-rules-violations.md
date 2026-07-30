@@ -609,7 +609,7 @@ frozen.
 
 ## TADORI NON-NEGOTIABLES
 
-Frozen v2.1; TS/JS only; never weaken golden fixtures; deterministic
+Active multi-language contract; legacy TS/JS fixtures are compatibility coverage only; never weaken golden fixtures; deterministic
 output; evidence/origin/confidence/resolution honest; unresolved stays
 visibly unresolved; no seventh tool; no runtime tracing; Tadori never
 edits repositories; no generic admin dashboard or nagging UI chrome.

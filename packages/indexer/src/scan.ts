@@ -53,6 +53,17 @@ const PROJECT_CONFIGURATION_NAMES = new Set([
   "compile_commands.json", "go.mod", "go.work", "Cargo.toml", "pom.xml", "build.gradle",
   "build.gradle.kts", "settings.gradle", "buf.yaml", "buf.work.yaml", ".terraform.lock.hcl"
 ]);
+/**
+ * These support files are intentionally kept out of the graph to preserve the
+ * byte-stable legacy TS/JS fixture contract. Other registered configuration
+ * and non-TS project manifests are repository-level graph files.
+ */
+const LEGACY_TS_SUPPORT_ONLY_NAMES = new Set([
+  "package.json",
+  "tsconfig.json",
+  "jsconfig.json",
+  "tadori.rules.json"
+]);
 const MAX_INDEXABLE_FILE_BYTES = 5 * 1024 * 1024;
 
 export function normalizePath(root: string, absolute: string): string {
@@ -130,7 +141,9 @@ function classify(
     CAPTURED_CONFIGURATION_NAMES.has(basename) || PROJECT_CONFIGURATION_NAMES.has(basename);
   // JavaScript remains visible even when an explicit tsconfig excludes it;
   // the TS adapter then reports repository-only extraction for that file.
-  const indexed = registration.id === "javascript" ? true : !configurationOnly;
+  const indexed = registration.id === "javascript"
+    ? true
+    : !(configurationOnly && LEGACY_TS_SUPPORT_ONLY_NAMES.has(basename));
   return {
     indexed,
     language: registration.id,

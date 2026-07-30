@@ -49,7 +49,7 @@ export function PathFinder({ onInspect }: PathFinderProps): ReactElement {
   }
 
   return (
-    <div className="explore-path" aria-label="Path finder">
+    <section className="explore-path" aria-label="Path finder">
       <form onSubmit={(e) => void onSubmit(e)}>
         <label>
           From
@@ -71,7 +71,7 @@ export function PathFinder({ onInspect }: PathFinderProps): ReactElement {
       {state.status === "ready" && (
         <PathResultView result={state.result} onInspect={onInspect} renderNodeButton={renderNodeButton} />
       )}
-    </div>
+    </section>
   );
 }
 
@@ -133,7 +133,7 @@ function PathResultView({
   }
   // status === "ok": render each found path as an ordered node/edge sequence.
   return (
-    <div className="explore-path-results" aria-label="Found paths">
+    <section className="explore-path-results" aria-label="Found paths">
       {result.paths.map((sequence, pathIndex) => (
         <ol key={`path-${pathIndex}`} className="explore-path-steps" aria-label={`Path ${pathIndex + 1}`}>
           {sequence.nodes.map((node, index) => {
@@ -149,6 +149,6 @@ function PathResultView({
           })}
         </ol>
       ))}
-    </div>
+    </section>
   );
 }
