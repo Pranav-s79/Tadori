@@ -23,12 +23,12 @@ describe("database migrations", () => {
   it("keeps the five frozen migrations first and applies additive migrations in order", () => {
     expect(MIGRATIONS.slice(0, 5).map((migration) => migration.version)).toEqual([1, 2, 3, 4, 5]);
     const ran = runMigrations(db);
-    expect(ran).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(ran).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
     const versions = db
       .prepare("SELECT version FROM schema_migrations ORDER BY version")
       .all() as Array<{ version: number }>;
-    expect(versions.map((v) => v.version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(versions.map((v) => v.version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
     const tables = new Set(
       (
@@ -82,7 +82,7 @@ describe("database migrations", () => {
   });
 
   it("skips already-applied migrations on a second run", () => {
-    expect(runMigrations(db)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(runMigrations(db)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(runMigrations(db)).toEqual([]);
   });
 
@@ -92,6 +92,7 @@ describe("database migrations", () => {
       expect(() => forceRunMigration(db, migration.version)).toThrow();
     }
     // The forced failures must not have corrupted the schema.
+    expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
     expect(foreignKeyCheck(db)).toEqual([]);
     expect(runMigrations(db)).toEqual([]);
   });
@@ -100,6 +101,43 @@ describe("database migrations", () => {
     runMigrations(db);
     const fk = db.pragma("foreign_keys", { simple: true });
     expect(fk).toBe(1);
+  });
+
+  it("migrates existing snapshots to analyzer-distinct workspace identity", () => {
+    const legacy = openDatabase(":memory:");
+    try {
+      for (const migration of MIGRATIONS.slice(0, 9)) {
+        legacy.exec(migration.sql);
+      }
+      const repoId = Number(
+        legacy.prepare("INSERT INTO repositories(root_path) VALUES ('C:/analyzer-upgrade')").run()
+          .lastInsertRowid
+      );
+      const workspaceHash = "c".repeat(64);
+      const snapshotId = Number(
+        legacy.prepare(
+          `INSERT INTO repository_snapshots(repo_id, kind, workspace_hash)
+           VALUES (?, 'working_tree', ?)`
+        ).run(repoId, workspaceHash).lastInsertRowid
+      );
+
+      expect(runMigrations(legacy)).toEqual([10]);
+      expect(
+        legacy.prepare("SELECT analyzer_version FROM repository_snapshots WHERE id = ?")
+          .get(snapshotId)
+      ).toEqual({ analyzer_version: "legacy/unknown" });
+      expect(() => legacy.prepare(
+        `INSERT INTO repository_snapshots(repo_id, kind, workspace_hash, analyzer_version)
+         VALUES (?, 'working_tree', ?, 'tadori-indexer/next')`
+      ).run(repoId, workspaceHash)).not.toThrow();
+      expect(() => legacy.prepare(
+        `INSERT INTO repository_snapshots(repo_id, kind, workspace_hash, analyzer_version)
+         VALUES (?, 'working_tree', ?, 'tadori-indexer/next')`
+      ).run(repoId, workspaceHash)).toThrow(/UNIQUE constraint/u);
+      expect(foreignKeyCheck(legacy)).toEqual([]);
+    } finally {
+      legacy.close();
+    }
   });
 
   it("keeps active-snapshot reads compatible with a migration-1-to-5 database", () => {
@@ -120,7 +158,9 @@ describe("database migrations", () => {
           )
           .run(repoId, "a".repeat(64)).lastInsertRowid
       );
-      expect(getActiveSnapshot(legacy, repoId, "working_tree")?.id).toBe(snapshotId);
+      const active = getActiveSnapshot(legacy, repoId, "working_tree");
+      expect(active?.id).toBe(snapshotId);
+      expect(active).not.toHaveProperty("analyzer_version");
     } finally {
       legacy.close();
     }
@@ -137,8 +177,8 @@ describe("database migrations", () => {
     const snapshotId = Number(
       db
         .prepare(
-          `INSERT INTO repository_snapshots(repo_id, kind, workspace_hash)
-           VALUES (?, 'commit', ?)`
+          `INSERT INTO repository_snapshots(repo_id, kind, workspace_hash, analyzer_version)
+           VALUES (?, 'commit', ?, 'migration-test/1')`
         )
         .run(firstRepo, "b".repeat(64)).lastInsertRowid
     );

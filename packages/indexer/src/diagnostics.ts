@@ -4,6 +4,7 @@ import {
   TYPESCRIPT_EXTRACTOR_ID,
   TYPESCRIPT_EXTRACTOR_VERSION
 } from "./typescriptExtractor.js";
+import { LANGUAGE_BY_ID, UNKNOWN_TEXT_LANGUAGE } from "./languageRegistry.js";
 
 const TRANSIENT_DIAGNOSTIC_CODES = new Set(["typescript-call-resolution-summary"]);
 
@@ -27,12 +28,15 @@ export function snapshotDiagnostics(
       const inferredLanguage = diagnostic.language ?? (
         diagnostic.file === null ? null : languageByFile.get(diagnostic.file) ?? null
       );
+      const languageRegistration = inferredLanguage === null
+        ? undefined
+        : inferredLanguage === UNKNOWN_TEXT_LANGUAGE.id
+          ? UNKNOWN_TEXT_LANGUAGE
+          : LANGUAGE_BY_ID.get(inferredLanguage);
       const extractorId = diagnostic.extractorId ?? (
-        inferredLanguage === "markdown"
-          ? "tadori-markdown"
-          : diagnostic.file === null
-            ? "tadori-repository"
-            : TYPESCRIPT_EXTRACTOR_ID
+        languageRegistration?.extractorId ?? (
+          diagnostic.file === null ? "tadori-repository" : TYPESCRIPT_EXTRACTOR_ID
+        )
       );
       const lineStart = diagnostic.lineStart ?? diagnostic.lineEnd ?? null;
       const lineEnd = diagnostic.lineEnd ?? diagnostic.lineStart ?? null;
@@ -44,8 +48,16 @@ export function snapshotDiagnostics(
         language: inferredLanguage,
         extractorId,
         extractorVersion:
+          diagnostic.extractorVersion ??
           versionByExtractor.get(extractorId) ??
-          (extractorId === TYPESCRIPT_EXTRACTOR_ID ? TYPESCRIPT_EXTRACTOR_VERSION : "unknown"),
+          (languageRegistration?.extractorId === extractorId
+            ? languageRegistration.extractorVersion
+            : undefined) ??
+          (extractorId === TYPESCRIPT_EXTRACTOR_ID
+            ? TYPESCRIPT_EXTRACTOR_VERSION
+            : extractorId === UNKNOWN_TEXT_LANGUAGE.extractorId
+              ? UNKNOWN_TEXT_LANGUAGE.extractorVersion
+              : "unknown"),
         lineStart,
         lineEnd
       };

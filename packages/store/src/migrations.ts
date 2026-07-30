@@ -663,6 +663,85 @@ COMMIT;
 `
 };
 
+/**
+ * Analyzer output is immutable snapshot identity, independent of repository
+ * bytes. Preserve the source-only workspace hash while allowing the same
+ * workspace to be re-indexed by a different analyzer version.
+ */
+const migration010: Migration = {
+  version: 10,
+  name: "analyzer-distinct immutable snapshot identity",
+  sql: `
+PRAGMA foreign_keys = OFF;
+BEGIN IMMEDIATE;
+
+CREATE TABLE repository_snapshots_v10 (
+    id INTEGER PRIMARY KEY,
+    repo_id INTEGER NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('commit','working_tree','staged','patch')),
+    label TEXT,
+    base_commit_sha TEXT,
+    workspace_hash TEXT NOT NULL,
+    analyzer_version TEXT NOT NULL CHECK (length(analyzer_version) > 0),
+    parent_snapshot_id INTEGER REFERENCES repository_snapshots_v10(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    pinned INTEGER NOT NULL DEFAULT 0 CHECK (pinned IN (0,1)),
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','pruned')),
+    UNIQUE (repo_id, kind, workspace_hash, analyzer_version)
+);
+
+WITH analyzer_versions AS (
+    SELECT snapshot_id, analyzer_version FROM snapshot_nodes
+    UNION
+    SELECT snapshot_id, analyzer_version FROM snapshot_edges
+),
+snapshot_analyzers AS (
+    SELECT snapshot_id,
+           CASE WHEN COUNT(*) = 1 THEN MIN(analyzer_version) ELSE 'legacy/mixed' END AS analyzer_version
+    FROM analyzer_versions
+    GROUP BY snapshot_id
+)
+INSERT INTO repository_snapshots_v10
+    (id, repo_id, kind, label, base_commit_sha, workspace_hash, analyzer_version,
+     parent_snapshot_id, created_at, pinned, status)
+SELECT rs.id, rs.repo_id, rs.kind, rs.label, rs.base_commit_sha, rs.workspace_hash,
+       COALESCE(sa.analyzer_version, 'legacy/unknown'), rs.parent_snapshot_id,
+       rs.created_at, rs.pinned, rs.status
+FROM repository_snapshots AS rs
+LEFT JOIN snapshot_analyzers AS sa ON sa.snapshot_id = rs.id;
+
+DROP TRIGGER snapshot_activations_validate_insert;
+DROP TRIGGER snapshot_activations_validate_update;
+DROP TABLE repository_snapshots;
+ALTER TABLE repository_snapshots_v10 RENAME TO repository_snapshots;
+CREATE INDEX idx_snapshots_repo_created ON repository_snapshots(repo_id, created_at);
+
+CREATE TRIGGER snapshot_activations_validate_insert
+BEFORE INSERT ON snapshot_activations
+WHEN NOT EXISTS (
+    SELECT 1 FROM repository_snapshots
+    WHERE id = NEW.snapshot_id AND repo_id = NEW.repo_id AND kind = NEW.kind
+)
+BEGIN
+    SELECT RAISE(ABORT, 'snapshot activation repo/kind mismatch');
+END;
+
+CREATE TRIGGER snapshot_activations_validate_update
+BEFORE UPDATE ON snapshot_activations
+WHEN NOT EXISTS (
+    SELECT 1 FROM repository_snapshots
+    WHERE id = NEW.snapshot_id AND repo_id = NEW.repo_id AND kind = NEW.kind
+)
+BEGIN
+    SELECT RAISE(ABORT, 'snapshot activation repo/kind mismatch');
+END;
+
+INSERT INTO schema_migrations(version) VALUES (10);
+COMMIT;
+PRAGMA foreign_keys = ON;
+`
+};
+
 export const MIGRATIONS: readonly Migration[] = [
   migration001,
   migration002,
@@ -672,5 +751,6 @@ export const MIGRATIONS: readonly Migration[] = [
   migration006,
   migration007,
   migration008,
-  migration009
+  migration009,
+  migration010
 ];

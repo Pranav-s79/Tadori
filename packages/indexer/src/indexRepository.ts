@@ -21,6 +21,7 @@ import { createProjectServices } from "./project.js";
 import { scanRepository, type ScanResult } from "./scan.js";
 import { ANALYZER_VERSION } from "./version.js";
 import { snapshotDiagnostics } from "./diagnostics.js";
+import { buildSnapshotExtractorInventory } from "./extractorInventory.js";
 import { attributeTypeScriptExtraction } from "./typescriptExtractor.js";
 import { structuralExtractor } from "./structuralExtractor.js";
 import { LANGUAGE_BY_ID } from "./languageRegistry.js";
@@ -268,6 +269,12 @@ export interface IndexOptions {
   label?: string | null;
   baseCommitSha?: string | null;
   /**
+   * Optional trusted caller assertion over the exact capture consumed by this
+   * index run. The assertion runs synchronously before extraction and must not
+   * mutate the capture; throwing aborts the index without publishing a graph.
+   */
+  assertCapture?: (capture: RepositoryCapture) => void;
+  /**
    * Additively derive `changed_with` (git co-change) edges over the static
    * graph (09-04). OFF by default so fixture/harness extraction never emits
    * `changed_with` and the frozen golden edge diffs stay intact; live serving
@@ -331,18 +338,49 @@ export function extractRepositoryGraph(
   options: ExtractGraphOptions = {}
 ): ExtractedGraph & { extractors?: SnapshotGraph["extractors"] } {
   const { scan } = captured;
+  const structural = options.fileRegion === undefined
+    ? structuralExtractor.extract({
+        root,
+        capture: captured,
+        registrations: LANGUAGE_BY_ID
+      })
+    : null;
+  const repositoryFiles = options.fileRegion === undefined
+    ? interfaceExtractor.extract({
+        root,
+        capture: captured,
+        registrations: LANGUAGE_BY_ID
+      })
+    : null;
   const extracted: ExtractedGraph & { extractors?: SnapshotGraph["extractors"] } =
     attributeTypeScriptExtraction(
-      extractGraph(root, scan, services, { ...options, fileContents: captured.fileContents }),
+      extractGraph(root, scan, services, {
+        ...options,
+        fileContents: captured.fileContents,
+        documentationCandidates: [
+          ...(options.documentationCandidates ?? []),
+          ...(structural?.nodes ?? []),
+          ...(repositoryFiles?.nodes ?? [])
+        ]
+      }),
       scan
     );
-  extracted.diagnostics.unshift(...collectSyntacticDiagnostics(services, scan, options.fileRegion));
+  extracted.diagnostics.unshift(
+    ...scan.diagnostics.map((diagnostic): IndexDiagnostic => ({
+      code: diagnostic.code,
+      message: diagnostic.message,
+      language: diagnostic.language,
+      severity: "warning",
+      file: null,
+      extractorId: "tadori-repository",
+      extractorVersion: "1"
+    })),
+    ...collectSyntacticDiagnostics(services, scan, options.fileRegion)
+  );
   if (options.fileRegion === undefined) {
-    const structural = structuralExtractor.extract({
-      root,
-      capture: captured,
-      registrations: LANGUAGE_BY_ID
-    });
+    if (structural === null || repositoryFiles === null) {
+      throw new Error("Full extraction did not initialize every repository adapter");
+    }
     if (scan.indexedFiles.some((file) => structural.languages.includes(file.language))) {
       const nodeByKey = new Map(extracted.nodes.map((node) => [node.entityKey, node]));
       for (const node of structural.nodes) {
@@ -373,11 +411,6 @@ export function extractRepositoryGraph(
         }
       ].sort((left, right) => left.id.localeCompare(right.id) || left.version.localeCompare(right.version));
     }
-    const repositoryFiles = interfaceExtractor.extract({
-      root,
-      capture: captured,
-      registrations: LANGUAGE_BY_ID
-    });
     extracted.projects = repositoryFiles.projects;
     if (
       repositoryFiles.projects.length > 0 ||
@@ -460,6 +493,8 @@ export function extractRepositoryGraph(
 export interface RepositoryCapture {
   scan: ScanResult;
   fileHashes: ReadonlyMap<string, string>;
+  /** Files plus deterministic omission evidence used for refresh identity. */
+  manifestHashes: ReadonlyMap<string, string>;
   fileContents: ReadonlyMap<string, Buffer>;
   workspaceHash: string;
 }
@@ -502,12 +537,32 @@ export function captureRepository(rootPath: string): RepositoryCapture {
       sha256HexBytes(contents)
     ])
   );
+  const omissionEvidence = new Map<string, string[]>();
+  for (const diagnostic of scan.diagnostics) {
+    const entries = omissionEvidence.get(diagnostic.normalizedPath) ?? [];
+    entries.push(JSON.stringify([
+      diagnostic.code,
+      diagnostic.language,
+      diagnostic.message
+    ]));
+    omissionEvidence.set(diagnostic.normalizedPath, entries);
+  }
+  const manifestHashes = new Map(fileHashes);
+  for (const [normalizedPath, entries] of omissionEvidence) {
+    if (manifestHashes.has(normalizedPath)) {
+      throw new Error(
+        `Repository capture path ${JSON.stringify(normalizedPath)} is both captured and omitted`
+      );
+    }
+    manifestHashes.set(normalizedPath, sha256Hex(entries.sort().join("\n")));
+  }
   return {
     scan,
     fileHashes,
+    manifestHashes,
     fileContents,
     workspaceHash: computeWorkspaceHash(
-      [...fileHashes].map(([normalizedPath, contentHash]) => ({
+      [...manifestHashes].map(([normalizedPath, contentHash]) => ({
         normalizedPath,
         contentHash
       }))
@@ -520,6 +575,7 @@ export function indexRepository(rootPath: string, options: IndexOptions): IndexR
   const startedAt = performance.now();
   const root = path.resolve(rootPath);
   const captured = captureRepository(root);
+  options.assertCapture?.(captured);
   const { scan } = captured;
   const services = createProjectServices(
     root,
@@ -554,6 +610,16 @@ export function indexRepository(rootPath: string, options: IndexOptions): IndexR
       )
     : [];
 
+  const edges = [...extracted.edges, ...coChangeEdges];
+  const diagnostics = snapshotDiagnostics(extracted.diagnostics, extracted.files, extracted.extractors);
+  const extractors = buildSnapshotExtractorInventory({
+    inventories: [extracted.extractors],
+    nodes: extracted.nodes,
+    edges,
+    files: extracted.files,
+    projects: extracted.projects,
+    diagnostics
+  });
   const graph: SnapshotGraph = {
     repoRootPath: root.split(path.sep).join("/"),
     kind: options.kind,
@@ -563,10 +629,10 @@ export function indexRepository(rootPath: string, options: IndexOptions): IndexR
     analyzerVersion: ANALYZER_VERSION,
     files: extracted.files,
     nodes: extracted.nodes,
-    edges: [...extracted.edges, ...coChangeEdges],
+    edges,
     projects: extracted.projects,
-    extractors: extracted.extractors,
-    diagnostics: snapshotDiagnostics(extracted.diagnostics, extracted.files, extracted.extractors)
+    extractors,
+    diagnostics
   };
 
   return {

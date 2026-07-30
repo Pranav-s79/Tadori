@@ -189,6 +189,79 @@ typechecks. The installed Windows Node 24 package smoke confirms the bundled
 matrix, its served schema, observed analysis, structural Python provenance,
 layout, shutdown, and confined purge paths.
 
+Repository-boundary and lifecycle hardening (2026-07-30 UTC): repository
+scanning now uses link-aware metadata and never reads or traverses symbolic
+links, Windows junctions, linked ignore files, or linked package manifests.
+Skipped-link evidence participates in the deterministic workspace manifest, so
+adding or removing an omitted link invalidates incremental and MCP freshness
+without reading its target. This keeps source, support inputs, package identity,
+and refresh state confined to the selected repository. Cross-platform
+regressions cover external file links, linked metadata, external directory
+links, link cycles, deterministic repeat scans, persistence, and refresh;
+platform-denied link creation is reported as an explicit skip.
+
+Additive migration 010 gives every snapshot an analyzer version in storage and
+keys immutable reuse by `(repository, kind, workspace hash, analyzer version)`.
+Migration preserves readable legacy rows, infers a version only when legacy
+membership is unambiguous, and leaves mixed legacy attribution detectable.
+Unchanged source therefore publishes a distinct snapshot after an analyzer
+upgrade, including an empty or entirely ignored repository; an analyzer change
+can no longer remain indefinitely hidden behind a no-op refresh. The current
+analyzer identity is `tadori-indexer/0.2.1` plus the exact TypeScript version.
+
+The legacy TypeScript adapter's root package-to-file containment is now
+attributed to the repository layer with `repository-derived` provenance and the
+contained file's actual language. It no longer converts Java, Python, Protocol
+Buffer, or other mixed-language membership into a compiler claim. Snapshot
+extractor inventory is rebuilt from retained nodes, edges, diagnostics, files,
+and projects; declarations provide capability metadata but cannot keep a stale
+extractor alive. Capability aggregation retains the strongest actual
+contribution independently of iteration order.
+
+Documentation and refresh boundaries are now language-honest. Markdown links
+to non-TS/JS paths or declarations remain explicitly unresolved with
+`markdown-link-is-documentation-not-integration-evidence`; unresolved identities
+are Markdown-namespaced and use canonical `tadori-interface-files@1`
+repository/convention attribution. Structural and interface declarations such
+as Go functions and Protocol Buffer messages participate in ambiguity checks,
+while Markdown headings do not. Names alone never create a cross-language edge.
+In mixed-language repositories, relevant TS/JS edits force complete boundary
+reconciliation, including creation of the first boundary.
+
+Live git co-change evidence is no longer lost during either complete or regional
+refresh. `changed_with` edges are deterministically recomputed from the final
+file-node set and carry source-language plus `tadori-git-co-change@1`
+repository-derived provenance; the canonical inventory records that producer.
+Real-Git regressions cover both full mixed-language refresh and a regional edit
+to the deterministic source/evidence endpoint. Focused acceptance is green:
+strict typecheck and lint, `git diff --check`, 44/44 final indexer regressions,
+legacy adapter parity, deterministic fixtures, store endpoint/foreign-key
+integrity, and supported-platform link cases. The complete repository gate is
+still required before publication.
+
+Opus backend review result (2026-07-30 UTC): queue items 1-3 executed against
+the working tree. Item 1 passes — `assertCapture` is a real trust boundary
+consumed by the external validation runner, `manifestHashes` carries omission
+evidence into refresh identity with a captured/omitted collision guard, and no
+store invariant was weakened. Item 3 passes — `/api/v1/analysis` validates its
+cursor and limit, fails closed with `bad_diagnostic_page`, and reports honest
+`total`, `omittedCount`, `nextCursor`, and whole-set severity totals;
+`/api/v1/capabilities` and its served schema are the validated constants
+verbatim.
+
+Item 2 found and closed one blocker-class defect. The coalescing legacy sentinel
+was the literal pair `("legacy", "legacy")`, but `extractorId` is only
+`z.string().min(1)`, so an extractor registered as `legacy` was a schema-valid
+forgery of the sentinel and would have Stage-A and Stage-B matched genuinely
+pre-provenance nodes — silently reopening exactly the attribution boundary the
+guard exists to close. The sentinel is now the empty pair, which the canonical
+schema forbids for any real extractor, making the collision unrepresentable
+rather than merely unlikely. Two regressions cover the Stage A and Stage B
+forgery paths and were verified to fail against the previous sentinel. The
+complete local gate is green at this tree: strict typecheck, lint, the root test
+command, 37 store/server files / 211 tests, 13 CLI files / 67 tests, and 46
+Atlas files / 371 tests. Frontend handoff is therefore unblocked.
+
 Claude Opus backend review queue and frontend handoff contract:
 
 1. Review the project-evidence correction in

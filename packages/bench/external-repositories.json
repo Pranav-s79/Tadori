@@ -7,14 +7,36 @@
       "url": "https://github.com/GoogleCloudPlatform/microservices-demo.git",
       "commit": "9a4616e77f0f9cbcbecaf27d711c38890dda1404",
       "license": "Apache-2.0",
-      "purpose": "primary mixed-language validation"
+      "purpose": "primary mixed-language validation",
+      "invariants": {
+        "minimumFiles": 1,
+        "minimumNodes": 1,
+        "minimumEdges": 1,
+        "minimumDistinctLanguages": 1,
+        "maximumErrorDiagnostics": 0,
+        "requiredLanguages": ["go"],
+        "requiredCapabilities": [
+          { "language": "go", "capability": "structural", "minimumAttributedItems": 1 }
+        ]
+      }
     },
     {
       "id": "protobuf",
       "url": "https://github.com/protocolbuffers/protobuf.git",
       "commit": "44fa35f8607515ce7172ed7e96829cd7e45a71f7",
       "license": "BSD-3-Clause-style",
-      "purpose": "C/C++ and multi-language stress validation"
+      "purpose": "C/C++ and multi-language stress validation",
+      "invariants": {
+        "minimumFiles": 1,
+        "minimumNodes": 1,
+        "minimumEdges": 1,
+        "minimumDistinctLanguages": 1,
+        "maximumErrorDiagnostics": 0,
+        "requiredLanguages": ["cpp"],
+        "requiredCapabilities": [
+          { "language": "cpp", "capability": "structural", "minimumAttributedItems": 1 }
+        ]
+      }
     }
   ]
 }

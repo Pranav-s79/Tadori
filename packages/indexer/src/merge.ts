@@ -1,6 +1,7 @@
 import type { Evidence, GraphEdge, GraphNode, NodeKind, SnapshotGraph } from "@tadori/core";
 import { snapshotGraphSchema } from "@tadori/core";
 import type { ExtractedGraph } from "./extract.js";
+import { buildSnapshotExtractorInventory } from "./extractorInventory.js";
 import { metadataScore } from "./semantics.js";
 
 export type SnapshotGraphMetadata = Pick<
@@ -151,11 +152,21 @@ export function mergeSnapshotRegion(
     );
   }
 
-  const previousFiles = new Set(previous.files.map((file) => file.normalizedPath));
+  const previousFileByPath = new Map(
+    previous.files.map((file) => [file.normalizedPath, file])
+  );
+  const previousFiles = new Set(previousFileByPath.keys());
   for (const file of invalidated) {
     if (!previousFiles.has(file)) {
       throw new UnsafeIncrementalMergeError(
         `Invalidated file ${JSON.stringify(file)} is absent from the previous graph; use full extraction for additions`
+      );
+    }
+  }
+  for (const file of replacement.files) {
+    if (previousFileByPath.get(file.normalizedPath)?.language !== file.language) {
+      throw new UnsafeIncrementalMergeError(
+        `Invalidated file ${JSON.stringify(file.normalizedPath)} changed language; use full extraction`
       );
     }
   }
@@ -191,7 +202,7 @@ export function mergeSnapshotRegion(
   const previousNodesByKey = new Map(previous.nodes.map((node) => [node.entityKey, node]));
   const nodesByKey = new Map<string, GraphNode>();
   for (const node of previous.nodes) {
-    if (node.kind === "package" || (node.file !== null && invalidated.has(node.file))) {
+    if (node.file !== null && invalidated.has(node.file)) {
       continue;
     }
     nodesByKey.set(node.entityKey, node);
@@ -245,18 +256,30 @@ export function mergeSnapshotRegion(
     )
   ].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
 
+  const nodes = [...nodesByKey.values()].sort((left, right) =>
+    left.canonicalIdentity.localeCompare(right.canonicalIdentity)
+  );
+  const edges = [...edgesByKey.values()]
+    .map((edge) => ({ ...edge, evidence: mergeEvidence(edge.evidence) }))
+    .sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity));
+  const extractors = buildSnapshotExtractorInventory({
+    inventories: [previous.extractors, options.target.extractors],
+    nodes,
+    edges,
+    files: [...filesByPath.values()],
+    projects: previous.projects,
+    diagnostics
+  });
+
   return snapshotGraphSchema.parse({
     ...options.target,
     files: [...filesByPath.values()].sort((left, right) =>
       left.normalizedPath.localeCompare(right.normalizedPath)
     ),
-    nodes: [...nodesByKey.values()].sort((left, right) =>
-      left.canonicalIdentity.localeCompare(right.canonicalIdentity)
-    ),
-    edges: [...edgesByKey.values()]
-      .map((edge) => ({ ...edge, evidence: mergeEvidence(edge.evidence) }))
-      .sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity)),
+    nodes,
+    edges,
     projects: previous.projects,
+    extractors,
     diagnostics
   });
 }

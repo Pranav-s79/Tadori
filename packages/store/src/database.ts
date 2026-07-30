@@ -54,6 +54,7 @@ export function runMigrations(db: Database): number[] {
       if (db.inTransaction) {
         db.exec("ROLLBACK;");
       }
+      db.pragma("foreign_keys = ON");
       throw new Error(
         `Migration ${migration.version} (${migration.name}) failed: ${String(error)}`
       );
@@ -79,6 +80,7 @@ export function forceRunMigration(db: Database, version: number): void {
     if (db.inTransaction) {
       db.exec("ROLLBACK;");
     }
+    db.pragma("foreign_keys = ON");
   }
 }
 

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import type { GraphEdge, GraphNode, NodeKind, Relation, RepoStateKind } from "@tadori/core";
-import { computeWorkspaceHash, scanRepository } from "@tadori/indexer";
+import { captureRepository } from "@tadori/indexer";
 import {
   findDanglingEndpoints,
   foreignKeyCheck,
@@ -298,12 +298,7 @@ export class GraphService {
       return { status: "stale", stale: true, reason: "refresh_pending" };
     }
     try {
-      const scan = scanRepository(this.nativeRepoRoot);
-      const files = [...scan.indexedFiles, ...scan.supportFiles].map((file) => ({
-        normalizedPath: file.normalizedPath,
-        contentHash: createHash("sha256").update(readFileSync(file.absolutePath)).digest("hex")
-      }));
-      if (computeWorkspaceHash(files) !== this.snapshot.workspace_hash) {
+      if (captureRepository(this.nativeRepoRoot).workspaceHash !== this.snapshot.workspace_hash) {
         return { status: "stale", stale: true, reason: "content_changed" };
       }
       return { status: "fresh", stale: false, reason: "matches_snapshot" };

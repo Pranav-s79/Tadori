@@ -36,9 +36,9 @@ const pythonProvenance: ExtractionProvenance = {
 
 describe("migration 7 multi-language persistence", () => {
   it("adds nullable attribution columns and the snapshot extractor inventory", () => {
-    expect(MIGRATIONS.at(-1)?.version).toBe(9);
+    expect(MIGRATIONS.at(-1)?.version).toBe(10);
     const versions = db.prepare("SELECT version FROM schema_migrations ORDER BY version").all() as Array<{ version: number }>;
-    expect(versions.map(({ version }) => version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(versions.map(({ version }) => version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
     const nodeColumns = new Map(
       (db.prepare("PRAGMA table_info(snapshot_nodes)").all() as Array<{ name: string; notnull: number }>)
@@ -136,7 +136,7 @@ describe("migration 7 multi-language persistence", () => {
            VALUES (?, 'commit', ?)`
         ).run(repoId, "b".repeat(64)).lastInsertRowid
       );
-      expect(runMigrations(legacy)).toEqual([8, 9]);
+      expect(runMigrations(legacy)).toEqual([8, 9, 10]);
       expect(loadSnapshotGraph(legacy, snapshotId).projects).toEqual([]);
       expect(loadSnapshotGraph(legacy, snapshotId).diagnostics).toEqual([]);
     } finally {

@@ -51,6 +51,21 @@ function attributedNode(
   };
 }
 
+/** An attributed node whose extractor identity is chosen by the caller. */
+function namedExtractorNode(
+  kind: NodeKind,
+  qualifiedName: string,
+  bodyHash: string | null,
+  extractorId: string,
+  extractorVersion: string
+): GraphNode {
+  const attributed = attributedNode(kind, qualifiedName, bodyHash, extractorVersion);
+  return {
+    ...attributed,
+    provenance: { ...attributed.provenance, extractorId }
+  } as GraphNode;
+}
+
 describe("unqualifiedName", () => {
   it("file → basename; symbol → trailing dot segment", () => {
     expect(unqualifiedName(node("file", "src/legacy/helper.ts", "h"))).toBe("helper.ts");
@@ -115,6 +130,16 @@ describe("stageAMatch (identity basis includes analyzer and extractor versions)"
     expect(stageAMatch(removed, added, AV).pairs).toHaveLength(0);
   });
 
+  it("does not let an extractor named like the legacy sentinel pair with a legacy node", () => {
+    // The legacy sentinel must stay unrepresentable as a real extractor
+    // identity. `extractorId` is only `z.string().min(1)`, so a pronounceable
+    // sentinel would be forgeable by a registered extractor and would silently
+    // reopen the attribution boundary this guard exists to close.
+    const removed = [node("file", "a/x.py", "h")];
+    const added = [namedExtractorNode("file", "b/x.py", "h", "legacy", "legacy")];
+    expect(stageAMatch(removed, added, AV).pairs).toHaveLength(0);
+  });
+
   it("leaves a non-unique basis group unpaired (deferred to Stage B / ambiguity)", () => {
     // two removed files share basename+hash → not unique on removed side
     const removed = [node("file", "a/helper.ts", "h"), node("file", "b/helper.ts", "h")];
@@ -171,6 +196,15 @@ describe("stageBMatch (body hash and extractor identity among Stage-A residuals)
   it("does not report an extractor-version change as a rename", () => {
     const removed = [attributedNode("function", "a.py.oldName", "same", "1")];
     const added = [attributedNode("function", "a.py.newName", "same", "2")];
+    const { pairs, residualRemoved, residualAdded } = stageBMatch(removed, added, AV);
+    expect(pairs).toHaveLength(0);
+    expect(residualRemoved).toEqual(removed);
+    expect(residualAdded).toEqual(added);
+  });
+
+  it("does not let an extractor named like the legacy sentinel forge a rename", () => {
+    const removed = [node("function", "a.py.oldName", "same")];
+    const added = [namedExtractorNode("function", "a.py.newName", "same", "legacy", "legacy")];
     const { pairs, residualRemoved, residualAdded } = stageBMatch(removed, added, AV);
     expect(pairs).toHaveLength(0);
     expect(residualRemoved).toEqual(removed);

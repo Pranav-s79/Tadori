@@ -29,6 +29,8 @@ export interface SnapshotRow {
   label: string | null;
   base_commit_sha: string | null;
   workspace_hash: string;
+  /** Absent only on the controlled migration-1-to-5 compatibility read path. */
+  analyzer_version?: string;
   parent_snapshot_id: number | null;
   created_at: string;
   pinned: number;
@@ -374,10 +376,10 @@ export function insertSnapshotGraph(
 
     const existing = db
       .prepare(
-        `SELECT * FROM repository_snapshots
-         WHERE repo_id = ? AND kind = ? AND workspace_hash = ?`
+         `SELECT * FROM repository_snapshots
+         WHERE repo_id = ? AND kind = ? AND workspace_hash = ? AND analyzer_version = ?`
       )
-      .get(repoId, graph.kind, graph.workspaceHash) as SnapshotRow | undefined;
+      .get(repoId, graph.kind, graph.workspaceHash, graph.analyzerVersion) as SnapshotRow | undefined;
     if (existing) {
       if (existing.status !== "active") {
         throw new Error(
@@ -398,8 +400,11 @@ export function insertSnapshotGraph(
              (SELECT COUNT(*) FROM snapshot_edges WHERE snapshot_id = @snapshotId) AS edges,
              (SELECT COUNT(*) FROM snapshot_projects WHERE snapshot_id = @snapshotId) AS projects,
              (SELECT COUNT(*) FROM snapshot_diagnostics WHERE snapshot_id = @snapshotId) AS diagnostics,
-             (SELECT COUNT(DISTINCT analyzer_version) FROM snapshot_nodes
-                WHERE snapshot_id = @snapshotId AND analyzer_version = @analyzerVersion) AS analyzer_versions`
+             (SELECT COUNT(*) FROM (
+                SELECT analyzer_version FROM snapshot_nodes WHERE snapshot_id = @snapshotId
+                UNION
+                SELECT analyzer_version FROM snapshot_edges WHERE snapshot_id = @snapshotId
+              ) WHERE analyzer_version <> @analyzerVersion) AS mismatched_analyzer_versions`
         )
         .get({ snapshotId: existing.id, analyzerVersion: graph.analyzerVersion }) as {
         files: number;
@@ -407,7 +412,7 @@ export function insertSnapshotGraph(
         edges: number;
         projects: number;
         diagnostics: number;
-        analyzer_versions: number;
+        mismatched_analyzer_versions: number;
       };
       if (counts.projects !== graph.projects.length) {
         throw new Error(
@@ -425,7 +430,7 @@ export function insertSnapshotGraph(
         counts.files !== graph.files.length ||
         counts.nodes !== graph.nodes.length ||
         counts.edges !== graph.edges.length ||
-        (counts.nodes > 0 && counts.analyzer_versions !== 1)
+        counts.mismatched_analyzer_versions > 0
       ) {
         throw new Error(
           `Workspace ${graph.workspaceHash} matches snapshot ${existing.id}, but its graph shape ` +
@@ -448,9 +453,11 @@ export function insertSnapshotGraph(
 
     const snapshotResult = db
       .prepare(
-        `INSERT INTO repository_snapshots
-           (repo_id, kind, label, base_commit_sha, workspace_hash, parent_snapshot_id, pinned)
-         VALUES (@repoId, @kind, @label, @baseCommitSha, @workspaceHash, @parentSnapshotId, @pinned)`
+         `INSERT INTO repository_snapshots
+           (repo_id, kind, label, base_commit_sha, workspace_hash, analyzer_version,
+            parent_snapshot_id, pinned)
+         VALUES (@repoId, @kind, @label, @baseCommitSha, @workspaceHash, @analyzerVersion,
+                 @parentSnapshotId, @pinned)`
       )
       .run({
         repoId,
@@ -458,6 +465,7 @@ export function insertSnapshotGraph(
         label: graph.label,
         baseCommitSha: graph.baseCommitSha,
         workspaceHash: graph.workspaceHash,
+        analyzerVersion: graph.analyzerVersion,
         parentSnapshotId: options.parentSnapshotId ?? null,
         pinned: options.pinned ? 1 : 0
       });
@@ -819,7 +827,21 @@ export function loadSnapshotGraph(db: Database, snapshotId: number): StoredSnaps
   if (analyzerRows.length > 1) {
     throw new Error(`Snapshot ${snapshotId} contains mixed analyzer versions`);
   }
-  const analyzerVersion = analyzerRows[0]?.analyzer_version ?? "unknown";
+  const snapshotAnalyzerVersion =
+    typeof snapshot.analyzer_version === "string" && snapshot.analyzer_version.length > 0
+      ? snapshot.analyzer_version
+      : null;
+  if (
+    snapshotAnalyzerVersion !== null &&
+    analyzerRows[0] !== undefined &&
+    analyzerRows[0].analyzer_version !== snapshotAnalyzerVersion
+  ) {
+    throw new Error(
+      `Snapshot ${snapshotId} analyzer metadata ${JSON.stringify(snapshotAnalyzerVersion)} ` +
+      `does not match membership version ${JSON.stringify(analyzerRows[0].analyzer_version)}`
+    );
+  }
+  const analyzerVersion = snapshotAnalyzerVersion ?? analyzerRows[0]?.analyzer_version ?? "unknown";
 
   const files = (
     db

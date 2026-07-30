@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import {
   mkdirSync,
   mkdtempSync,
@@ -27,6 +28,10 @@ import {
 let db: Database;
 let repo: string;
 const controllers: IncrementalRepositoryIndexer[] = [];
+
+function git(args: readonly string[]): void {
+  execFileSync("git", args, { cwd: repo, stdio: "ignore", windowsHide: true });
+}
 
 beforeEach(() => {
   db = openDatabase(":memory:");
@@ -113,6 +118,67 @@ describe("incremental refresh coordinator", () => {
     expect(findDanglingEndpoints(db, state.snapshotId as number)).toEqual([]);
     expect(foreignKeyCheck(db)).toEqual([]);
   });
+
+  it("reconciles attributed git co-change edges after a regional source edit", async () => {
+    git(["init"]);
+    git(["config", "user.email", "tadori@example.com"]);
+    git(["config", "user.name", "Tadori Test"]);
+    git(["config", "commit.gpgsign", "false"]);
+    git(["config", "core.autocrlf", "false"]);
+    git(["add", "."]);
+    git(["commit", "-m", "first"]);
+    writeFileSync(
+      path.join(repo, "src", "value.ts"),
+      "export function value(): number { return 2; }\n"
+    );
+    writeFileSync(
+      path.join(repo, "src", "consumer.ts"),
+      'import { value } from "./value.js";\nexport function consume(): number { return value() + 1; }\n'
+    );
+    git(["add", "."]);
+    git(["commit", "-m", "second"]);
+
+    const indexer = await controller();
+    const before = loadSnapshotGraph(db, activeSnapshotId());
+    const beforeCoChange = before.edges.filter((edge) => edge.relation === "changed_with");
+    expect(beforeCoChange).toHaveLength(1);
+    const edge = beforeCoChange[0]!;
+    const source = before.nodes.find((node) => node.entityKey === edge.srcEntityKey);
+    if (source?.file !== "src/value.ts" && source?.file !== "src/consumer.ts") {
+      throw new Error("Expected the co-change source to be one of the committed TypeScript files");
+    }
+    expect(edge.language).toBe("typescript");
+    expect(edge.evidence[0]?.file).toBe(source.file);
+    expect(edge.provenance).toEqual({
+      extractorId: "tadori-git-co-change",
+      extractorVersion: "1",
+      capability: "repository",
+      derivation: "repository-derived",
+      unresolvedReason: null
+    });
+    const expectedInventory = {
+      id: "tadori-git-co-change",
+      version: "1",
+      capability: "repository" as const,
+      languages: ["typescript"]
+    };
+    expect(before.extractors).toContainEqual(expectedInventory);
+
+    writeFileSync(
+      path.join(repo, source.file),
+      source.file === "src/value.ts"
+        ? "export function value(): number { return 3; }\n"
+        : 'import { value } from "./value.js";\nexport function consume(): number { return value() + 2; }\n'
+    );
+    const state = await indexer.refresh([{ path: source.file, kind: "change" }]);
+    expect(state.lastRefresh).toMatchObject({ mode: "regional", changedPaths: [source.file] });
+    const after = loadSnapshotGraph(db, state.snapshotId!);
+    expect(after.edges.filter((candidate) => candidate.relation === "changed_with"))
+      .toEqual(beforeCoChange);
+    expect(after.extractors).toContainEqual(expectedInventory);
+    expect(findDanglingEndpoints(db, state.snapshotId!)).toEqual([]);
+    expect(foreignKeyCheck(db)).toEqual([]);
+  }, 30_000);
 
   it("falls back to full extraction for additions, moves, and symbol renames", async () => {
     const indexer = await controller();

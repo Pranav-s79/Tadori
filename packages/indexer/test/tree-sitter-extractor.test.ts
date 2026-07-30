@@ -32,6 +32,12 @@ function contextFor(files: Readonly<Record<string, { language: string; source: s
       fileHashes: new Map(
         [...fileContents].map(([name, bytes]) => [name, createHash("sha256").update(bytes).digest("hex")])
       ),
+      manifestHashes: new Map(
+        [...fileContents].map(([normalizedPath, contents]) => [
+          normalizedPath,
+          createHash("sha256").update(contents).digest("hex")
+        ])
+      ),
       workspaceHash: "0".repeat(64)
     }
   };

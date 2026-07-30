@@ -58,9 +58,19 @@ const STAGE_B_BASIS = [
   "uniqueCandidate"
 ] as const;
 
+/**
+ * The extractor identity a node contributes to a match key. A pre-provenance
+ * (legacy) node gets the empty pair, which the canonical extractor schema
+ * forbids for a real extractor (`extractorId: z.string().min(1)`) — so a
+ * registered extractor can never collide with the legacy sentinel and coalesce
+ * across the attribution boundary. A pronounceable sentinel such as `"legacy"`
+ * is itself a schema-valid extractor id, which would leave that collision
+ * reachable and silently defeat the guard this identity exists to provide.
+ * The pair is key-local and never surfaced.
+ */
 function extractorIdentity(node: GraphNode): readonly [string, string] {
   return node.provenance === undefined
-    ? ["legacy", "legacy"]
+    ? ["", ""]
     : [node.provenance.extractorId, node.provenance.extractorVersion];
 }
 

@@ -335,6 +335,205 @@ describe("doc link rules", () => {
       result.diagnostics.some((d) => d.message.includes("generic route-handler name"))
     ).toBe(true);
   });
+
+  it("keeps ADR links to non-TS files explicitly unresolved", () => {
+    const repo = makeRepo("doclink-cross-language-repo", {
+      "src/handler.ts": "export function handler(): number {\n  return 1;\n}\n",
+      "service/main.go": "package main\n\nfunc main() {}\n",
+      "docs/ADR-011-go.md": [
+        "# ADR-011: Go service",
+        "",
+        "The implementation lives in `service/main.go`.",
+        ""
+      ].join("\n")
+    });
+
+    const result = indexRepository(repo, { kind: "commit" });
+    const adr = result.graph.nodes.find((node) => node.kind === "adr");
+    const goFile = result.graph.nodes.find(
+      (node) => node.kind === "file" && node.file === "service/main.go"
+    );
+    const documents = result.graph.edges.filter(
+      (edge) => edge.relation === "documents" && edge.srcEntityKey === adr?.entityKey
+    );
+
+    expect(adr).toBeDefined();
+    expect(goFile).toBeDefined();
+    expect(documents).toHaveLength(1);
+    expect(documents[0]).toMatchObject({
+      resolution: "unresolved",
+      language: "markdown",
+      provenance: {
+        unresolvedReason: "markdown-link-is-documentation-not-integration-evidence"
+      }
+    });
+    expect(documents[0]?.dstEntityKey).not.toBe(goFile?.entityKey);
+    const unresolved = result.graph.nodes.find(
+      (node) => node.entityKey === documents[0]?.dstEntityKey
+    );
+    expect(unresolved).toMatchObject({
+      kind: "unresolved",
+      qualifiedName: expect.stringMatching(/^markdown:docs\/ADR-011-go\.md::/u),
+      language: "markdown",
+      provenance: {
+        extractorId: "tadori-interface-files",
+        extractorVersion: "1",
+        capability: "repository",
+        derivation: "convention-derived",
+        unresolvedReason: "markdown-link-is-documentation-not-integration-evidence"
+      }
+    });
+    expect(documents[0]?.provenance).toEqual({
+      extractorId: "tadori-interface-files",
+      extractorVersion: "1",
+      capability: "repository",
+      derivation: "convention-derived",
+      unresolvedReason: "markdown-link-is-documentation-not-integration-evidence"
+    });
+    expect(result.graph.extractors).toContainEqual({
+      id: "tadori-interface-files",
+      version: "1",
+      capability: "repository",
+      languages: expect.arrayContaining(["markdown"])
+    });
+    expect(result.graph.extractors?.some((extractor) =>
+      extractor.id === "tadori-typescript" && extractor.languages.includes("markdown")
+    )).toBe(false);
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({
+      code: "markdown-link-is-documentation-not-integration-evidence",
+      file: "docs/ADR-011-go.md",
+      language: "markdown",
+      severity: "info"
+    }));
+
+    const repeated = indexRepository(repo, { kind: "commit" }).graph;
+    expect(repeated.nodes.find((node) => node.kind === "unresolved")?.canonicalIdentity)
+      .toBe(unresolved?.canonicalIdentity);
+    expect(repeated.edges.find((edge) => edge.relation === "documents")?.canonicalIdentity)
+      .toBe(documents[0]?.canonicalIdentity);
+  });
+
+  it("keeps unique non-TS symbol names explicitly unresolved", () => {
+    const repo = makeRepo("doclink-cross-language-symbol-repo", {
+      "src/handler.ts": "export function handler(): number {\n  return 1;\n}\n",
+      "service/worker.go": "package service\n\nfunc RunWorker() {}\n",
+      "docs/ADR-012-worker.md": [
+        "# ADR-012: Worker",
+        "",
+        "The implementation uses `RunWorker`.",
+        ""
+      ].join("\n")
+    });
+
+    const graph = indexRepository(repo, { kind: "commit" }).graph;
+    const adr = graph.nodes.find((node) => node.kind === "adr");
+    const goSymbol = graph.nodes.find(
+      (node) => node.language === "go" && node.displayName === "RunWorker"
+    );
+    const documents = graph.edges.filter(
+      (edge) => edge.relation === "documents" && edge.srcEntityKey === adr?.entityKey
+    );
+
+    expect(goSymbol).toBeDefined();
+    expect(documents).toHaveLength(1);
+    expect(documents[0]).toMatchObject({
+      resolution: "unresolved",
+      provenance: {
+        extractorId: "tadori-interface-files",
+        capability: "repository",
+        derivation: "convention-derived",
+        unresolvedReason: "markdown-link-is-documentation-not-integration-evidence"
+      }
+    });
+    expect(documents[0]?.dstEntityKey).not.toBe(goSymbol?.entityKey);
+    expect(graph.nodes.find((node) => node.entityKey === documents[0]?.dstEntityKey))
+      .toMatchObject({
+        kind: "unresolved",
+        displayName: "RunWorker",
+        qualifiedName: expect.stringMatching(/^markdown:docs\/ADR-012-worker\.md::/u)
+      });
+  });
+
+  it("keeps TS and interface-file symbol collisions explicitly unresolved", () => {
+    const repo = makeRepo("doclink-interface-symbol-collision-repo", {
+      "src/user.ts": "export interface User {\n  id: string;\n}\n",
+      "schema/user.proto": [
+        'syntax = "proto3";',
+        "package account;",
+        "message User {",
+        "  string id = 1;",
+        "}",
+        ""
+      ].join("\n"),
+      "docs/ADR-013-user.md": [
+        "# ADR-013: User representation",
+        "",
+        "The representation uses `User`.",
+        ""
+      ].join("\n")
+    });
+
+    const graph = indexRepository(repo, { kind: "commit" }).graph;
+    const adr = graph.nodes.find((node) => node.kind === "adr");
+    const candidates = graph.nodes.filter(
+      (node) => node.displayName === "User" && node.kind !== "unresolved"
+    );
+    const documents = graph.edges.filter(
+      (edge) => edge.relation === "documents" && edge.srcEntityKey === adr?.entityKey
+    );
+
+    expect(candidates.map((node) => node.language).sort()).toEqual(["protobuf", "typescript"]);
+    expect(documents).toHaveLength(1);
+    expect(documents[0]).toMatchObject({
+      resolution: "unresolved",
+      provenance: {
+        extractorId: "tadori-interface-files",
+        unresolvedReason: "markdown-link-is-documentation-not-integration-evidence"
+      }
+    });
+    expect(candidates.some((candidate) => candidate.entityKey === documents[0]?.dstEntityKey))
+      .toBe(false);
+    expect(graph.nodes.find((node) => node.entityKey === documents[0]?.dstEntityKey))
+      .toMatchObject({ kind: "unresolved", displayName: "User", language: "markdown" });
+    expect(graph.diagnostics).toContainEqual(expect.objectContaining({
+      code: "markdown-link-is-documentation-not-integration-evidence",
+      file: "docs/ADR-013-user.md",
+      language: "markdown"
+    }));
+  });
+
+  it("does not treat unrelated Markdown headings as declaration candidates", () => {
+    const repo = makeRepo("doclink-markdown-heading-repo", {
+      "src/user.ts": "export interface User {\n  id: string;\n}\n",
+      "docs/user-guide.md": "# User\n\nGeneral usage guidance.\n",
+      "docs/ADR-014-user.md": [
+        "# ADR-014: User model",
+        "",
+        "The implementation uses `User`.",
+        ""
+      ].join("\n")
+    });
+
+    const graph = indexRepository(repo, { kind: "commit" }).graph;
+    const adr = graph.nodes.find((node) => node.kind === "adr");
+    const tsUser = graph.nodes.find(
+      (node) => node.language === "typescript" && node.displayName === "User"
+    );
+    const markdownHeading = graph.nodes.find(
+      (node) => node.kind === "doc_section" && node.displayName === "User"
+    );
+    const documents = graph.edges.filter(
+      (edge) => edge.relation === "documents" && edge.srcEntityKey === adr?.entityKey
+    );
+
+    expect(tsUser).toBeDefined();
+    expect(markdownHeading).toBeDefined();
+    expect(documents).toHaveLength(1);
+    expect(documents[0]).toMatchObject({
+      dstEntityKey: tsUser?.entityKey,
+      resolution: "resolved"
+    });
+  });
 });
 
 describe("Next.js route path derivation", () => {
