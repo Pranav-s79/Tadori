@@ -2,9 +2,10 @@
 
 # Current State (always overwritten)
 
-Current node: 08-10 — bounded stable 2D Atlas release hardening.
-Status: browser-verified visual hardening is green locally; the candidate still
-requires an exact-SHA GitHub matrix before release work proceeds.
+Current node: 08B-01A — evidence-backed project-region substrate.
+Status: discovered-project persistence, deterministic region projection, and
+the Atlas region surface pass the complete local repository gate; the exact-SHA
+GitHub matrix remains required before this tranche is complete.
 
 Active contract: `docs/Specs/Tadori-Multilanguage-Transition.md`. Superseded
 v2.1 documents are not product, schema, or language-scope authorities. Legacy
@@ -39,6 +40,45 @@ zero ambiguous owners. Registered repository configuration and non-TypeScript
 project manifests produce repository-derived file nodes, while legacy
 TypeScript/JavaScript configuration remains support-only for exact fixture
 compatibility. Registry IDs are test-locked to the active capability matrix.
+
+Project-region substrate update (2026-07-29): extractor-discovered projects are
+now a first-class, language-neutral snapshot membership rather than transient
+indexer output. `GraphProject` validation confines normalized roots/manifests,
+requires deterministic IDs and sorted unique languages, and defaults legacy
+serialized snapshots to an empty project set. Additive migration 008 persists
+immutable project memberships; load, repeated-insert verification, incremental
+composition, regional merge, and project diff paths all carry them without
+changing legacy node/edge identities. Existing snapshots remain readable, while
+an unchanged pre-project snapshot is never silently rewritten and instead
+requires an explicit purge/re-index. Non-TypeScript manifest roots materialize
+canonical package ownership with nearest-root containment, and package-family
+LOD preserves repository-package expansion across nested project packages.
+
+`GET /api/v1/regions` now exposes a deterministic projection over discovered
+project roots and canonical package containment. Every region includes bounded
+evidence, member package keys, entity/kind and cross-region relation counts,
+languages, capabilities, derivations, and explicit ambiguous/unowned accounting.
+Project and package names are factual labels only: the API keeps role text null
+and `derived_from_graph` until documentation supplies an evidenced
+responsibility, and `/api/v1/overview` intentionally remains unavailable. The
+Atlas consumes the same projection for a bounded relief layer and accessible
+region summaries; loading, error, and no-region states remain explicit.
+
+Project-region validation evidence (2026-07-29): `pnpm skills:check`, strict
+typecheck, ESLint, and `git diff --check` pass. The root test command passes 71
+non-CLI files / 428 tests, 13 serialized CLI files / 64 passed with 3
+platform-specific skips, and 46 Atlas files / 371 tests. Python and TypeScript
+fixture validation pass; exact indexing matches all five legacy graphs and both
+diff/boundary oracles with zero dangling endpoints and zero
+`PRAGMA foreign_key_check` rows; all five fixture repositories typecheck. The
+mixed-language oracle, capability registry, repeated indexing, regional/full
+parity, and byte-stable TS/JS adapter tests pass. The generated package contains
+11 audited files, installs and serves successfully on Windows Node 24, and its
+API/layout/purge smoke passes. Real Chrome E2E passes Atlas expansion, live
+derived endpoints, Story, Changes, Table, inspection, mobile/media states, zero
+axe violations, zero browser errors, and zero external resources. CI is wired
+to repeat the installed GUI smoke in Firefox on the canonical Ubuntu/Node 22
+leg; that exact-SHA remote result is not yet claimed.
 
 Release-hardening update (2026-07-26): the fresh and stale shells now place the
 workspace in an explicit flexible grid row; responsive navigation starts closed,
