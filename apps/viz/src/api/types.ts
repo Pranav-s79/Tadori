@@ -181,3 +181,52 @@ export interface RegionProjectionDto {
     unownedEntityCount: number;
   };
 }
+
+/**
+ * One extraction diagnostic persisted as immutable snapshot membership.
+ * Mirrors `snapshotDiagnosticSchema`; `lineStart`/`lineEnd` are both null or
+ * both present, and `file` is null when the diagnostic is repository-scoped.
+ */
+export interface SnapshotDiagnostic {
+  code: string;
+  severity: "info" | "warning" | "error";
+  message: string;
+  file: string | null;
+  language: string | null;
+  extractorId: string;
+  extractorVersion: string;
+  lineStart: number | null;
+  lineEnd: number | null;
+}
+
+/** Observed extraction capability for one language in the active snapshot. */
+export interface SnapshotLanguageAnalysisDto {
+  id: string;
+  fileCount: number;
+  generatedFileCount: number;
+  capabilities: ExtractionCapability[];
+  extractors: Array<{ id: string; version: string; capability: ExtractionCapability }>;
+}
+
+/**
+ * Bounded analysis facts for the active snapshot. `languages` is what the
+ * snapshot actually observed — never what the product declares it supports.
+ */
+export interface SnapshotAnalysisDto {
+  snapshotId: number;
+  analyzerVersion: string;
+  languages: SnapshotLanguageAnalysisDto[];
+  extractors: Array<{
+    id: string;
+    version: string;
+    capability: ExtractionCapability;
+    languages: string[];
+  }>;
+  diagnostics: {
+    items: SnapshotDiagnostic[];
+    total: number;
+    omittedCount: number;
+    nextCursor: string | null;
+    bySeverity: Record<"info" | "warning" | "error", number>;
+  };
+}

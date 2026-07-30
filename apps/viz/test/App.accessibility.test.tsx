@@ -22,6 +22,21 @@ vi.mock("../src/features/boundaries/useBoundaries.ts", () => ({
 vi.mock("../src/features/review/useReviewDiffStore.ts", () => ({
   useReviewDiffStore: () => ({ page: null })
 }));
+vi.mock("../src/hooks/useAnalysis.ts", () => ({
+  useAnalysis: () => ({
+    data: {
+      snapshotId: 1,
+      analyzerVersion: "tadori-indexer/0.2.1",
+      languages: [],
+      extractors: [],
+      diagnostics: {
+        items: [], total: 0, omittedCount: 0, nextCursor: null,
+        bySeverity: { info: 0, warning: 0, error: 0 }
+      }
+    },
+    loading: false, error: null, refetch: vi.fn()
+  })
+}));
 vi.mock("../src/graph/PackageMapCanvas.tsx", () => ({
   PackageMapCanvas: (props: { onRenderedGraphChange?: (snapshot: {
     nodes: Array<{ entityKey: string; kind: "package" | "file"; qualifiedName: string; displayName: string; file: string | null; exported: boolean; fanIn: number }>;

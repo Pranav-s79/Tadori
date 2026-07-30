@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
+import { AnalysisPanel, diagnosticSeveritySummary } from "./features/analysis/AnalysisPanel.tsx";
+import { useAnalysis } from "./hooks/useAnalysis.ts";
 import { BoundaryBadgeOverlay } from "./features/boundaries/BoundaryBadgeOverlay.tsx";
 import { useBoundaries } from "./features/boundaries/useBoundaries.ts";
 import { InspectionPanel } from "./features/inspect/InspectionPanel.tsx";
@@ -131,6 +133,7 @@ export function App(): ReactElement {
   const inspection = useInspectionStore();
   const reviewStore = useReviewDiffStore();
   const boundaries = useBoundaries();
+  const analysis = useAnalysis();
   const navigationDrawerMode = useNavigationDrawerMode();
   const forcedColorsActive = useForcedColors();
   const [mode, setMode] = useState<WorkspaceMode>("atlas");
@@ -193,6 +196,17 @@ export function App(): ReactElement {
 
   const refetchBoundaries = boundaries.refetch;
   const refetchRegions = regions.refetch;
+  const refetchAnalysis = analysis.refetch;
+  // Absent data is never a clean bill of health: unavailable, still loading and
+  // "genuinely zero diagnostics" are three distinct states and must read as
+  // three distinct sentences.
+  const diagnosticsSummary = analysis.error !== null
+    ? "Extraction diagnostics unavailable"
+    : analysis.data === null
+      ? "Loading extraction diagnostics…"
+      : diagnosticSeveritySummary(analysis.data.diagnostics.bySeverity) === null
+        ? "No extraction diagnostics"
+        : `Extraction diagnostics: ${String(diagnosticSeveritySummary(analysis.data.diagnostics.bySeverity))}`;
   const storyMapEmphasis = useMemo(
     () => mapStoryPlaybackToGraph(storyPlayback, data?.representativeByEntityKey ?? new Map()),
     [data?.representativeByEntityKey, storyPlayback]
@@ -201,7 +215,8 @@ export function App(): ReactElement {
     refetchGraph();
     refetchBoundaries();
     refetchRegions();
-  }, [refetchGraph, refetchBoundaries, refetchRegions]);
+    refetchAnalysis();
+  }, [refetchGraph, refetchBoundaries, refetchRegions, refetchAnalysis]);
   const refreshStatus = useRefreshStatus(wsUrl(), onReconnected);
 
   if ((snapshotLoading && snapshot === null) || (graphLoading && data === null)) {
@@ -304,6 +319,9 @@ export function App(): ReactElement {
           <span className={`freshness freshness-${snapshot?.freshness ?? "unknown"}`}>
             {snapshot?.freshness ?? "unknown"}
           </span>
+          <span className="atlas-diagnostics-summary" role="status" aria-live="polite">
+            {diagnosticsSummary}
+          </span>
         </div>
         <button
           ref={navigationFocus.toggleRef}
@@ -353,6 +371,10 @@ export function App(): ReactElement {
           <details className="navigation-section" open>
             <summary>Explore evidence</summary>
             <ExploreTabs onInspect={openInspectionPanel} onShowStory={openStory} />
+          </details>
+          <details className="navigation-section">
+            <summary>Analysis and diagnostics</summary>
+            <AnalysisPanel analysis={analysis} />
           </details>
           {lenses.observations && <ObservationOverlayBadges onInspectFile={inspectObservationFile} />}
         </aside>
@@ -430,7 +452,11 @@ export function App(): ReactElement {
                   edges={renderedGraph?.edges ?? data.edges}
                   filters={searchFilters}
                   onInspect={openInspectionPanel}
-              storyEmphasis={mode === "story" ? storyMapEmphasis : null}
+                  // Table is a peer, not a fallback: it receives the same story
+                  // emphasis the spatial modes get. Re-testing `mode === "story"`
+                  // here is dead — this branch only renders when mode is "table"
+                  // — and silently starved the keyboard/AT surface of story state.
+                  storyEmphasis={storyMapEmphasis}
                 />
               </>
             )}
