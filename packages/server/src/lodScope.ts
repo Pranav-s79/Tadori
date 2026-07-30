@@ -46,6 +46,11 @@ export function selectLodScope(
   const requestedPackageKeys = filters.packageName === undefined
     ? undefined
     : packageKeysByName.get(filters.packageName);
+  const requestedPackageFamilyKeys = requestedPackageKeys === undefined
+    ? undefined
+    : new Set([...requestedPackageKeys].flatMap((key) => [
+        ...(packageProjection?.descendantPackageKeysByPackageKey.get(key) ?? [key])
+      ]));
   const candidates = level === "package"
     ? (packageProjection?.nodes ?? graph.nodes.filter((node) => node.kind === "package"))
     : graph.nodes.filter((node) => {
@@ -53,9 +58,9 @@ export function selectLodScope(
           return node.kind === "file"
             && (filters.packageName === undefined
               || (node.file !== null && (
-                (requestedPackageKeys !== undefined
+                (requestedPackageFamilyKeys !== undefined
                   && [...(representedPackagesByFile.get(node.file) ?? [])]
-                    .some((key) => requestedPackageKeys.has(key)))
+                    .some((key) => requestedPackageFamilyKeys.has(key)))
                 || (requestedPackageKeys === undefined
                   && filesByPath.get(node.file)?.packageName === filters.packageName)
               )));

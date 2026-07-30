@@ -11,11 +11,13 @@ import {
   evidenceSchema,
   graphEdgeSchema,
   graphNodeSchema,
+  graphProjectSchema,
   nodeKindSchema,
   originSchema,
   relationSchema,
   repoStateKindSchema,
-  resolutionSchema
+  resolutionSchema,
+  snapshotGraphSchema
 } from "@tadori/core";
 
 describe("frozen enums", () => {
@@ -137,5 +139,45 @@ describe("graph zod schemas", () => {
       evidence: []
     });
     expect(bad.success).toBe(false);
+  });
+
+  it("validates discovered projects and defaults legacy snapshots to none", () => {
+    expect(graphProjectSchema.parse({
+      projectId: hex,
+      root: "services/api",
+      manifest: "services/api/pyproject.toml",
+      kind: "manifest",
+      name: "api",
+      languages: ["python"]
+    })).toMatchObject({ root: "services/api", languages: ["python"] });
+    expect(graphProjectSchema.safeParse({
+      projectId: hex,
+      root: "../outside",
+      manifest: null,
+      kind: "manifest",
+      name: null,
+      languages: ["python"]
+    }).success).toBe(false);
+    expect(graphProjectSchema.safeParse({
+      projectId: hex,
+      root: ".",
+      manifest: "go.mod",
+      kind: "manifest",
+      name: null,
+      languages: ["python", "go"]
+    }).success).toBe(false);
+
+    const legacy = snapshotGraphSchema.parse({
+      repoRootPath: "C:/legacy",
+      kind: "commit",
+      label: null,
+      baseCommitSha: null,
+      workspaceHash: hex,
+      analyzerVersion: "legacy/1",
+      files: [],
+      nodes: [],
+      edges: []
+    });
+    expect(legacy.projects).toEqual([]);
   });
 });

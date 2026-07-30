@@ -245,6 +245,7 @@ export function mergeSnapshotRegion(
     ),
     edges: [...edgesByKey.values()]
       .map((edge) => ({ ...edge, evidence: mergeEvidence(edge.evidence) }))
-      .sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity))
+      .sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity)),
+    projects: previous.projects
   });
 }

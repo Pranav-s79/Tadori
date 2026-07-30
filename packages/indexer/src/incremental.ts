@@ -132,6 +132,7 @@ function graphFromStored(head: SnapshotHead, root: string, stored: ReturnType<ty
     files: stored.files,
     nodes: stored.nodes,
     edges: stored.edges,
+    projects: stored.projects,
     extractors: stored.extractors
   };
 }
@@ -168,6 +169,7 @@ function composeGraph(
     files: extracted.files,
     nodes: extracted.nodes,
     edges: extracted.edges,
+    projects: extracted.projects,
     extractors: extracted.extractors
   };
 }

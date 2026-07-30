@@ -601,6 +601,33 @@ COMMIT;
 `
 };
 
+/** Extractor-discovered projects are immutable snapshot membership data. */
+const migration008: Migration = {
+  version: 8,
+  name: "language-neutral discovered project memberships",
+  sql: `
+PRAGMA foreign_keys = ON;
+BEGIN IMMEDIATE;
+
+CREATE TABLE snapshot_projects (
+    snapshot_id INTEGER NOT NULL REFERENCES repository_snapshots(id) ON DELETE CASCADE,
+    project_id TEXT NOT NULL CHECK (length(project_id) = 64 AND project_id = lower(project_id)),
+    root TEXT NOT NULL,
+    manifest TEXT,
+    kind TEXT NOT NULL,
+    name TEXT,
+    languages_json TEXT NOT NULL CHECK (json_valid(languages_json)),
+    PRIMARY KEY (snapshot_id, project_id)
+);
+
+CREATE INDEX idx_snapshot_projects_manifest
+    ON snapshot_projects(snapshot_id, manifest);
+
+INSERT INTO schema_migrations(version) VALUES (8);
+COMMIT;
+`
+};
+
 export const MIGRATIONS: readonly Migration[] = [
   migration001,
   migration002,
@@ -608,5 +635,6 @@ export const MIGRATIONS: readonly Migration[] = [
   migration004,
   migration005,
   migration006,
-  migration007
+  migration007,
+  migration008
 ];

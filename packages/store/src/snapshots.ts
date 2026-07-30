@@ -5,6 +5,7 @@ import type {
   GraphEdge,
   GraphFile,
   GraphNode,
+  GraphProject,
   NodeKind,
   Origin,
   Relation,
@@ -15,7 +16,7 @@ import type {
   ExtractionCapability,
   ExtractionDerivation
 } from "@tadori/core";
-import { entityKey } from "@tadori/core";
+import { entityKey, graphProjectSchema, snapshotGraphSchema } from "@tadori/core";
 import { isDeepStrictEqual } from "node:util";
 import type { Database } from "./database.js";
 
@@ -251,7 +252,7 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
   }
 }
 
-function normalizedMembershipGraph(graph: Pick<SnapshotGraph, "files" | "nodes" | "edges">) {
+function normalizedMembershipGraph(graph: Pick<SnapshotGraph, "files" | "nodes" | "edges" | "projects">) {
   const evidence = (items: readonly Evidence[]): Evidence[] =>
     [...items].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
   return {
@@ -263,7 +264,8 @@ function normalizedMembershipGraph(graph: Pick<SnapshotGraph, "files" | "nodes" 
       .sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity)),
     edges: graph.edges
       .map((edge) => ({ ...edge, evidence: evidence(edge.evidence) }))
-      .sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity))
+      .sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity)),
+    projects: [...graph.projects].sort((left, right) => left.projectId.localeCompare(right.projectId))
   };
 }
 
@@ -358,6 +360,7 @@ export function insertSnapshotGraph(
   graph: SnapshotGraph,
   options: InsertSnapshotOptions = {}
 ): InsertSnapshotResult {
+  snapshotGraphSchema.parse(graph);
   const run = db.transaction((): InsertSnapshotResult => {
     throwIfAborted(options.signal);
     const repoId = ensureRepository(db, graph.repoRootPath);
@@ -386,6 +389,7 @@ export function insertSnapshotGraph(
              (SELECT COUNT(*) FROM snapshot_files WHERE snapshot_id = @snapshotId) AS files,
              (SELECT COUNT(*) FROM snapshot_nodes WHERE snapshot_id = @snapshotId) AS nodes,
              (SELECT COUNT(*) FROM snapshot_edges WHERE snapshot_id = @snapshotId) AS edges,
+             (SELECT COUNT(*) FROM snapshot_projects WHERE snapshot_id = @snapshotId) AS projects,
              (SELECT COUNT(DISTINCT analyzer_version) FROM snapshot_nodes
                 WHERE snapshot_id = @snapshotId AND analyzer_version = @analyzerVersion) AS analyzer_versions`
         )
@@ -393,8 +397,15 @@ export function insertSnapshotGraph(
         files: number;
         nodes: number;
         edges: number;
+        projects: number;
         analyzer_versions: number;
       };
+      if (counts.projects !== graph.projects.length) {
+        throw new Error(
+          `Workspace ${graph.workspaceHash} matches immutable snapshot ${existing.id}, but its ` +
+            "discovered-project memberships predate the current schema; purge and re-index this repository"
+        );
+      }
       if (
         counts.files !== graph.files.length ||
         counts.nodes !== graph.nodes.length ||
@@ -622,6 +633,23 @@ export function insertSnapshotGraph(
       );
     }
 
+    const insertSnapshotProject = db.prepare(
+      `INSERT INTO snapshot_projects
+         (snapshot_id, project_id, root, manifest, kind, name, languages_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    );
+    for (const project of graph.projects) {
+      insertSnapshotProject.run(
+        snapshotId,
+        project.projectId,
+        project.root,
+        project.manifest,
+        project.kind,
+        project.name,
+        JSON.stringify(project.languages)
+      );
+    }
+
     if (!options.dangerouslySkipValidation) {
       const dangling = findDanglingEndpoints(db, snapshotId);
       if (dangling.length > 0) {
@@ -701,6 +729,7 @@ export interface StoredSnapshotGraph {
   files: GraphFile[];
   nodes: GraphNode[];
   edges: GraphEdge[];
+  projects: GraphProject[];
   extractors: SnapshotExtractor[];
 }
 
@@ -930,5 +959,26 @@ export function loadSnapshotGraph(db: Database, snapshotId: number): StoredSnaps
     languages: JSON.parse(row.languages_json) as string[]
   }));
 
-  return { snapshot, analyzerVersion, files, nodes, edges, extractors };
+  const projects = (
+    db.prepare(
+      `SELECT project_id, root, manifest, kind, name, languages_json
+       FROM snapshot_projects WHERE snapshot_id = ? ORDER BY project_id`
+    ).all(snapshotId) as Array<{
+      project_id: string;
+      root: string;
+      manifest: string | null;
+      kind: string;
+      name: string | null;
+      languages_json: string;
+    }>
+  ).map((row): GraphProject => graphProjectSchema.parse({
+    projectId: row.project_id,
+    root: row.root,
+    manifest: row.manifest,
+    kind: row.kind,
+    name: row.name,
+    languages: JSON.parse(row.languages_json) as unknown
+  }));
+
+  return { snapshot, analyzerVersion, files, nodes, edges, projects, extractors };
 }

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { sha256Hex, type ExtractionProvenance } from "@tadori/core";
 import {
   MIGRATIONS,
+  diffSnapshotProjects,
   insertSnapshotGraph,
   loadSnapshotGraph,
   openDatabase,
@@ -31,9 +32,9 @@ const pythonProvenance: ExtractionProvenance = {
 
 describe("migration 7 multi-language persistence", () => {
   it("adds nullable attribution columns and the snapshot extractor inventory", () => {
-    expect(MIGRATIONS.at(-1)?.version).toBe(7);
+    expect(MIGRATIONS.at(-1)?.version).toBe(8);
     const versions = db.prepare("SELECT version FROM schema_migrations ORDER BY version").all() as Array<{ version: number }>;
-    expect(versions.map(({ version }) => version)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(versions.map(({ version }) => version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
 
     const nodeColumns = new Map(
       (db.prepare("PRAGMA table_info(snapshot_nodes)").all() as Array<{ name: string; notnull: number }>)
@@ -93,5 +94,95 @@ describe("migration 7 multi-language persistence", () => {
     expect(stored.nodes[0]).not.toHaveProperty("language");
     expect(stored.nodes[0]).not.toHaveProperty("provenance");
     expect(stored.extractors).toEqual([]);
+    expect(stored.projects).toEqual([]);
+  });
+
+  it("loads a snapshot created before migration 8 with an empty project inventory", () => {
+    const legacy = openDatabase(":memory:");
+    try {
+      for (const migration of MIGRATIONS.slice(0, 7)) legacy.exec(migration.sql);
+      const repoId = Number(
+        legacy.prepare("INSERT INTO repositories(root_path) VALUES (?)").run("C:/legacy-projects")
+          .lastInsertRowid
+      );
+      const snapshotId = Number(
+        legacy.prepare(
+          `INSERT INTO repository_snapshots(repo_id, kind, workspace_hash)
+           VALUES (?, 'commit', ?)`
+        ).run(repoId, "b".repeat(64)).lastInsertRowid
+      );
+      expect(runMigrations(legacy)).toEqual([8]);
+      expect(loadSnapshotGraph(legacy, snapshotId).projects).toEqual([]);
+    } finally {
+      legacy.close();
+    }
+  });
+
+  it("round-trips sorted discovered projects without requiring manifest file membership", () => {
+    const projectId = sha256Hex("project|manifest|services/api/pyproject.toml");
+    const graph = makeGraph({
+      files: [],
+      nodes: [],
+      edges: [],
+      projects: [{
+        projectId,
+        root: "services/api",
+        manifest: "services/api/pyproject.toml",
+        kind: "manifest",
+        name: "api",
+        languages: ["python", "toml"]
+      }]
+    });
+    const { snapshotId } = insertSnapshotGraph(db, graph);
+    expect(loadSnapshotGraph(db, snapshotId).projects).toEqual(graph.projects);
+  });
+
+  it("requires purge and re-index instead of mutating a pre-project immutable snapshot", () => {
+    const legacy = makeGraph({ files: [], nodes: [], edges: [], projects: [] });
+    insertSnapshotGraph(db, legacy);
+    const current = {
+      ...legacy,
+      projects: [{
+        projectId: sha256Hex("project|manifest|go.mod"),
+        root: ".",
+        manifest: "go.mod",
+        kind: "manifest",
+        name: null,
+        languages: ["go"]
+      }]
+    };
+    expect(() => insertSnapshotGraph(db, current)).toThrow(/purge and re-index/);
+  });
+
+  it("diffs project additions and metadata changes without inventing node or edge changes", () => {
+    const projectId = sha256Hex("project|manifest|go.mod");
+    const base = insertSnapshotGraph(db, makeGraph({
+      files: [], nodes: [], edges: [], projects: []
+    }, "commit"));
+    const head = insertSnapshotGraph(db, {
+      ...makeGraph({
+        files: [], nodes: [], edges: [], projects: [{
+          projectId, root: ".", manifest: "go.mod", kind: "manifest",
+          name: "example.test/one", languages: ["go"]
+        }]
+      }, "working_tree"),
+      workspaceHash: sha256Hex("project-head")
+    });
+    expect(diffSnapshotProjects(db, base.snapshotId, head.snapshotId)).toEqual([
+      expect.objectContaining({ change_kind: "added", project_id: projectId, before: null })
+    ]);
+
+    const changed = insertSnapshotGraph(db, {
+      ...makeGraph({
+        files: [], nodes: [], edges: [], projects: [{
+          projectId, root: ".", manifest: "go.mod", kind: "manifest",
+          name: "example.test/two", languages: ["go"]
+        }]
+      }, "staged"),
+      workspaceHash: sha256Hex("project-changed")
+    });
+    expect(diffSnapshotProjects(db, head.snapshotId, changed.snapshotId)).toEqual([
+      expect.objectContaining({ change_kind: "metadata_changed", project_id: projectId })
+    ]);
   });
 });

@@ -6,6 +6,7 @@ import type {
   GraphEdge,
   GraphFile,
   GraphNode,
+  GraphProject,
   NodeKind,
   Relation,
   SnapshotGraph
@@ -52,6 +53,7 @@ export interface ExtractedGraph {
   files: GraphFile[];
   nodes: GraphNode[];
   edges: GraphEdge[];
+  projects: GraphProject[];
   diagnostics: IndexDiagnostic[];
 }
 
@@ -1607,6 +1609,7 @@ export function extractGraph(
     files: files.sort((a, b) => a.normalizedPath.localeCompare(b.normalizedPath)),
     nodes,
     edges: edges.all(),
+    projects: [],
     diagnostics
   };
 }

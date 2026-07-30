@@ -3,8 +3,10 @@ import type {
   ExtractionDerivation,
   ExtractionProvenance,
   GraphEdge,
-  GraphNode
+  GraphNode,
+  GraphProject
 } from "@tadori/core";
+import { graphProjectSchema } from "@tadori/core";
 import type { RepositoryCapture } from "./indexRepository.js";
 import type { LanguageId, LanguageRegistration } from "./languageRegistry.js";
 
@@ -22,14 +24,7 @@ export interface ExtractionDiagnostic {
   lineEnd?: number;
 }
 
-export interface DiscoveredProject {
-  projectId: string;
-  root: string;
-  manifest: string | null;
-  kind: string;
-  name: string | null;
-  languages: LanguageId[];
-}
+export type DiscoveredProject = GraphProject & { languages: LanguageId[] };
 
 export type AttributedGraphNode = GraphNode & {
   language: LanguageId | null;
@@ -77,6 +72,14 @@ export function provenance(
 }
 
 export function assertExtractorResult(result: ExtractorResult): void {
+  const projectIds = new Set<string>();
+  for (const project of result.projects) {
+    graphProjectSchema.parse(project);
+    if (projectIds.has(project.projectId)) {
+      throw new Error(`Extractor ${result.extractorId} emitted duplicate project ${project.projectId}`);
+    }
+    projectIds.add(project.projectId);
+  }
   const nodeKeys = new Set<string>();
   for (const node of result.nodes) {
     if (nodeKeys.has(node.entityKey)) {
