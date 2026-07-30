@@ -25,6 +25,7 @@ import { ModeTabs, type WorkspaceMode } from "./shell/ModeTabs.tsx";
 import { SpatialProjectionToggle, type SpatialProjection } from "./shell/SpatialProjectionToggle.tsx";
 import { LensButton } from "./shell/LensButton.tsx";
 import { useNavigationFocus } from "./shell/useNavigationFocus.ts";
+import { readUrlState, writeUrlState, type UrlState } from "./shell/urlState.ts";
 import { LoadingState, RefreshingBanner, StaleState } from "./states/EmptyLoadingStale.tsx";
 import { ReliefStage } from "./graph/relief/ReliefStage.tsx";
 
@@ -136,15 +137,29 @@ export function App(): ReactElement {
   const analysis = useAnalysis();
   const navigationDrawerMode = useNavigationDrawerMode();
   const forcedColorsActive = useForcedColors();
-  const [mode, setMode] = useState<WorkspaceMode>("atlas");
-  const [spatialProjection, setSpatialProjection] = useState<SpatialProjection>("plan");
-  const [rendererError, setRendererError] = useState(false);
-  const [lenses, setLenses] = useState<LensState>(() => ({
-    ...DEFAULT_LENSES,
-    boundaries: !currentNavigationDrawerMode()
+  // The address bar is the session's memory: a reload or a shared link reopens
+  // the same reading. Defaults are captured once so the writer can omit them and
+  // an untouched session keeps a clean URL.
+  const [defaultUrlState] = useState<UrlState>(() => ({
+    mode: "atlas",
+    projection: "plan",
+    lenses: { ...DEFAULT_LENSES, boundaries: !currentNavigationDrawerMode() },
+    storyEntityKey: null,
+    selectedEntityKey: null
   }));
+  const [initialUrlState] = useState<UrlState>(
+    () => readUrlState(window.location.search, defaultUrlState)
+  );
+  const [mode, setMode] = useState<WorkspaceMode>(initialUrlState.mode);
+  const [spatialProjection, setSpatialProjection] = useState<SpatialProjection>(
+    initialUrlState.projection
+  );
+  const [rendererError, setRendererError] = useState(false);
+  const [lenses, setLenses] = useState<LensState>(initialUrlState.lenses);
   const [navigationOpen, setNavigationOpen] = useState(() => !currentNavigationDrawerMode());
-  const [storyEntityKey, setStoryEntityKey] = useState<string | null>(null);
+  const [storyEntityKey, setStoryEntityKey] = useState<string | null>(
+    initialUrlState.storyEntityKey
+  );
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(defaultFilters);
   const [focusRequest, setFocusRequest] = useState<{ entityKey: string; requestId: number } | null>(null);
   const [renderedGraph, setRenderedGraph] = useState<RenderedGraphSnapshot | null>(null);
@@ -160,6 +175,32 @@ export function App(): ReactElement {
   useEffect(() => {
     if (forcedColorsActive) setMode("table");
   }, [forcedColorsActive]);
+
+  const inspectionOpenEntity = inspection.openEntity;
+  // A `select=` link names an entity; the served graph decides whether it still
+  // exists. An unknown key opens nothing rather than inventing a selection.
+  useEffect(() => {
+    const linked = initialUrlState.selectedEntityKey;
+    if (linked === null || data === null) return;
+    if (!data.representativeByEntityKey.has(linked)) return;
+    inspectionOpenEntity({ entityKey: linked, entityType: "node" });
+  }, [initialUrlState.selectedEntityKey, data, inspectionOpenEntity]);
+
+  const inspectedEntityKey = inspection.current?.entityKey ?? null;
+  useEffect(() => {
+    const query = writeUrlState({
+      mode,
+      projection: spatialProjection,
+      lenses,
+      storyEntityKey,
+      selectedEntityKey: inspectedEntityKey
+    }, defaultUrlState);
+    const { pathname, search, hash } = window.location;
+    if (query === search) return;
+    // replaceState, not pushState: these are view adjustments within one page,
+    // so Back should leave the app rather than rewind lens toggles one by one.
+    window.history.replaceState(null, "", `${pathname}${query}${hash}`);
+  }, [mode, spatialProjection, lenses, storyEntityKey, inspectedEntityKey, defaultUrlState]);
 
   const openInspectionPanel = useCallback(
     (entityKey: string) => inspection.openEntity({ entityKey, entityType: "node" }),

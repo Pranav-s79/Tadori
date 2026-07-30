@@ -107,6 +107,10 @@ function installNavigationMediaQuery(initialMatches: boolean): { setMatches(matc
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  // The app persists mode/lens/selection in the query string, and jsdom keeps
+  // one location for the whole file. Without this reset a test that switches
+  // mode would silently decide the next test's starting view.
+  window.history.replaceState(null, "", window.location.pathname);
 });
 
 describe("App focus ownership", () => {
