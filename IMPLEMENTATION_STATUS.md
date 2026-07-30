@@ -2,10 +2,11 @@
 
 # Current State (always overwritten)
 
-Current node: 08B-01A — evidence-backed project-region substrate.
-Status: discovered-project persistence, deterministic region projection, and
-the Atlas region surface pass the complete local repository gate. Draft PR #53
-is published and remains merge-gated on its exact-SHA GitHub matrix.
+Current node: backend completion audit against the active multi-language
+transition contract.
+Status: backend-first implementation is in progress. Publication and remote CI
+are intentionally held until a meaningful backend boundary; frontend work is
+blocked until the backend completion gate below is satisfied.
 
 Active contract: `docs/Specs/Tadori-Multilanguage-Transition.md`. Superseded
 v2.1 documents are not product, schema, or language-scope authorities. Legacy
@@ -108,17 +109,49 @@ real indexer/store boundary and asserts every node/edge evidence path belongs to
 the snapshot. The focused indexer suite passes, and `tadori diff .` succeeds
 against a fresh isolated database. The next exact-SHA matrix is the merge gate.
 
-Claude Opus review queue (backend correction): independently verify that
-project-root evidence is selected only from `SnapshotGraph.files`; exercise a
-nested TypeScript/JavaScript workspace whose `package.json` files are
-support-only; confirm manifest discovery remains intact; confirm empty evidence
-is used only for a manifest-only project with no indexed member; and reject any
-change that weakens the store's evidence-membership invariant. Review the
-regression in `packages/indexer/test/diff-working-tree.test.ts` and rerun the
-focused indexer suite plus a fresh-database `tadori diff .`. Frontend work is
-explicitly blocked until the remaining active-contract backend audit and
-implementation are complete; this queue is a review task, not a frontend
-handoff declaration.
+Backend completion audit (2026-07-30 UTC): the canonical registry and capability
+matrix contain every language family required by the active contract. The
+bundled structural baseline is Python, C, C++, Go, Rust, and Java; interface and
+repository coverage includes Protocol Buffers, JSON, YAML, Markdown,
+Dockerfile, Terraform/HCL, TOML, Make/CMake, and shell; TypeScript/JavaScript
+semantic extraction remains regression-compatible. Unsupported semantic facts
+remain absent or explicitly unresolved, and safe unbundled text remains visible
+at repository level. The audit found three backend completion gaps: extraction
+diagnostics are not persisted or served; the capability matrix is not exposed
+through a typed backend contract with full registry-drift checks; and the pinned
+external-repository manifest has no executable invariant runner. These are the
+remaining backend tranches before frontend handoff.
+
+Extractor-coalescing correction (2026-07-30 UTC): Stage A and Stage B rename/
+move matching now require extractor ID and extractor version in addition to the
+snapshot analyzer version. Legacy nodes can match only other legacy nodes;
+attributed nodes from a different extractor or extractor version remain honest
+raw additions/removals. This prevents an extractor upgrade from masquerading as
+a source rename or move, as required by the active contract. The complete local
+gate passes: skill check, strict typecheck, lint, 71 non-CLI files / 433 tests,
+13 CLI files / 64 passed with 3 platform skips, 46 Atlas files / 371 tests,
+Python and TypeScript fixture validation, five exact fixture indexes with zero
+dangling endpoints and zero foreign-key-check rows, exact diff/boundary oracles,
+and all five fixture typechecks.
+
+Claude Opus backend review queue and frontend handoff contract:
+
+1. Review the project-evidence correction in
+   `packages/indexer/src/indexRepository.ts` and its nested-workspace regression.
+   Confirm every evidence path is a snapshot member and no store invariant was
+   weakened.
+2. Review the extractor-version coalescing guard in
+   `packages/store/src/coalescing.ts`. Attempt Stage A and Stage B collisions
+   across extractor IDs, extractor versions, and legacy/attributed nodes; require
+   raw add/remove output for every cross-boundary case.
+3. After the remaining tranches land, review persisted diagnostic immutability,
+   incremental replacement behavior, API/MCP confinement, capability-schema
+   drift locks, and the pinned external-repository invariant runner. Reject any
+   semantic claim not backed by evidence or an explicit unresolved diagnostic.
+4. Do not begin frontend implementation until this file records a passing full
+   local backend gate and the Opus review has no blocker/high finding. At handoff,
+   consume only the documented capability/analysis endpoints; do not infer
+   language parity, runtime behavior, ownership, or responsibility in the UI.
 
 Release-hardening update (2026-07-26): the fresh and stale shells now place the
 workspace in an explicit flexible grid row; responsive navigation starts closed,

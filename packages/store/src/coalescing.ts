@@ -41,8 +41,28 @@ export interface AmbiguousNodeGroup {
   reason: string;
 }
 
-const STAGE_A_BASIS = ["kind", "unqualifiedName", "bodyHash", "analyzerVersion"] as const;
-const STAGE_B_BASIS = ["kind", "bodyHash", "analyzerVersion", "uniqueCandidate"] as const;
+const STAGE_A_BASIS = [
+  "kind",
+  "unqualifiedName",
+  "bodyHash",
+  "analyzerVersion",
+  "extractorId",
+  "extractorVersion"
+] as const;
+const STAGE_B_BASIS = [
+  "kind",
+  "bodyHash",
+  "analyzerVersion",
+  "extractorId",
+  "extractorVersion",
+  "uniqueCandidate"
+] as const;
+
+function extractorIdentity(node: GraphNode): readonly [string, string] {
+  return node.provenance === undefined
+    ? ["legacy", "legacy"]
+    : [node.provenance.extractorId, node.provenance.extractorVersion];
+}
 
 /**
  * The last path or dot segment of a qualifiedName — the name that stays
@@ -61,8 +81,8 @@ export function unqualifiedName(node: GraphNode): string {
 
 /**
  * Stage A: identity-basis match. A removed node and an added node pair when
- * kind + unqualifiedName + bodyHash + analyzerVersion are all equal AND the
- * pairing is unique (exactly one candidate on each side of the basis key).
+ * kind + unqualifiedName + bodyHash + analyzerVersion + extractor identity are
+ * all equal AND the pairing is unique (exactly one candidate on each side).
  * Non-unique groups are left for Stage B / ambiguity handling.
  */
 export function stageAMatch(
@@ -70,8 +90,20 @@ export function stageAMatch(
   addedNodes: readonly GraphNode[],
   analyzerVersion: string
 ): { pairs: NodePairCandidate[]; remainingRemoved: GraphNode[]; remainingAdded: GraphNode[] } {
-  const keyOf = (n: GraphNode): string | null =>
-    n.bodyHash === null ? null : [n.kind, unqualifiedName(n), n.bodyHash, analyzerVersion].join(" ");
+  const keyOf = (n: GraphNode): string | null => {
+    if (n.bodyHash === null) {
+      return null;
+    }
+    const [extractorId, extractorVersion] = extractorIdentity(n);
+    return [
+      n.kind,
+      unqualifiedName(n),
+      n.bodyHash,
+      analyzerVersion,
+      extractorId,
+      extractorVersion
+    ].join("\0");
+  };
 
   const removedByKey = groupByKey(removedNodes, keyOf);
   const addedByKey = groupByKey(addedNodes, keyOf);
@@ -108,8 +140,8 @@ export function stageAMatch(
 
 /**
  * Stage B: applied only to Stage-A residuals. Pairs a removed and an added node
- * when kind + bodyHash + analyzerVersion match and exactly one candidate
- * remains on each side (the `uniqueCandidate` basis element). When 2+ residual
+ * when kind + bodyHash + analyzerVersion + extractor identity match and exactly
+ * one candidate remains on each side (the `uniqueCandidate` basis element). When 2+ residual
  * candidates share a body-hash key, none are paired — they become one
  * AmbiguousNodeGroup (raw fallback + reason), never a "best guess".
  */
@@ -123,8 +155,13 @@ export function stageBMatch(
   residualRemoved: GraphNode[];
   residualAdded: GraphNode[];
 } {
-  const keyOf = (n: GraphNode): string | null =>
-    n.bodyHash === null ? null : [n.kind, n.bodyHash, analyzerVersion].join(" ");
+  const keyOf = (n: GraphNode): string | null => {
+    if (n.bodyHash === null) {
+      return null;
+    }
+    const [extractorId, extractorVersion] = extractorIdentity(n);
+    return [n.kind, n.bodyHash, analyzerVersion, extractorId, extractorVersion].join("\0");
+  };
 
   const removedByKey = groupByKey(remainingRemoved, keyOf);
   const addedByKey = groupByKey(remainingAdded, keyOf);
