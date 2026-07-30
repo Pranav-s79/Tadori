@@ -85,15 +85,34 @@ async function verifyInstalledGui(url, engine) {
     const initialCount = Number(/^Showing (\d+)/.exec(await showing.textContent() ?? "")?.[1] ?? 0);
     assert.ok(initialCount > 0, `${engine} rendered no package nodes from the installed artifact`);
 
+    // Keyboard descent must work, but WHICH node the first ArrowRight lands on
+    // is not part of any contract: it is `graph.nodes().sort()[0]`, and the
+    // frozen keyboard contract is "Enter descends OR inspects". A node with no
+    // children correctly inspects and leaves the count unchanged, so assuming
+    // the alphabetically-first node is descendable makes this gate depend on
+    // path ordering, which differs across platforms. Walk the nodes instead and
+    // require that SOME node descends -- the property actually being asserted.
     await canvas.focus();
-    await page.keyboard.press("ArrowRight");
-    await page.keyboard.press("Enter");
-    await page.waitForFunction((initial) => {
+    const readShowing = () => page.evaluate(() => {
       const value = [...document.querySelectorAll(".atlas-context-bar span")]
         .find((node) => node.textContent?.startsWith("Showing "))?.textContent ?? "";
-      return Number(/^Showing (\d+)/.exec(value)?.[1] ?? 0) > initial;
-    }, initialCount);
-    const expandedCount = Number(/^Showing (\d+)/.exec(await showing.textContent() ?? "")?.[1] ?? 0);
+      return Number(/^Showing (\d+)/.exec(value)?.[1] ?? 0);
+    });
+    let expandedCount = initialCount;
+    for (let attempt = 0; attempt < initialCount && expandedCount === initialCount; attempt += 1) {
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("Enter");
+      // Descent is a lazy fetch; poll briefly rather than racing a single read.
+      for (let settle = 0; settle < 20 && expandedCount === initialCount; settle += 1) {
+        await page.waitForTimeout(250);
+        expandedCount = await readShowing();
+      }
+    }
+    assert.ok(
+      expandedCount > initialCount,
+      `${engine} keyboard descent expanded no node from the installed artifact ` +
+        `(still ${initialCount} of ${initialCount})`
+    );
 
     await page.getByRole("tab", { name: "Table" }).click();
     await page.waitForFunction((expected) =>
