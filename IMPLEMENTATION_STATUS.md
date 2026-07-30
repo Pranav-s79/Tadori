@@ -4,8 +4,8 @@
 
 Current node: 08B-01A — evidence-backed project-region substrate.
 Status: discovered-project persistence, deterministic region projection, and
-the Atlas region surface pass the complete local repository gate; the exact-SHA
-GitHub matrix remains required before this tranche is complete.
+the Atlas region surface pass the complete local repository gate. Draft PR #53
+is published and remains merge-gated on its exact-SHA GitHub matrix.
 
 Active contract: `docs/Specs/Tadori-Multilanguage-Transition.md`. Superseded
 v2.1 documents are not product, schema, or language-scope authorities. Legacy
@@ -66,7 +66,7 @@ region summaries; loading, error, and no-region states remain explicit.
 
 Project-region validation evidence (2026-07-29): `pnpm skills:check`, strict
 typecheck, ESLint, and `git diff --check` pass. The root test command passes 71
-non-CLI files / 429 tests, 13 serialized CLI files / 64 passed with 3
+non-CLI files / 430 tests, 13 serialized CLI files / 64 passed with 3
 platform-specific skips, and 46 Atlas files / 371 tests. Python and TypeScript
 fixture validation pass; exact indexing matches all five legacy graphs and both
 diff/boundary oracles with zero dangling endpoints and zero
@@ -90,8 +90,35 @@ The store boundary now accepts `SnapshotGraphInput` and operates exclusively on
 the parsed `SnapshotGraph`. A regression covers both first insert and immutable
 reuse with omitted project memberships. Focused store tests pass 18/18 and the
 complete Node 24 layout benchmark passes every timing and byte-identical reuse
-budget locally. A replacement exact-SHA matrix remains required before this
-correction is claimed green remotely.
+budget locally. Replacement run `30515370717` confirmed that correction across
+the test, fixture, package, and Node 24/26 layout gates before exposing the
+separate clean-checkout evidence defect below.
+
+Project-region clean-checkout correction (2026-07-30 UTC): project discovery
+correctly retains legacy TypeScript/JavaScript `package.json` manifests as
+support-only inputs, but project-root containment had used those non-member
+manifest paths as edge evidence. Fresh CI checkouts therefore failed closed at
+`tadori diff .` when the store enforced evidence membership; a reused local
+snapshot had masked the defect. Project-root nodes and containment now prefer a
+manifest only when it is a snapshot member, otherwise choose the
+lexicographically first indexed file owned by that project root, and emit no
+fabricated evidence when a manifest-only project has no snapshot member. A
+monorepo regression persists a nested support-only package manifest through the
+real indexer/store boundary and asserts every node/edge evidence path belongs to
+the snapshot. The focused indexer suite passes, and `tadori diff .` succeeds
+against a fresh isolated database. The next exact-SHA matrix is the merge gate.
+
+Claude Opus review queue (backend correction): independently verify that
+project-root evidence is selected only from `SnapshotGraph.files`; exercise a
+nested TypeScript/JavaScript workspace whose `package.json` files are
+support-only; confirm manifest discovery remains intact; confirm empty evidence
+is used only for a manifest-only project with no indexed member; and reject any
+change that weakens the store's evidence-membership invariant. Review the
+regression in `packages/indexer/test/diff-working-tree.test.ts` and rerun the
+focused indexer suite plus a fresh-database `tadori diff .`. Frontend work is
+explicitly blocked until the remaining active-contract backend audit and
+implementation are complete; this queue is a review task, not a frontend
+handoff declaration.
 
 Release-hardening update (2026-07-26): the fresh and stale shells now place the
 workspace in an explicit flexible grid row; responsive navigation starts closed,

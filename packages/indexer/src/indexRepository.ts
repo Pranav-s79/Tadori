@@ -52,6 +52,16 @@ function materializeProjectRoots(
   );
   const assignedRoot = (file: string): string | undefined =>
     roots.find((root) => pathBelongsToRoot(file, root));
+  const snapshotFilePaths = new Set(extracted.files.map((file) => file.normalizedPath));
+  const evidenceFileForProject = (root: string, project: GraphProject): string | null => {
+    if (project.manifest !== null && snapshotFilePaths.has(project.manifest)) {
+      return project.manifest;
+    }
+    return extracted.files
+      .map((file) => file.normalizedPath)
+      .filter((file) => assignedRoot(file) === root)
+      .sort((left, right) => left.localeCompare(right))[0] ?? null;
+  };
   const fileNodeByPath = new Map(
     extracted.nodes.flatMap((node) => node.kind === "file" && node.file !== null ? [[node.file, node] as const] : [])
   );
@@ -95,10 +105,10 @@ function materializeProjectRoots(
       const qualifiedName = `project-root:${root}`;
       const canonicalIdentity = nodeCanonicalIdentity("package", qualifiedName);
       packageKey = entityKey(canonicalIdentity);
-      const manifestEvidence = representative.manifest !== null &&
-        extracted.files.some((file) => file.normalizedPath === representative.manifest)
-        ? [{ file: representative.manifest, kind: "source" as const, lineStart: 1, lineEnd: 1 }]
-        : [];
+      const evidenceFile = evidenceFileForProject(root, representative);
+      const projectEvidence = evidenceFile === null
+        ? []
+        : [{ file: evidenceFile, kind: "source" as const, lineStart: 1, lineEnd: 1 }];
       nodeByKey.set(packageKey, {
         kind: "package",
         qualifiedName,
@@ -113,7 +123,7 @@ function materializeProjectRoots(
         lineEnd: null,
         signature: null,
         bodyHash: null,
-        evidence: manifestEvidence,
+        evidence: projectEvidence,
         language: group.flatMap((project) => project.languages).filter(
           (language, index, languages) => languages.indexOf(language) === index
         ).length === 1 ? group.flatMap((project) => project.languages)[0] ?? null : null,
@@ -138,7 +148,7 @@ function materializeProjectRoots(
   const addContainment = (
     sourceKey: string,
     target: { entityKey: string; language?: string | null },
-    evidenceFile: string
+    evidenceFile: string | null
   ): void => {
     const canonicalIdentity = edgeCanonicalIdentity(sourceKey, "contains", target.entityKey);
     const edgeKey = entityKey(canonicalIdentity);
@@ -152,7 +162,9 @@ function materializeProjectRoots(
       origin: "heuristic",
       confidence: "certain",
       resolution: "resolved",
-      evidence: [{ file: evidenceFile, kind: "source", lineStart: 1, lineEnd: 1 }],
+      evidence: evidenceFile === null
+        ? []
+        : [{ file: evidenceFile, kind: "source", lineStart: 1, lineEnd: 1 }],
       language: target.language ?? null,
       provenance: provenance(
         extractor.extractorId,
@@ -175,7 +187,7 @@ function materializeProjectRoots(
     const representative = (projectsByRoot.get(root) ?? [])
       .sort((left, right) => left.projectId.localeCompare(right.projectId))[0];
     if (child !== undefined && representative !== undefined) {
-      addContainment(parent[1], child, representative.manifest ?? root);
+      addContainment(parent[1], child, evidenceFileForProject(root, representative));
     }
   }
 
@@ -184,6 +196,7 @@ function materializeProjectRoots(
     const representative = (projectsByRoot.get(root) ?? [])
       .sort((left, right) => left.projectId.localeCompare(right.projectId))[0];
     if (packageKey === undefined || representative === undefined) continue;
+    const projectEvidenceFile = evidenceFileForProject(root, representative);
     const memberFiles = extracted.files
       .map((file) => file.normalizedPath)
       .filter((file) => assignedRoot(file) === root)
@@ -215,11 +228,11 @@ function materializeProjectRoots(
         for (const structuralOwner of structuralOwners) {
           const ownerNode = nodeByKey.get(structuralOwner);
           if (ownerNode !== undefined) {
-            addContainment(packageKey, ownerNode, representative.manifest ?? file);
+            addContainment(packageKey, ownerNode, projectEvidenceFile ?? file);
           }
         }
       } else if (!directOwners.includes(packageKey)) {
-        addContainment(packageKey, target, representative.manifest ?? file);
+        addContainment(packageKey, target, projectEvidenceFile ?? file);
         directFilesByPackage.get(packageKey)?.add(file);
       }
     }

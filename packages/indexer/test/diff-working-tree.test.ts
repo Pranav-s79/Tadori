@@ -21,6 +21,33 @@ afterEach(() => {
 });
 
 describe("tadori diff working-tree flow", () => {
+  it("persists project-root evidence when manifests are support-only", () => {
+    repo = mkdtempSync(path.join(tmpdir(), "tadori-project-evidence-"));
+    mkdirSync(path.join(repo, "packages", "harness", "src"), { recursive: true });
+    writeFileSync(path.join(repo, "package.json"), '{"name":"workspace"}\n');
+    writeFileSync(
+      path.join(repo, "packages", "harness", "package.json"),
+      '{"name":"@workspace/harness"}\n'
+    );
+    writeFileSync(
+      path.join(repo, "packages", "harness", "src", "index.ts"),
+      "export const harness = true;\n"
+    );
+    db = openDatabase(":memory:");
+    runMigrations(db);
+
+    const indexed = indexRepositoryIntoStore(db, repo, { kind: "working_tree" });
+    const snapshotFiles = new Set(indexed.graph.files.map((file) => file.normalizedPath));
+    const evidence = [...indexed.graph.nodes, ...indexed.graph.edges]
+      .flatMap((item) => item.evidence);
+
+    expect(indexed.graph.projects).toContainEqual(expect.objectContaining({
+      manifest: "packages/harness/package.json",
+      root: "packages/harness"
+    }));
+    expect(evidence.every((item) => snapshotFiles.has(item.file))).toBe(true);
+  });
+
   it("reconciles disk and returns the frozen deterministic edge diff", async () => {
     repo = mkdtempSync(path.join(tmpdir(), "tadori-diff-command-"));
     mkdirSync(path.join(repo, "src"));
