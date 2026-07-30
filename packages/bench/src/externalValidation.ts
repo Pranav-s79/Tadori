@@ -407,12 +407,14 @@ function localGitConfig(root: string): Array<{ key: string; value: string }> {
   });
 }
 
-function assertSafeLocalGitConfiguration(
-  root: string,
-  repositoryId: string,
-  observedCommit: string | null
-): void {
-  const commandBearing = localGitConfig(root).filter(({ key, value }) => {
+/**
+ * The local-config keys that can make Git run a command or pull in further
+ * configuration. `include`/`includeIf` redirect into another file whose
+ * contents are unknown at audit time, so they count even though they are not
+ * themselves command-bearing.
+ */
+function commandBearingLocalGitConfig(root: string): string[] {
+  return localGitConfig(root).filter(({ key, value }) => {
     if (/^include(?:if\..+)?\.path$/u.test(key) || key === "extensions.worktreeconfig") return true;
     if (key === "core.fsmonitor") return value.trim().toLowerCase() !== "false";
     return (
@@ -421,12 +423,55 @@ function assertSafeLocalGitConfiguration(
       /^diff\..+\.(?:command|textconv)$/u.test(key) ||
       /^merge\..+\.driver$/u.test(key)
     ) && value.trim().length > 0;
-  });
+  }).map(({ key }) => key).sort();
+}
+
+/**
+ * An external checkout is untrusted input, so any command-bearing or
+ * redirecting local configuration disqualifies it outright.
+ */
+function assertSafeLocalGitConfiguration(
+  root: string,
+  repositoryId: string,
+  observedCommit: string | null
+): void {
+  const commandBearing = commandBearingLocalGitConfig(root);
   if (commandBearing.length > 0) {
     throw new ExternalValidationInputError(
       "git-config-safety",
       `${repositoryId}: command-bearing or redirecting local Git configuration is forbidden: ` +
-        commandBearing.map(({ key }) => key).sort().join(", "),
+        commandBearing.join(", "),
+      observedCommit
+    );
+  }
+}
+
+/**
+ * The validator's own repository is a different case from an external checkout.
+ * It is the code currently executing, and its configuration is set by whoever
+ * already controls this machine — auditing it absolutely protects nothing, and
+ * hosted CI legitimately writes `includeIf.gitdir:*.path` into every checkout,
+ * so an absolute rule fails in exactly the environment this runner exists to
+ * run in.
+ *
+ * The property actually worth enforcing is contamination: validating untrusted
+ * repositories must not INTRODUCE command-bearing configuration into the
+ * validator. So the pre-run set is a baseline and only keys that appear during
+ * the run are a violation. External checkouts keep the strict absolute rule.
+ */
+function assertValidatorGitConfigurationUncontaminated(
+  root: string,
+  baseline: readonly string[],
+  observedCommit: string | null
+): void {
+  const baselineKeys = new Set(baseline);
+  const introduced = commandBearingLocalGitConfig(root)
+    .filter((key) => !baselineKeys.has(key));
+  if (introduced.length > 0) {
+    throw new ExternalValidationInputError(
+      "git-config-safety",
+      "validator: external validation introduced command-bearing or redirecting " +
+        `local Git configuration: ${introduced.join(", ")}`,
       observedCommit
     );
   }
@@ -1564,7 +1609,7 @@ export function runExternalValidationSuite(
     throw new Error(`validator root must be the Git worktree root (${validatorGitRoot})`);
   }
   const validatorCommit = runGit(resolvedValidatorRoot, ["rev-parse", "--verify", "HEAD^{commit}"]);
-  assertSafeLocalGitConfiguration(resolvedValidatorRoot, "validator", validatorCommit);
+  const validatorConfigBaseline = commandBearingLocalGitConfig(resolvedValidatorRoot);
   const sourceChangesBefore = checkoutChanges(
     resolvedValidatorRoot,
     validatorCommit,
@@ -1584,7 +1629,11 @@ export function runExternalValidationSuite(
     resolvedValidatorRoot,
     ["rev-parse", "--verify", "HEAD^{commit}"]
   );
-  assertSafeLocalGitConfiguration(resolvedValidatorRoot, "validator", validatorCommitAfter);
+  assertValidatorGitConfigurationUncontaminated(
+    resolvedValidatorRoot,
+    validatorConfigBaseline,
+    validatorCommitAfter
+  );
   const sourceChangesAfter = checkoutChanges(
     resolvedValidatorRoot,
     validatorCommit,

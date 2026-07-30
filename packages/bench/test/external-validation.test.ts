@@ -346,6 +346,25 @@ describe("external repository validation", () => {
     expect(() => externalValidationSuiteReportSchema.parse({ ...suite, success: true })).toThrow();
   });
 
+  it("still rejects a redirecting Git config in an EXTERNAL checkout", () => {
+    // The validator's own repository is baselined (hosted CI writes includeIf
+    // into every checkout it makes), but an external checkout is untrusted
+    // input and the absolute rule must still bite. This is the half that must
+    // never be relaxed just to make an environment pass.
+    const { root, spec } = createPinnedFixture();
+    git(root, ["config", "--local", "includeIf.gitdir:/tmp/.path", "/tmp/evil.config"]);
+
+    const suite = runExternalValidationSuite(path.dirname(root), repositoryRoot, {
+      recordedAt: "2026-07-30T00:00:00.000Z",
+      repositories: [spec]
+    });
+
+    expect(suite.success).toBe(false);
+    expect(suite.repositories[0]?.status).toBe("failed");
+    expect(suite.repositories[0]?.invariants.some((invariant) =>
+      invariant.id === "git-config-safety" && !invariant.passed)).toBe(true);
+  });
+
   it("confines report output and replaces it atomically", () => {
     const root = mkdtempSync(path.join(tmpdir(), "tadori-external-output-"));
     temporaryRoots.push(root);
