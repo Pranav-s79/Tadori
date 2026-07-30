@@ -179,5 +179,6 @@ describe("graph zod schemas", () => {
       edges: []
     });
     expect(legacy.projects).toEqual([]);
+    expect(legacy.diagnostics).toEqual([]);
   });
 });

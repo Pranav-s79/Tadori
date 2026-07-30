@@ -1584,6 +1584,10 @@ export function extractGraph(
 
   diagnostics.push({
     file: null,
+    code: "typescript-call-resolution-summary",
+    severity: "info",
+    language: null,
+    extractorId: "tadori-typescript",
     message:
       `Call resolution: ${resolvedCallCount} compiler-resolved, ` +
       `${heuristicCallCount} heuristic name-matched, ` +

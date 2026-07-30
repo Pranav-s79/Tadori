@@ -43,6 +43,37 @@ export type SnapshotExtractor = z.infer<typeof snapshotExtractorSchema>;
 
 const hex64 = z.string().regex(/^[0-9a-f]{64}$/, "expected 64-char lowercase hex");
 const oneBasedLine = z.number().int().min(1);
+
+export const DIAGNOSTIC_SEVERITIES = ["info", "warning", "error"] as const;
+export type DiagnosticSeverity = (typeof DIAGNOSTIC_SEVERITIES)[number];
+export const diagnosticSeveritySchema = z.enum(DIAGNOSTIC_SEVERITIES);
+
+/** One immutable extraction diagnostic associated with a snapshot. */
+export const snapshotDiagnosticSchema = z.object({
+  code: z.string().regex(/^[a-z][a-z0-9-]*$/, "expected a stable lowercase diagnostic code"),
+  severity: diagnosticSeveritySchema,
+  message: z.string().min(1),
+  file: z.string().min(1).nullable(),
+  language: z.string().min(1).nullable(),
+  extractorId: z.string().min(1),
+  extractorVersion: z.string().min(1),
+  lineStart: oneBasedLine.nullable(),
+  lineEnd: oneBasedLine.nullable()
+}).superRefine((diagnostic, context) => {
+  if ((diagnostic.lineStart === null) !== (diagnostic.lineEnd === null)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "diagnostic lineStart and lineEnd must both be null or both be present"
+    });
+  } else if (
+    diagnostic.lineStart !== null &&
+    diagnostic.lineEnd !== null &&
+    diagnostic.lineEnd < diagnostic.lineStart
+  ) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "diagnostic lineEnd must be >= lineStart" });
+  }
+});
+export type SnapshotDiagnostic = z.infer<typeof snapshotDiagnosticSchema>;
 const projectPath = z.string().min(1).refine(
   (value) => value === "." || (
     !value.startsWith("/") &&
@@ -157,8 +188,10 @@ export const snapshotGraphSchema = z.object({
   /** Extractor-discovered projects. Missing in legacy serialized snapshots. */
   projects: z.array(graphProjectSchema).default([]),
   /** Extractors that contributed to this snapshot, sorted by id then version. */
-  extractors: z.array(snapshotExtractorSchema).optional()
+  extractors: z.array(snapshotExtractorSchema).optional(),
+  /** Extraction diagnostics. Missing in legacy serialized snapshots. */
+  diagnostics: z.array(snapshotDiagnosticSchema).default([])
 });
-/** Legacy serialized input may omit projects; parsing materializes `projects: []`. */
+/** Legacy serialized input may omit projects/diagnostics; parsing materializes empty arrays. */
 export type SnapshotGraphInput = z.input<typeof snapshotGraphSchema>;
 export type SnapshotGraph = z.infer<typeof snapshotGraphSchema>;

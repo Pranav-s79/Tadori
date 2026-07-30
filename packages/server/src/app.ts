@@ -4,6 +4,7 @@ import type { ConcurrentRefreshController } from "@tadori/mcp";
 import type { Database } from "@tadori/store";
 import { GraphState } from "./graphState.js";
 import { registerDerivedRoutes } from "./routes/derived.js";
+import { registerAnalysisRoutes } from "./routes/analysis.js";
 import { registerGraphRoutes } from "./routes/graph.js";
 import { registerLayoutRoutes } from "./routes/layout.js";
 import { registerObservationRoutes } from "./routes/observations.js";
@@ -60,6 +61,7 @@ export async function createServerApp(options: ServerAppOptions): Promise<Fastif
   await app.register(fastifyWebsocket);
 
   await app.register(registerSnapshotRoutes, { prefix: "/api/v1" });
+  await app.register(registerAnalysisRoutes, { prefix: "/api/v1" });
   await app.register(registerGraphRoutes, { prefix: "/api/v1" });
   await app.register(registerSourceRoutes, { prefix: "/api/v1" });
   await app.register(registerSearchRoutes, { prefix: "/api/v1" });

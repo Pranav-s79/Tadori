@@ -3,7 +3,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { findDanglingEndpoints, openDatabase, runMigrations, type Database } from "@tadori/store";
+import {
+  findDanglingEndpoints,
+  foreignKeyCheck,
+  openDatabase,
+  runMigrations,
+  type Database
+} from "@tadori/store";
 import { indexRepositoryIntoStore } from "@tadori/indexer";
 import { runServe } from "../src/serve.js";
 
@@ -205,6 +211,7 @@ describe("--snapshot hardening (§8/§10/§11 step 4)", () => {
     const repoRoot = copyFixtureRepo();
     const snapshotId = buildValidSnapshot(repoRoot);
     const db = openRepoDb(repoRoot);
+    let violationCount = 0;
     try {
       const victim = db.prepare("SELECT file_id FROM snapshot_files WHERE snapshot_id = ? LIMIT 1")
         .get(snapshotId) as { file_id: number } | undefined;
@@ -212,6 +219,8 @@ describe("--snapshot hardening (§8/§10/§11 step 4)", () => {
       db.pragma("foreign_keys = OFF");
       db.prepare("DELETE FROM file_entities WHERE id = ?").run(victim!.file_id);
       db.pragma("foreign_keys = ON");
+      violationCount = foreignKeyCheck(db).length;
+      expect(violationCount).toBeGreaterThan(0);
     } finally {
       db.close();
     }
@@ -225,7 +234,7 @@ describe("--snapshot hardening (§8/§10/§11 step 4)", () => {
 
     expect(exitCode).toBe(3);
     expect(stderrLines.join("")).toBe(
-      `Snapshot #${snapshotId} failed validation: 1 foreign-key violation(s).\n`
+      `Snapshot #${snapshotId} failed validation: ${violationCount} foreign-key violation(s).\n`
     );
   });
 });

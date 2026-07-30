@@ -12,6 +12,7 @@ export type SnapshotGraphMetadata = Pick<
   | "workspaceHash"
   | "analyzerVersion"
   | "extractors"
+  | "diagnostics"
 >;
 
 export interface MergeSnapshotRegionOptions {
@@ -235,6 +236,15 @@ export function mergeSnapshotRegion(
     }
   }
 
+  const diagnostics = [
+    ...previous.diagnostics.filter(
+      (diagnostic) => diagnostic.file === null || !invalidated.has(diagnostic.file)
+    ),
+    ...options.target.diagnostics.filter(
+      (diagnostic) => diagnostic.file !== null && invalidated.has(diagnostic.file)
+    )
+  ].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+
   return snapshotGraphSchema.parse({
     ...options.target,
     files: [...filesByPath.values()].sort((left, right) =>
@@ -246,6 +256,7 @@ export function mergeSnapshotRegion(
     edges: [...edgesByKey.values()]
       .map((edge) => ({ ...edge, evidence: mergeEvidence(edge.evidence) }))
       .sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity)),
-    projects: previous.projects
+    projects: previous.projects,
+    diagnostics
   });
 }

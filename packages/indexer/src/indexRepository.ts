@@ -20,6 +20,7 @@ import {
 import { createProjectServices } from "./project.js";
 import { scanRepository, type ScanResult } from "./scan.js";
 import { ANALYZER_VERSION } from "./version.js";
+import { snapshotDiagnostics } from "./diagnostics.js";
 import { attributeTypeScriptExtraction } from "./typescriptExtractor.js";
 import { structuralExtractor } from "./structuralExtractor.js";
 import { LANGUAGE_BY_ID } from "./languageRegistry.js";
@@ -291,10 +292,15 @@ export class InvalidRepositorySourceError extends Error {
 
 function collectSyntacticDiagnostics(
   services: ReturnType<typeof createProjectServices>,
-  scan: ScanResult
+  scan: ScanResult,
+  fileRegion?: readonly string[]
 ): IndexDiagnostic[] {
   const diagnostics: IndexDiagnostic[] = [];
+  const selectedFiles = fileRegion === undefined ? null : new Set(fileRegion);
   for (const file of scan.indexedFiles) {
+    if (selectedFiles !== null && !selectedFiles.has(file.normalizedPath)) {
+      continue;
+    }
     if (file.language !== "typescript" && file.language !== "javascript") {
       continue;
     }
@@ -304,7 +310,11 @@ function collectSyntacticDiagnostics(
     for (const diagnostic of services.languageService.getSyntacticDiagnostics(file.absolutePath)) {
       diagnostics.push({
         file: file.normalizedPath,
-        message: `TypeScript syntax ${String(diagnostic.code)}: ${String(diagnostic.messageText)}`
+        message: `TypeScript syntax ${String(diagnostic.code)}: ${String(diagnostic.messageText)}`,
+        code: "typescript-syntax",
+        severity: "error",
+        language: file.language,
+        extractorId: "tadori-typescript"
       });
     }
   }
@@ -326,8 +336,8 @@ export function extractRepositoryGraph(
       extractGraph(root, scan, services, { ...options, fileContents: captured.fileContents }),
       scan
     );
+  extracted.diagnostics.unshift(...collectSyntacticDiagnostics(services, scan, options.fileRegion));
   if (options.fileRegion === undefined) {
-    extracted.diagnostics.unshift(...collectSyntacticDiagnostics(services, scan));
     const structural = structuralExtractor.extract({
       root,
       capture: captured,
@@ -555,7 +565,8 @@ export function indexRepository(rootPath: string, options: IndexOptions): IndexR
     nodes: extracted.nodes,
     edges: [...extracted.edges, ...coChangeEdges],
     projects: extracted.projects,
-    extractors: extracted.extractors
+    extractors: extracted.extractors,
+    diagnostics: snapshotDiagnostics(extracted.diagnostics, extracted.files, extracted.extractors)
   };
 
   return {

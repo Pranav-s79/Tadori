@@ -98,6 +98,7 @@ export function makeGraph(
     files,
     nodes,
     edges,
-    projects: []
+    projects: [],
+    diagnostics: []
   };
 }

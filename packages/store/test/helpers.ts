@@ -94,6 +94,7 @@ export function makeGraph(
     workspaceHash: sha256Hex(`workspace:${kind}:${parts.files.map((f) => f.contentHash).join(",")}`),
     analyzerVersion: "tadori-test/0.0.0",
     projects: [],
+    diagnostics: [],
     ...parts
   };
 }

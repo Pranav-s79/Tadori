@@ -20,6 +20,7 @@ import { mergeSnapshotRegion, UnsafeIncrementalMergeError } from "./merge.js";
 import { IncrementalProjectServices, type ProjectServices } from "./project.js";
 import type { ScannedFile } from "./scan.js";
 import { ANALYZER_VERSION } from "./version.js";
+import { snapshotDiagnostics } from "./diagnostics.js";
 import {
   BatchedRepositoryWatcher,
   type RepositoryChange,
@@ -133,7 +134,8 @@ function graphFromStored(head: SnapshotHead, root: string, stored: ReturnType<ty
     nodes: stored.nodes,
     edges: stored.edges,
     projects: stored.projects,
-    extractors: stored.extractors
+    extractors: stored.extractors,
+    diagnostics: stored.diagnostics
   };
 }
 
@@ -170,7 +172,8 @@ function composeGraph(
     nodes: extracted.nodes,
     edges: extracted.edges,
     projects: extracted.projects,
-    extractors: extracted.extractors
+    extractors: extracted.extractors,
+    diagnostics: snapshotDiagnostics(extracted.diagnostics, extracted.files, extracted.extractors)
   };
 }
 
@@ -635,7 +638,8 @@ export class IncrementalRepositoryIndexer {
             baseCommitSha: target.baseCommitSha,
             workspaceHash: target.workspaceHash,
             analyzerVersion: target.analyzerVersion,
-            extractors: target.extractors
+            extractors: target.extractors,
+            diagnostics: target.diagnostics
           }
         });
         const region = new Set(affectedPaths);

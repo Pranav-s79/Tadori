@@ -628,6 +628,41 @@ COMMIT;
 `
 };
 
+/** Immutable, snapshot-scoped extraction diagnostics. */
+const migration009: Migration = {
+  version: 9,
+  name: "snapshot extraction diagnostics",
+  sql: `
+PRAGMA foreign_keys = ON;
+BEGIN IMMEDIATE;
+
+CREATE TABLE snapshot_diagnostics (
+    snapshot_id INTEGER NOT NULL REFERENCES repository_snapshots(id) ON DELETE CASCADE,
+    ordinal INTEGER NOT NULL CHECK (ordinal >= 0),
+    code TEXT NOT NULL,
+    severity TEXT NOT NULL CHECK (severity IN ('info','warning','error')),
+    message TEXT NOT NULL,
+    file_id INTEGER,
+    language TEXT,
+    extractor_id TEXT NOT NULL,
+    extractor_version TEXT NOT NULL,
+    line_start INTEGER CHECK (line_start IS NULL OR line_start >= 1),
+    line_end INTEGER CHECK (line_end IS NULL OR line_end >= 1),
+    PRIMARY KEY (snapshot_id, ordinal),
+    FOREIGN KEY (snapshot_id, file_id)
+        REFERENCES snapshot_files(snapshot_id, file_id) ON DELETE CASCADE,
+    CHECK ((line_start IS NULL) = (line_end IS NULL)),
+    CHECK (line_start IS NULL OR line_end >= line_start)
+);
+
+CREATE INDEX idx_snapshot_diagnostics_file
+    ON snapshot_diagnostics(snapshot_id, file_id);
+
+INSERT INTO schema_migrations(version) VALUES (9);
+COMMIT;
+`
+};
+
 export const MIGRATIONS: readonly Migration[] = [
   migration001,
   migration002,
@@ -636,5 +671,6 @@ export const MIGRATIONS: readonly Migration[] = [
   migration005,
   migration006,
   migration007,
-  migration008
+  migration008,
+  migration009
 ];

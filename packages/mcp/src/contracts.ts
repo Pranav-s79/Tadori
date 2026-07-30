@@ -2,12 +2,15 @@ import { z } from "zod";
 import {
   confidenceSchema,
   evidenceKindSchema,
+  extractionCapabilitySchema,
   extractionProvenanceSchema,
   nodeKindSchema,
   originSchema,
   relationSchema,
   repoStateKindSchema,
-  resolutionSchema
+  resolutionSchema,
+  snapshotDiagnosticSchema,
+  snapshotExtractorSchema
 } from "@tadori/core";
 
 export const TOOL_NAMES = [
@@ -176,6 +179,25 @@ export const repoOverviewOutputSchema = z
         })
         .strict()
     ),
+    languages: z.array(
+      z.object({
+        id: z.string().min(1),
+        fileCount: z.number().int().min(0),
+        generatedFileCount: z.number().int().min(0),
+        capabilities: z.array(extractionCapabilitySchema)
+      }).strict()
+    ),
+    extractors: z.array(snapshotExtractorSchema),
+    diagnostics: z.object({
+      total: z.number().int().min(0),
+      sample: z.array(snapshotDiagnosticSchema).max(20),
+      omittedCount: z.number().int().min(0),
+      bySeverity: z.object({
+        info: z.number().int().min(0),
+        warning: z.number().int().min(0),
+        error: z.number().int().min(0)
+      }).strict()
+    }).strict(),
     counts: z
       .object({
         files: z.number().int().min(0),

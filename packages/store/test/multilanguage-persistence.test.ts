@@ -36,9 +36,9 @@ const pythonProvenance: ExtractionProvenance = {
 
 describe("migration 7 multi-language persistence", () => {
   it("adds nullable attribution columns and the snapshot extractor inventory", () => {
-    expect(MIGRATIONS.at(-1)?.version).toBe(8);
+    expect(MIGRATIONS.at(-1)?.version).toBe(9);
     const versions = db.prepare("SELECT version FROM schema_migrations ORDER BY version").all() as Array<{ version: number }>;
-    expect(versions.map(({ version }) => version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(versions.map(({ version }) => version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
     const nodeColumns = new Map(
       (db.prepare("PRAGMA table_info(snapshot_nodes)").all() as Array<{ name: string; notnull: number }>)
@@ -99,17 +99,24 @@ describe("migration 7 multi-language persistence", () => {
     expect(stored.nodes[0]).not.toHaveProperty("provenance");
     expect(stored.extractors).toEqual([]);
     expect(stored.projects).toEqual([]);
+    expect(stored.diagnostics).toEqual([]);
   });
 
   it("normalizes omitted project memberships before insert and reuse", () => {
     const current = makeGraph({ files: [], nodes: [], edges: [] });
-    const { projects: omittedProjects, ...legacyGraph } = current;
+    const {
+      projects: omittedProjects,
+      diagnostics: omittedDiagnostics,
+      ...legacyGraph
+    } = current;
     expect(omittedProjects).toEqual([]);
+    expect(omittedDiagnostics).toEqual([]);
     const input: SnapshotGraphInput = legacyGraph;
 
     const first = insertSnapshotGraph(db, input);
     expect(first.reused).toBe(false);
     expect(loadSnapshotGraph(db, first.snapshotId).projects).toEqual([]);
+    expect(loadSnapshotGraph(db, first.snapshotId).diagnostics).toEqual([]);
 
     const second = insertSnapshotGraph(db, input);
     expect(second).toMatchObject({ snapshotId: first.snapshotId, reused: true });
@@ -129,11 +136,54 @@ describe("migration 7 multi-language persistence", () => {
            VALUES (?, 'commit', ?)`
         ).run(repoId, "b".repeat(64)).lastInsertRowid
       );
-      expect(runMigrations(legacy)).toEqual([8]);
+      expect(runMigrations(legacy)).toEqual([8, 9]);
       expect(loadSnapshotGraph(legacy, snapshotId).projects).toEqual([]);
+      expect(loadSnapshotGraph(legacy, snapshotId).diagnostics).toEqual([]);
     } finally {
       legacy.close();
     }
+  });
+
+  it("round-trips snapshot diagnostics and confines file references", () => {
+    const file = { ...makeFile("src/main.py"), language: "python" };
+    const diagnostic = {
+      code: "structural-parse-failed",
+      severity: "error" as const,
+      message: "Parser failed; repository-level file facts were retained",
+      file: file.normalizedPath,
+      language: "python",
+      extractorId: "tadori-tree-sitter",
+      extractorVersion: "1",
+      lineStart: 2,
+      lineEnd: 2
+    };
+    const graph = makeGraph({ files: [file], nodes: [], edges: [], diagnostics: [diagnostic] });
+    const { snapshotId } = insertSnapshotGraph(db, graph);
+    expect(loadSnapshotGraph(db, snapshotId).diagnostics).toEqual([diagnostic]);
+    expect(() => insertSnapshotGraph(db, {
+      ...graph,
+      workspaceHash: "c".repeat(64),
+      diagnostics: [{ ...diagnostic, file: "outside.py" }]
+    })).toThrow(/not a member of this snapshot/);
+  });
+
+  it("requires re-index instead of mutating diagnostics on immutable reuse", () => {
+    const graph = makeGraph({ files: [], nodes: [], edges: [], diagnostics: [] });
+    insertSnapshotGraph(db, graph);
+    expect(() => insertSnapshotGraph(db, {
+      ...graph,
+      diagnostics: [{
+        code: "repository-warning",
+        severity: "warning",
+        message: "Repository warning",
+        file: null,
+        language: null,
+        extractorId: "tadori-repository",
+        extractorVersion: "1",
+        lineStart: null,
+        lineEnd: null
+      }]
+    })).toThrow(/purge and re-index/);
   });
 
   it("round-trips sorted discovered projects without requiring manifest file membership", () => {

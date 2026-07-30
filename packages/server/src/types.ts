@@ -6,7 +6,9 @@ import type {
   NodeKind,
   Origin,
   Relation,
-  Resolution
+  Resolution,
+  SnapshotDiagnostic,
+  SnapshotExtractor
 } from "@tadori/core";
 import type { BoundaryViolation, EdgeDiffRow } from "@tadori/store";
 import type { FreshnessStatus } from "@tadori/mcp";
@@ -367,6 +369,30 @@ export interface SnapshotSummaryDto {
   context: ApiContext;
   analyzerVersion: string;
   counts: { files: number; nodes: number; edges: number };
+}
+
+/** Observed extraction capability for one language in the active snapshot. */
+export interface SnapshotLanguageAnalysisDto {
+  id: string;
+  fileCount: number;
+  generatedFileCount: number;
+  capabilities: ExtractionCapability[];
+  extractors: Array<Pick<SnapshotExtractor, "id" | "version" | "capability">>;
+}
+
+/** Bounded, deterministic analysis facts for explaining the active snapshot. */
+export interface SnapshotAnalysisDto {
+  snapshotId: number;
+  analyzerVersion: string;
+  languages: SnapshotLanguageAnalysisDto[];
+  extractors: SnapshotExtractor[];
+  diagnostics: {
+    items: SnapshotDiagnostic[];
+    total: number;
+    omittedCount: number;
+    nextCursor: string | null;
+    bySeverity: Record<SnapshotDiagnostic["severity"], number>;
+  };
 }
 
 /**

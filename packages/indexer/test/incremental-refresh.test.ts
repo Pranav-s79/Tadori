@@ -156,6 +156,15 @@ describe("incremental refresh coordinator", () => {
     expect(state.lastRefresh?.diagnostics).toEqual(expect.arrayContaining([
       expect.objectContaining({ file: "src/value.ts" })
     ]));
+    expect(loadSnapshotGraph(db, activeSnapshotId()).diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: "typescript-syntax",
+        severity: "error",
+        file: "src/value.ts",
+        extractorId: "tadori-typescript",
+        extractorVersion: "1"
+      })
+    ]));
 
     writeFileSync(
       path.join(repo, "src", "value.ts"),
@@ -183,6 +192,9 @@ describe("incremental refresh coordinator", () => {
     expect(listSnapshots(db, repoRow.id)).toHaveLength(1);
     const graph = loadSnapshotGraph(db, activeSnapshotId());
     expect(graph.nodes.some((node) => node.file === "src/consumer.ts")).toBe(true);
+    expect(graph.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "typescript-syntax", file: "src/value.ts" })
+    ]));
   });
 
   it("treats lock and ignore files as captured full-invalidation inputs", async () => {

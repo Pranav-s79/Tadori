@@ -13,6 +13,7 @@ import type {
   Resolution,
   SnapshotGraph,
   SnapshotGraphInput,
+  SnapshotDiagnostic,
   SnapshotExtractor,
   ExtractionCapability,
   ExtractionDerivation
@@ -253,7 +254,9 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
   }
 }
 
-function normalizedMembershipGraph(graph: Pick<SnapshotGraph, "files" | "nodes" | "edges" | "projects">) {
+function normalizedMembershipGraph(
+  graph: Pick<SnapshotGraph, "files" | "nodes" | "edges" | "projects" | "diagnostics">
+) {
   const evidence = (items: readonly Evidence[]): Evidence[] =>
     [...items].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
   return {
@@ -266,7 +269,10 @@ function normalizedMembershipGraph(graph: Pick<SnapshotGraph, "files" | "nodes" 
     edges: graph.edges
       .map((edge) => ({ ...edge, evidence: evidence(edge.evidence) }))
       .sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity)),
-    projects: [...graph.projects].sort((left, right) => left.projectId.localeCompare(right.projectId))
+    projects: [...graph.projects].sort((left, right) => left.projectId.localeCompare(right.projectId)),
+    diagnostics: [...graph.diagnostics].sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right))
+    )
   };
 }
 
@@ -391,6 +397,7 @@ export function insertSnapshotGraph(
              (SELECT COUNT(*) FROM snapshot_nodes WHERE snapshot_id = @snapshotId) AS nodes,
              (SELECT COUNT(*) FROM snapshot_edges WHERE snapshot_id = @snapshotId) AS edges,
              (SELECT COUNT(*) FROM snapshot_projects WHERE snapshot_id = @snapshotId) AS projects,
+             (SELECT COUNT(*) FROM snapshot_diagnostics WHERE snapshot_id = @snapshotId) AS diagnostics,
              (SELECT COUNT(DISTINCT analyzer_version) FROM snapshot_nodes
                 WHERE snapshot_id = @snapshotId AND analyzer_version = @analyzerVersion) AS analyzer_versions`
         )
@@ -399,12 +406,19 @@ export function insertSnapshotGraph(
         nodes: number;
         edges: number;
         projects: number;
+        diagnostics: number;
         analyzer_versions: number;
       };
       if (counts.projects !== graph.projects.length) {
         throw new Error(
           `Workspace ${graph.workspaceHash} matches immutable snapshot ${existing.id}, but its ` +
             "discovered-project memberships predate the current schema; purge and re-index this repository"
+        );
+      }
+      if (counts.diagnostics !== graph.diagnostics.length) {
+        throw new Error(
+          `Workspace ${graph.workspaceHash} matches immutable snapshot ${existing.id}, but its ` +
+            "extraction diagnostics predate the current schema; purge and re-index this repository"
         );
       }
       if (
@@ -651,6 +665,37 @@ export function insertSnapshotGraph(
       );
     }
 
+    const insertSnapshotDiagnostic = db.prepare(
+      `INSERT INTO snapshot_diagnostics
+         (snapshot_id, ordinal, code, severity, message, file_id, language,
+          extractor_id, extractor_version, line_start, line_end)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+    graph.diagnostics.forEach((diagnostic, ordinal) => {
+      const fileId = diagnostic.file === null
+        ? null
+        : fileIdByPath.get(diagnostic.file) ?? null;
+      if (diagnostic.file !== null && fileId === null) {
+        throw new Error(
+          `Diagnostic ${diagnostic.code} references ${JSON.stringify(diagnostic.file)} ` +
+            "which is not a member of this snapshot"
+        );
+      }
+      insertSnapshotDiagnostic.run(
+        snapshotId,
+        ordinal,
+        diagnostic.code,
+        diagnostic.severity,
+        diagnostic.message,
+        fileId,
+        diagnostic.language,
+        diagnostic.extractorId,
+        diagnostic.extractorVersion,
+        diagnostic.lineStart,
+        diagnostic.lineEnd
+      );
+    });
+
     if (!options.dangerouslySkipValidation) {
       const dangling = findDanglingEndpoints(db, snapshotId);
       if (dangling.length > 0) {
@@ -732,6 +777,7 @@ export interface StoredSnapshotGraph {
   edges: GraphEdge[];
   projects: GraphProject[];
   extractors: SnapshotExtractor[];
+  diagnostics: SnapshotDiagnostic[];
 }
 
 interface StoredEvidenceRow {
@@ -981,5 +1027,37 @@ export function loadSnapshotGraph(db: Database, snapshotId: number): StoredSnaps
     languages: JSON.parse(row.languages_json) as unknown
   }));
 
-  return { snapshot, analyzerVersion, files, nodes, edges, projects, extractors };
+  const diagnostics = (
+    db.prepare(
+      `SELECT sd.code, sd.severity, sd.message, sf.normalized_path,
+              sd.language, sd.extractor_id, sd.extractor_version,
+              sd.line_start, sd.line_end
+       FROM snapshot_diagnostics sd
+       LEFT JOIN snapshot_files sf
+         ON sf.snapshot_id = sd.snapshot_id AND sf.file_id = sd.file_id
+       WHERE sd.snapshot_id = ? ORDER BY sd.ordinal`
+    ).all(snapshotId) as Array<{
+      code: string;
+      severity: SnapshotDiagnostic["severity"];
+      message: string;
+      normalized_path: string | null;
+      language: string | null;
+      extractor_id: string;
+      extractor_version: string;
+      line_start: number | null;
+      line_end: number | null;
+    }>
+  ).map((row): SnapshotDiagnostic => ({
+    code: row.code,
+    severity: row.severity,
+    message: row.message,
+    file: row.normalized_path,
+    language: row.language,
+    extractorId: row.extractor_id,
+    extractorVersion: row.extractor_version,
+    lineStart: row.line_start,
+    lineEnd: row.line_end
+  }));
+
+  return { snapshot, analyzerVersion, files, nodes, edges, projects, extractors, diagnostics };
 }

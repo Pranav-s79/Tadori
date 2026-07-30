@@ -1,4 +1,5 @@
 import type {
+  DiagnosticSeverity,
   ExtractionCapability,
   ExtractionDerivation,
   ExtractionProvenance,
@@ -9,9 +10,6 @@ import type {
 import { graphProjectSchema } from "@tadori/core";
 import type { RepositoryCapture } from "./indexRepository.js";
 import type { LanguageId, LanguageRegistration } from "./languageRegistry.js";
-
-export const DIAGNOSTIC_SEVERITIES = ["info", "warning", "error"] as const;
-export type DiagnosticSeverity = (typeof DIAGNOSTIC_SEVERITIES)[number];
 
 export interface ExtractionDiagnostic {
   code: string;
@@ -122,6 +120,30 @@ export function assertExtractorResult(result: ExtractorResult): void {
     }
     if (edge.resolution === "unresolved" && edge.provenance.unresolvedReason === null) {
       throw new Error(`Unresolved edge ${edge.entityKey} has no unresolved reason`);
+    }
+  }
+  for (const diagnostic of result.diagnostics) {
+    if (!/^[a-z][a-z0-9-]*$/.test(diagnostic.code)) {
+      throw new Error(`Extractor ${result.extractorId} emitted an invalid diagnostic code`);
+    }
+    if (diagnostic.message.length === 0) {
+      throw new Error(`Extractor ${result.extractorId} emitted an empty diagnostic message`);
+    }
+    if (diagnostic.extractorId !== result.extractorId) {
+      throw new Error(`Diagnostic ${diagnostic.code} has mismatched extractor provenance`);
+    }
+    if (diagnostic.language !== null && !result.languages.includes(diagnostic.language)) {
+      throw new Error(`Diagnostic ${diagnostic.code} has unregistered extractor language`);
+    }
+    if ((diagnostic.lineStart === undefined) !== (diagnostic.lineEnd === undefined)) {
+      throw new Error(`Diagnostic ${diagnostic.code} has an incomplete line range`);
+    }
+    if (
+      diagnostic.lineStart !== undefined &&
+      diagnostic.lineEnd !== undefined &&
+      (diagnostic.lineStart < 1 || diagnostic.lineEnd < diagnostic.lineStart)
+    ) {
+      throw new Error(`Diagnostic ${diagnostic.code} has an invalid line range`);
     }
   }
 }

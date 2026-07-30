@@ -119,8 +119,9 @@ remain absent or explicitly unresolved, and safe unbundled text remains visible
 at repository level. The audit found three backend completion gaps: extraction
 diagnostics are not persisted or served; the capability matrix is not exposed
 through a typed backend contract with full registry-drift checks; and the pinned
-external-repository manifest has no executable invariant runner. These are the
-remaining backend tranches before frontend handoff.
+external-repository manifest has no executable invariant runner. Diagnostic
+persistence is closed below; the capability contract and external invariant
+runner remain before frontend handoff.
 
 Extractor-coalescing correction (2026-07-30 UTC): Stage A and Stage B rename/
 move matching now require extractor ID and extractor version in addition to the
@@ -134,6 +135,34 @@ Python and TypeScript fixture validation, five exact fixture indexes with zero
 dangling endpoints and zero foreign-key-check rows, exact diff/boundary oracles,
 and all five fixture typechecks.
 
+Snapshot-diagnostic backend (2026-07-30 UTC): extraction diagnostics are now
+validated, deterministic, immutable snapshot membership rather than transient
+console-only output. Additive migration 009 persists diagnostic code, severity,
+message, optional snapshot-member file and line range, language, and exact
+extractor identity/version. Legacy snapshots read as an empty diagnostic set;
+immutable reuse rejects mismatched diagnostic membership and requires explicit
+re-indexing. Full indexing carries diagnostics into `SnapshotGraph`; regional
+refresh replaces invalidated-file diagnostics while retaining unaffected and
+stable repository diagnostics. Extraction-run-only call-resolution metrics stay
+transient so a regional run cannot be mislabeled as a whole-snapshot result.
+
+`GET /api/v1/analysis` exposes observed per-snapshot languages, file counts,
+generated-file counts, contributing extractors/capabilities, severity totals,
+and bounded cursor-addressable diagnostics. The existing MCP `repo_overview`
+adds the same observed language/extractor inventory plus a bounded 20-diagnostic
+sample with explicit omission accounting; no seventh tool or universal semantic
+claim was introduced. Parser failures therefore remain scoped while becoming
+available to users, agents, and the future frontend after reload. Focused core,
+store, incremental/full parity, API, and MCP tests pass. The complete local gate
+passes: skill check, strict typecheck, lint, 72 non-CLI files / 438 tests, 13 CLI
+files / 64 passed with 3 platform skips, 46 Atlas files / 371 tests, Python and
+TypeScript fixture validation, five exact fixture indexes with zero dangling
+endpoints and zero foreign-key-check rows, exact diff/boundary oracles, and all
+five fixture typechecks. The generated package builds and its installed-package
+API/layout/purge smoke passes on Windows Node 24. The first package-smoke attempt
+was blocked only by sandbox access to the user npm cache; the identical approved
+rerun passed.
+
 Claude Opus backend review queue and frontend handoff contract:
 
 1. Review the project-evidence correction in
@@ -145,9 +174,11 @@ Claude Opus backend review queue and frontend handoff contract:
    across extractor IDs, extractor versions, and legacy/attributed nodes; require
    raw add/remove output for every cross-boundary case.
 3. After the remaining tranches land, review persisted diagnostic immutability,
-   incremental replacement behavior, API/MCP confinement, capability-schema
-   drift locks, and the pinned external-repository invariant runner. Reject any
-   semantic claim not backed by evidence or an explicit unresolved diagnostic.
+   invalidated-file replacement behavior, bounded API/MCP pagination and
+   omission accounting, capability-schema drift locks, and the pinned
+   external-repository invariant runner. Confirm parser failures remain visible
+   after store reload and reject any semantic claim not backed by evidence or
+   an explicit unresolved diagnostic.
 4. Do not begin frontend implementation until this file records a passing full
    local backend gate and the Opus review has no blocker/high finding. At handoff,
    consume only the documented capability/analysis endpoints; do not infer
