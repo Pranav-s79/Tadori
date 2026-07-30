@@ -56,7 +56,12 @@ function bumpProvenance(provenance: AggregatedProvenance[], edge: ApiEdge): void
     existing.count += 1;
     return;
   }
-  provenance.push({ origin: edge.origin, confidence: edge.confidence, resolution: edge.resolution, count: 1 });
+  provenance.push({
+    origin: edge.origin ?? null,
+    confidence: edge.confidence ?? null,
+    resolution: edge.resolution ?? null,
+    count: 1
+  });
 }
 
 export interface ExpansionDiff {

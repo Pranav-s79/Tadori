@@ -223,7 +223,7 @@ describe("camera focus and render-only filters", () => {
       graph.addNode(`${prefix}:file`, { apiNode: file, x: 1, y: 2, selected: prefix === "nested" });
       graph.addNode(`${prefix}:symbol`, { apiNode: symbol, x: 3, y: 4 });
       graph.addEdgeWithKey(`${prefix}:edge`, `${prefix}:file`, `${prefix}:symbol`, {
-        apiEdge: { entityKey: "edge:shared", srcEntityKey: file.entityKey, relation: "contains", dstEntityKey: symbol.entityKey, origin: "parser", confidence: "certain", resolution: "resolved" } satisfies ApiEdge
+        apiEdge: { entityKey: "edge:shared", srcEntityKey: file.entityKey, relation: "contains", dstEntityKey: symbol.entityKey, origin: "compiler", confidence: "certain", resolution: "resolved" } satisfies ApiEdge
       });
     }
 

@@ -75,7 +75,7 @@ vi.mock("../src/features/inspect/NodeView.tsx", () => ({
 
 import { App, mapStoryPlaybackToGraph } from "../src/App.tsx";
 import type { StoryPlaybackState } from "../src/features/story/StoryView.tsx";
-import type { BehaviorStory } from "../src/features/story/storyApi.ts";
+import type { BehaviorStory, StoryTransition } from "../src/features/story/storyApi.ts";
 
 function installNavigationMediaQuery(initialMatches: boolean): { setMatches(matches: boolean): void } {
   let matches = initialMatches;
@@ -234,7 +234,7 @@ describe("Story representative mapping", () => {
   });
 
   it("keeps an unresolved termination on its known source without a destination", () => {
-    const unresolved = { from: "a", to: null, relation: "calls", origin: "heuristic", confidence: "inferred", resolution: "unresolved", resolved: false, evidence: [] } as const;
+    const unresolved: StoryTransition = { from: "a", to: null, relation: "calls", origin: "heuristic", confidence: "inferred", resolution: "unresolved", resolved: false, evidence: [] };
     const unresolvedStory: BehaviorStory = {
       ...story,
       steps: [...story.steps, { id: "step:wall", entityKey: null, kind: "unresolved", resolved: false, label: "unresolved", origin: "heuristic", confidence: "inferred", resolution: "unresolved", evidence: [] }],

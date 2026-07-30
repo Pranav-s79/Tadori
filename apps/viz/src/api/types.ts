@@ -112,11 +112,36 @@ export interface AggregatedEdge {
   provenance: AggregatedProvenance[];
 }
 
+/**
+ * One provenance bucket inside an aggregated edge. The fields mirror `ApiEdge`,
+ * where they are optional: an edge the server did not attribute must stay
+ * visibly unattributed here rather than being bucketed as though it carried a
+ * provenance the snapshot never supplied.
+ */
 export interface AggregatedProvenance {
+  origin: Origin | null;
+  confidence: Confidence | null;
+  resolution: Resolution | null;
+  count: number;
+}
+
+/** An aggregated bucket the snapshot actually attributed on all three axes. */
+export interface AttributedProvenance extends AggregatedProvenance {
   origin: Origin;
   confidence: Confidence;
   resolution: Resolution;
-  count: number;
+}
+
+/**
+ * Keep only buckets carrying a complete provenance. Callers that style or
+ * filter by provenance must not treat a partially attributed bucket as though
+ * it were attributed; an empty result is the honest "not attributed" state.
+ */
+export function attributedProvenance(
+  buckets: readonly AggregatedProvenance[]
+): AttributedProvenance[] {
+  return buckets.filter((bucket): bucket is AttributedProvenance =>
+    bucket.origin !== null && bucket.confidence !== null && bucket.resolution !== null);
 }
 
 export type RegionRoleStatus = "documented" | "configured" | "derived_from_graph";

@@ -7,6 +7,7 @@ import type {
   Resolution
 } from "../api/types.ts";
 import type { AggregatedProvenance } from "../api/types.ts";
+import { attributedProvenance } from "../api/types.ts";
 import { edgeVisualStyle } from "../legend.ts";
 
 export type AtlasNodeShape =
@@ -145,11 +146,14 @@ export function atlasEdgeVisual(
     aggregateProvenance?: readonly AggregatedProvenance[];
   }
 ): AtlasEdgeVisual {
-  const buckets = edge.aggregateProvenance !== undefined && edge.aggregateProvenance.length > 0
-    ? edge.aggregateProvenance : (edge.origin !== undefined
-    && edge.confidence !== undefined && edge.resolution !== undefined
-    ? [{ origin: edge.origin, confidence: edge.confidence, resolution: edge.resolution, count: 1 }]
-    : []);
+  const buckets = attributedProvenance(
+    edge.aggregateProvenance !== undefined && edge.aggregateProvenance.length > 0
+      ? edge.aggregateProvenance
+      : (edge.origin !== undefined
+        && edge.confidence !== undefined && edge.resolution !== undefined
+        ? [{ origin: edge.origin, confidence: edge.confidence, resolution: edge.resolution, count: 1 }]
+        : [])
+  );
   if (buckets.length === 0) {
     return { type: "dotted", color: "#9a968c", size: 1.25, provenanceLabel: "provenance not attributed" };
   }
