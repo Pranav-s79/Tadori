@@ -15,13 +15,16 @@ import { fetchSearch } from "./features/search/searchApi.ts";
 import { defaultFilters, type SearchFilters } from "./features/search/filterState.ts";
 import { PackageMapCanvas, type RenderedGraphSnapshot, type StoryMapEmphasis, type ViewportPosition } from "./graph/PackageMapCanvas.tsx";
 import { usePackageGraph } from "./hooks/usePackageGraph.ts";
+import { useRegions } from "./hooks/useRegions.ts";
 import { useRefreshStatus } from "./hooks/useRefreshStatus.ts";
 import { useSnapshot } from "./hooks/useSnapshot.ts";
 import { ProvenanceLegend } from "./legend/ProvenanceLegend.tsx";
 import { ModeTabs, type WorkspaceMode } from "./shell/ModeTabs.tsx";
+import { SpatialProjectionToggle, type SpatialProjection } from "./shell/SpatialProjectionToggle.tsx";
 import { LensButton } from "./shell/LensButton.tsx";
 import { useNavigationFocus } from "./shell/useNavigationFocus.ts";
 import { LoadingState, RefreshingBanner, StaleState } from "./states/EmptyLoadingStale.tsx";
+import { ReliefStage } from "./graph/relief/ReliefStage.tsx";
 
 interface LensState {
   boundaries: boolean;
@@ -38,6 +41,7 @@ const DEFAULT_LENSES: LensState = {
 };
 
 const NAVIGATION_DRAWER_QUERY = "(max-width: 860px)";
+const FORCED_COLORS_QUERY = "(forced-colors: active)";
 const EMPTY_VIEWPORT_POSITIONS: ReadonlyMap<string, ViewportPosition> = new Map();
 
 function currentNavigationDrawerMode(): boolean {
@@ -55,6 +59,19 @@ function useNavigationDrawerMode(): boolean {
     return () => query.removeEventListener("change", onChange);
   }, []);
   return drawerMode;
+}
+
+function useForcedColors(): boolean {
+  const [active, setActive] = useState(() => window.matchMedia?.(FORCED_COLORS_QUERY).matches ?? false);
+  useEffect(() => {
+    const query = window.matchMedia?.(FORCED_COLORS_QUERY);
+    if (query === undefined) return;
+    const onChange = (event: MediaQueryListEvent): void => setActive(event.matches);
+    setActive(query.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  return active;
 }
 
 function wsUrl(): string {
@@ -110,11 +127,14 @@ export function mapStoryPlaybackToGraph(
 export function App(): ReactElement {
   const { snapshot, loading: snapshotLoading } = useSnapshot();
   const { data, loading: graphLoading, error: graphError, refetch: refetchGraph } = usePackageGraph();
+  const regions = useRegions();
   const inspection = useInspectionStore();
   const reviewStore = useReviewDiffStore();
   const boundaries = useBoundaries();
   const navigationDrawerMode = useNavigationDrawerMode();
+  const forcedColorsActive = useForcedColors();
   const [mode, setMode] = useState<WorkspaceMode>("atlas");
+  const [spatialProjection, setSpatialProjection] = useState<SpatialProjection>("plan");
   const [rendererError, setRendererError] = useState(false);
   const [lenses, setLenses] = useState<LensState>(() => ({
     ...DEFAULT_LENSES,
@@ -133,6 +153,10 @@ export function App(): ReactElement {
   useEffect(() => {
     setNavigationOpen(!navigationDrawerMode);
   }, [navigationDrawerMode]);
+
+  useEffect(() => {
+    if (forcedColorsActive) setMode("table");
+  }, [forcedColorsActive]);
 
   const openInspectionPanel = useCallback(
     (entityKey: string) => inspection.openEntity({ entityKey, entityType: "node" }),
@@ -168,14 +192,16 @@ export function App(): ReactElement {
   }, []);
 
   const refetchBoundaries = boundaries.refetch;
+  const refetchRegions = regions.refetch;
   const storyMapEmphasis = useMemo(
-    () => mapStoryPlaybackToGraph(mode === "story" ? storyPlayback : null, data?.representativeByEntityKey ?? new Map()),
-    [data?.representativeByEntityKey, mode, storyPlayback]
+    () => mapStoryPlaybackToGraph(storyPlayback, data?.representativeByEntityKey ?? new Map()),
+    [data?.representativeByEntityKey, storyPlayback]
   );
   const onReconnected = useCallback(() => {
     refetchGraph();
     refetchBoundaries();
-  }, [refetchGraph, refetchBoundaries]);
+    refetchRegions();
+  }, [refetchGraph, refetchBoundaries, refetchRegions]);
   const refreshStatus = useRefreshStatus(wsUrl(), onReconnected);
 
   if ((snapshotLoading && snapshot === null) || (graphLoading && data === null)) {
@@ -189,7 +215,7 @@ export function App(): ReactElement {
       positions={data.positions}
       filters={searchFilters}
       focusRequest={focusRequest}
-      active={mode !== "table"}
+      active={mode !== "table" && spatialProjection === "plan"}
       onRendererError={() => {
         setRendererError(true);
         setMode("table");
@@ -197,7 +223,7 @@ export function App(): ReactElement {
       onInspect={openInspectionPanel}
       onRenderedGraphChange={setRenderedGraph}
       onViewportPositionsChange={setViewportPositions}
-      storyEmphasis={storyMapEmphasis}
+      storyEmphasis={mode === "story" ? storyMapEmphasis : null}
     />
   );
   const isRefreshing = refreshStatus?.phase === "refreshing";
@@ -220,10 +246,27 @@ export function App(): ReactElement {
           <p>{graphError.message}</p>
           <button type="button" onClick={refetchGraph}>Retry graph</button>
         </div>
-      ) : isRefreshing ? (
-        <RefreshingBanner>{graphView}</RefreshingBanner>
       ) : (
-        graphView
+        <>
+          <div className="atlas-plan-layer" hidden={spatialProjection !== "plan"}>
+            {isRefreshing ? <RefreshingBanner>{graphView}</RefreshingBanner> : graphView}
+          </div>
+          {spatialProjection === "relief" && renderedGraph !== null && (
+            <ReliefStage
+              graph={renderedGraph}
+              regions={regions.data}
+              regionsLoading={regions.loading}
+              regionsError={regions.error}
+              filters={searchFilters}
+              storyEmphasis={mode === "story" ? storyMapEmphasis : null}
+              onInspect={openInspectionPanel}
+              onViewportPositionsChange={setViewportPositions}
+            />
+          )}
+          {spatialProjection === "relief" && renderedGraph === null && (
+            <p className="bounded-notice" role="status">Preparing the graph-backed relief…</p>
+          )}
+        </>
       )}
       {showChanges && (
         <DiffBadgeOverlay page={reviewStore.page} positions={viewportPositions} onInspect={openInspectionPanel} />
@@ -275,6 +318,7 @@ export function App(): ReactElement {
         <ModeTabs
           active={mode}
           onChange={(nextMode) => {
+            if (forcedColorsActive && nextMode !== "table") return;
             if (nextMode !== "table") setRendererError(false);
             setMode(nextMode);
           }}
@@ -314,9 +358,18 @@ export function App(): ReactElement {
         </aside>
 
         <main id="workspace-stage" className="atlas-main" tabIndex={-1}>
-          <div className="atlas-context-bar" role="status" aria-live="polite" aria-atomic="true">
-            <span>{mode === "atlas" ? "Repository map" : mode === "story" ? "Static behavior" : mode === "changes" ? "Change review" : "Structured graph"}</span>
-            <span>{data === null ? "Graph unavailable" : `Showing ${visibleNodeCount} nodes and ${visibleEdgeCount} relations`}</span>
+          <div className="atlas-context-bar">
+            <span>{mode === "atlas" ? (spatialProjection === "relief" ? "Repository relief" : "Repository map") : mode === "story" ? "Static behavior" : mode === "changes" ? "Change review" : "Structured graph"}</span>
+            {mode !== "table" && <SpatialProjectionToggle active={spatialProjection} onChange={setSpatialProjection} />}
+            <nav aria-label="Atlas location">
+              <ol>
+                {(renderedGraph?.breadcrumb ?? ["Repository"]).map((label, index, labels) => (
+                  <li key={`${index}:${label}`} aria-current={index === labels.length - 1 ? "location" : undefined}>{label}</li>
+                ))}
+              </ol>
+            </nav>
+            <span>{`${renderedGraph?.lodLevel ?? "repository"} level`}</span>
+            <span role="status" aria-live="polite" aria-atomic="true">{data === null ? "Graph unavailable" : `Showing ${visibleNodeCount} nodes and ${visibleEdgeCount} relations`}</span>
           </div>
 
           <section
@@ -336,7 +389,9 @@ export function App(): ReactElement {
                   entityKey={storyEntityKey}
                   repoRoot={snapshot?.repository ?? null}
                   onInspect={openInspectionPanel}
-                  onPlaybackChange={setStoryPlayback}
+                  onPlaybackChange={(playback) => {
+                    if (playback !== null) setStoryPlayback(playback);
+                  }}
                   onClose={() => {
                     setStoryPlayback(null);
                     setStoryEntityKey(null);
@@ -360,6 +415,11 @@ export function App(): ReactElement {
             </div>
             {mode === "table" && data !== null && (
               <>
+                {forcedColorsActive && (
+                  <p className="bounded-notice" role="alert">
+                    Forced-colors mode is active. Showing the structured graph because every visual state is named in text.
+                  </p>
+                )}
                 {rendererError && (
                   <p className="bounded-notice" role="alert">
                     The repository map renderer is unavailable. Showing the structured graph instead.
@@ -370,6 +430,7 @@ export function App(): ReactElement {
                   edges={renderedGraph?.edges ?? data.edges}
                   filters={searchFilters}
                   onInspect={openInspectionPanel}
+              storyEmphasis={mode === "story" ? storyMapEmphasis : null}
                 />
               </>
             )}

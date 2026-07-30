@@ -1,4 +1,4 @@
-import type { ApiContext, ApiEdge, ApiNode, LayoutPositionDto } from "./types.ts";
+import type { ApiContext, ApiEdge, ApiNode, LayoutPositionDto, RegionProjectionDto } from "./types.ts";
 import {
   assertLodResponseWithinBudget,
   clampLodRequestLimit,
@@ -141,6 +141,10 @@ export async function fetchSnapshot(): Promise<ApiContext> {
     return (body as { context: ApiContext }).context;
   }
   return body as ApiContext;
+}
+
+export async function fetchRegions(): Promise<RegionProjectionDto> {
+  return await getJson("/regions") as RegionProjectionDto;
 }
 
 export async function fetchNodes(params?: {

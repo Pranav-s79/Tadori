@@ -1,4 +1,4 @@
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ApiEdge, ApiNode, LayoutPositionDto } from "../src/api/types.ts";
 import Graph from "graphology";
@@ -9,6 +9,7 @@ import {
   applyStoryGraphEmphasis,
   directionalNeighbor,
   focusGraphEntity,
+  graphFocusAnnouncement,
   projectRenderedNodePositions,
   projectedPackagePlates,
   renderedGraphSnapshot,
@@ -114,6 +115,14 @@ describe("PackageMapCanvas mount/unmount", () => {
     expect(settings.nodeProgramClasses["atlas-foundation-unknown"]).toBeTypeOf("function");
     expect(Object.keys(settings.edgeProgramClasses).sort()).toEqual(["dashed", "dotted", "solid"]);
     unmount();
+  });
+
+  it("announces keyboard focus with the structure and material in words", () => {
+    render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} />);
+    fireEvent.keyDown(screen.getByRole("application"), { key: "ArrowRight" });
+    expect(screen.getByText(
+      "@tadori/a. package. package foundation. partially buried neutral stone. Capability: capability not attributed."
+    )).toHaveAttribute("aria-live", "polite");
   });
 
   it("kills the Sigma instance on unmount", () => {
@@ -224,6 +233,31 @@ describe("camera focus and render-only filters", () => {
     expect(snapshot.edges.every((edge) => snapshot.nodes.some((node) => node.entityKey === edge.srcEntityKey)
       && snapshot.nodes.some((node) => node.entityKey === edge.dstEntityKey))).toBe(true);
     expect(snapshot.selectedEntityKey).toBe(file.entityKey);
+    expect(snapshot.lodLevel).toBe("repository");
+    expect(snapshot.breadcrumb).toEqual(["Repository"]);
+  });
+
+  it("derives level and breadcrumb from expanded graph ancestry", () => {
+    const graph = new Graph();
+    const pkg = { entityKey: "pkg", kind: "package", qualifiedName: "pkg", displayName: "Core", file: null, exported: true, fanIn: 0 } satisfies ApiNode;
+    const file = { entityKey: "file", kind: "file", qualifiedName: "src/core.py", displayName: "core.py", file: "src/core.py", exported: true, fanIn: 0 } satisfies ApiNode;
+    const symbol = { entityKey: "symbol", kind: "function", qualifiedName: "run", displayName: "run", file: "src/core.py", exported: true, fanIn: 0 } satisfies ApiNode;
+    graph.addNode(pkg.entityKey, { apiNode: pkg, kind: pkg.kind, x: 0, y: 0 });
+    graph.addNode(file.entityKey, { apiNode: file, kind: file.kind, expandedFrom: pkg.entityKey, x: 1, y: 1 });
+    graph.addNode(symbol.entityKey, { apiNode: symbol, kind: symbol.kind, expandedFromFile: file.entityKey, x: 2, y: 2 });
+    const snapshot = renderedGraphSnapshot(graph);
+    expect(snapshot.lodLevel).toBe("symbol");
+    expect(snapshot.breadcrumb).toEqual(["Repository", "Core", "core.py"]);
+  });
+
+  it("announces the focused structure and its text-equivalent material", () => {
+    const graph = new Graph();
+    const pkg = { entityKey: "pkg", kind: "package", qualifiedName: "pkg", displayName: "Core", file: null, exported: true, fanIn: 0,
+      aggregateCapabilities: ["structural"] } satisfies ApiNode;
+    graph.addNode(pkg.entityKey, { apiNode: pkg, kind: pkg.kind, x: 0, y: 0 });
+    expect(graphFocusAnnouncement(graph, pkg.entityKey)).toBe(
+      "Core. package. package foundation. open-course green-grey stone. Capability: structural."
+    );
   });
 
   it("projects each duplicate canonical entity once using deterministic graph-key order", () => {

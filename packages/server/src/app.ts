@@ -9,6 +9,7 @@ import { registerLayoutRoutes } from "./routes/layout.js";
 import { registerObservationRoutes } from "./routes/observations.js";
 import { registerPathRoutes } from "./routes/path.js";
 import { registerRefreshRoutes } from "./routes/refresh.js";
+import { registerRegionRoutes } from "./routes/regions.js";
 import { registerReviewRoutes } from "./routes/review.js";
 import { registerSearchRoutes } from "./routes/search.js";
 import { registerBoundaryRoutes } from "./routes/boundaries.js";
@@ -64,6 +65,7 @@ export async function createServerApp(options: ServerAppOptions): Promise<Fastif
   await app.register(registerSearchRoutes, { prefix: "/api/v1" });
   await app.register(registerPathRoutes, { prefix: "/api/v1" });
   await app.register(registerDerivedRoutes, { prefix: "/api/v1" });
+  await app.register(registerRegionRoutes, { prefix: "/api/v1" });
   await app.register(registerRefreshRoutes, { prefix: "/api/v1" });
   await app.register(registerLayoutRoutes, { prefix: "/api/v1" });
   await app.register(registerReviewRoutes, { prefix: "/api/v1" });

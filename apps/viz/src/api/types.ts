@@ -118,3 +118,66 @@ export interface AggregatedProvenance {
   resolution: Resolution;
   count: number;
 }
+
+export type RegionRoleStatus = "documented" | "configured" | "derived_from_graph";
+
+export interface RegionEvidence {
+  file: string;
+  kind: "source" | "documentation" | "git" | "human_annotation" | "tool_event";
+  lineStart: number;
+  lineEnd: number;
+  columnStart?: number;
+  columnEnd?: number;
+  commitSha?: string;
+  excerptHash?: string;
+}
+
+export interface RegionDto {
+  regionKey: string;
+  label: string;
+  /** Compatibility root for the first package-containment projection. */
+  packageEntityKey?: string;
+  /** Additive multi-package/project membership when supplied by newer servers. */
+  memberPackageKeys: string[];
+  role: {
+    text: string | null;
+    status: RegionRoleStatus;
+    evidence: RegionEvidence[];
+    evidenceOmittedCount: number;
+  };
+  basis: {
+    kind: "package_containment";
+    packageEntityKey: string;
+    sourceEdgeCount: number;
+    evidence: RegionEvidence[];
+    evidenceOmittedCount: number;
+  } | {
+    kind: "project_root";
+    projectId: string;
+    root: string;
+    manifest: string | null;
+    evidence: RegionEvidence[];
+    evidenceOmittedCount: number;
+  };
+  counts: {
+    entities: number;
+    byKind: Record<NodeKind, number>;
+    incomingCrossRegionRelations: number;
+    outgoingCrossRegionRelations: number;
+  };
+  languages: string[];
+  capabilities: ExtractionCapability[];
+  derivations: ExtractionDerivation[];
+}
+
+export interface RegionProjectionDto {
+  regions: RegionDto[];
+  accounting: {
+    packageCount: number;
+    projectCount: number;
+    regionCount: number;
+    assignedEntityCount: number;
+    ambiguousEntityCount: number;
+    unownedEntityCount: number;
+  };
+}

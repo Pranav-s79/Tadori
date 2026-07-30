@@ -27,6 +27,8 @@ vi.mock("../src/graph/PackageMapCanvas.tsx", () => ({
     nodes: Array<{ entityKey: string; kind: "package" | "file"; qualifiedName: string; displayName: string; file: string | null; exported: boolean; fanIn: number }>;
     edges: never[];
     selectedEntityKey: string | null;
+    lodLevel: "repository" | "file" | "symbol";
+    breadcrumb: readonly string[];
   }) => void; onRendererError?: (error: Error) => void }) => (
     <div>
       map
@@ -39,7 +41,9 @@ vi.mock("../src/graph/PackageMapCanvas.tsx", () => ({
           { entityKey: "file:expanded.py", kind: "file", qualifiedName: "expanded.py", displayName: "expanded.py", file: "expanded.py", exported: true, fanIn: 0 }
         ],
         edges: [],
-        selectedEntityKey: "file:expanded.py"
+        selectedEntityKey: "file:expanded.py",
+        lodLevel: "file",
+        breadcrumb: ["Repository", "pkg"]
       })}>Publish expanded graph</button>
     </div>
   )
@@ -71,7 +75,11 @@ function installNavigationMediaQuery(initialMatches: boolean): { setMatches(matc
     removeListener: () => undefined,
     dispatchEvent: () => true
   } as MediaQueryList;
-  vi.stubGlobal("matchMedia", vi.fn(() => query));
+  const inactiveQuery = {
+    ...query,
+    get matches() { return false; }
+  } as MediaQueryList;
+  vi.stubGlobal("matchMedia", vi.fn((media: string) => media === "(max-width: 860px)" ? query : inactiveQuery));
   return {
     setMatches(nextMatches: boolean): void {
       matches = nextMatches;
@@ -142,10 +150,26 @@ describe("App focus ownership", () => {
     expect(screen.getByText("1 node")).toBeInTheDocument();
   });
 
+  it("automatically uses the text-equivalent Table in forced-colors mode", async () => {
+    const query = {
+      media: "(forced-colors: active)", matches: true, onchange: null,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn()
+    } as unknown as MediaQueryList;
+    const inactive = { ...query, matches: false } as MediaQueryList;
+    vi.stubGlobal("matchMedia", vi.fn((media: string) => media === "(forced-colors: active)" ? query : inactive));
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Table" })).toHaveAttribute("aria-selected", "true"));
+    expect(screen.getByRole("alert")).toHaveTextContent("Forced-colors mode is active");
+    fireEvent.click(screen.getByRole("tab", { name: "Atlas" }));
+    expect(screen.getByRole("tab", { name: "Table" })).toHaveAttribute("aria-selected", "true");
+  });
+
   it("keeps the rendered expansion available to Table mode and its inspector", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Publish expanded graph" }));
     expect(screen.getByText("Showing 2 nodes and 0 relations")).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Atlas location" })).toHaveTextContent("Repositorypkg");
+    expect(screen.getByText("file level")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Table" }));
     expect(screen.getByText("2 nodes")).toBeInTheDocument();
