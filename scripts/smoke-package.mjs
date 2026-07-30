@@ -1,3 +1,4 @@
+/* global document, getComputedStyle, performance, location */
 import assert from "node:assert/strict";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -48,6 +49,86 @@ async function responseJson(url) {
   const response = await globalThis.fetch(url);
   assert.equal(response.ok, true, `${url} returned ${String(response.status)}`);
   return response.json();
+}
+
+async function verifyInstalledGui(url, engine) {
+  const playwright = await import("playwright-core");
+  const browserType = playwright[engine];
+  assert.notEqual(browserType, undefined, `Unsupported TADORI_PACKAGE_BROWSER: ${engine}`);
+  const browser = await browserType.launch({ headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    const browserErrors = [];
+    const failedRequests = [];
+    page.on("pageerror", (error) => browserErrors.push(error.stack ?? error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") browserErrors.push(message.text());
+    });
+    page.on("requestfailed", (request) => {
+      failedRequests.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText ?? "unknown failure"}`);
+    });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    const canvas = page.locator(".package-map-canvas");
+    await canvas.waitFor({ state: "visible", timeout: 60_000 });
+    await page.waitForFunction(() => {
+      const surface = document.querySelector(".package-map-canvas");
+      const canvases = [...(surface?.querySelectorAll("canvas") ?? [])];
+      return canvases.some((item) => item.width > 0 && item.height > 0)
+        && !(document.body.textContent?.includes("Loading repository graph") ?? false);
+    });
+
+    assert.equal(await page.title(), "Tadori");
+    const modeNames = await page.getByRole("tablist", { name: "Repository views" })
+      .getByRole("tab").allTextContents();
+    assert.deepEqual(modeNames.map((name) => name.trim()), ["Atlas", "Story", "Changes", "Table"]);
+    const showing = page.locator(".atlas-context-bar span").filter({ hasText: /^Showing / });
+    const initialCount = Number(/^Showing (\d+)/.exec(await showing.textContent() ?? "")?.[1] ?? 0);
+    assert.ok(initialCount > 0, `${engine} rendered no package nodes from the installed artifact`);
+
+    await canvas.focus();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Enter");
+    await page.waitForFunction((initial) => {
+      const value = [...document.querySelectorAll(".atlas-context-bar span")]
+        .find((node) => node.textContent?.startsWith("Showing "))?.textContent ?? "";
+      return Number(/^Showing (\d+)/.exec(value)?.[1] ?? 0) > initial;
+    }, initialCount);
+    const expandedCount = Number(/^Showing (\d+)/.exec(await showing.textContent() ?? "")?.[1] ?? 0);
+
+    await page.getByRole("tab", { name: "Table" }).click();
+    await page.waitForFunction((expected) =>
+      document.querySelectorAll(".a11y-graph tbody tr").length === expected, expandedCount);
+    assert.equal(await page.locator(".a11y-graph tbody tr").count(), expandedCount);
+    await page.locator('.a11y-graph tbody th[scope="row"] button').first().click();
+    await page.getByRole("complementary", { name: "Inspection" }).waitFor({ state: "visible" });
+    await page.getByRole("button", { name: "Close inspection panel" }).click();
+
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.waitForFunction(() =>
+      getComputedStyle(document.querySelector(".navigation-toggle")).display !== "none"
+        && document.querySelector("#atlas-navigation")?.getAttribute("aria-hidden") === "true");
+    const overflow = await page.evaluate(() =>
+      document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    assert.ok(overflow <= 1, `${engine} 320px layout overflows horizontally by ${String(overflow)}px`);
+    const navigationToggle = page.getByRole("button", { name: "Explore" });
+    await navigationToggle.click();
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() =>
+      document.querySelector("#atlas-navigation")?.getAttribute("aria-hidden") === "true"
+        && document.activeElement === document.querySelector(".navigation-toggle"));
+
+    const externalResources = await page.evaluate(() => performance.getEntriesByType("resource")
+      .map((entry) => entry.name)
+      .filter((name) => new URL(name).origin !== location.origin));
+    assert.deepEqual(externalResources, [], `${engine} fetched cross-origin resources`);
+    assert.deepEqual(failedRequests, [], `${engine} requests failed:\n${failedRequests.join("\n")}`);
+    assert.deepEqual(browserErrors, [], `${engine} emitted errors:\n${browserErrors.join("\n")}`);
+    process.stdout.write(
+      `Installed GUI smoke passed in ${engine} (${String(initialCount)} -> ${String(expandedCount)} nodes).\n`
+    );
+  } finally {
+    await browser.close();
+  }
 }
 
 let server = null;
@@ -130,6 +211,9 @@ try {
   const layout = await responseJson(new URL("api/v1/layout?level=package", url));
   assert.equal(Array.isArray(layout.positions), true);
   assert.equal(layout.positions.length > 0, true);
+
+  const packageBrowser = process.env.TADORI_PACKAGE_BROWSER?.trim();
+  if (packageBrowser) await verifyInstalledGui(url, packageBrowser);
 
   const exit = new Promise((resolve) => server.once("exit", (code, signal) => resolve({ code, signal })));
   server.kill(process.platform === "win32" ? "SIGTERM" : "SIGINT");

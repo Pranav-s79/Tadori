@@ -73,9 +73,12 @@ jobs:
       - run: pnpm fixtures:typecheck
       - run: pnpm package:artifact
       - run: npm pack --dry-run --json ./dist/package
+      - run: pnpm exec playwright-core install --with-deps firefox
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '22.14.0'
       - run: pnpm package:smoke
         env:
           TADORI_PACKAGE_AUDIT: ${{ matrix.os == 'ubuntu-latest' && matrix.node == '22.14.0' && '1' || '0' }}
+          TADORI_PACKAGE_BROWSER: ${{ matrix.os == 'ubuntu-latest' && matrix.node == '22.14.0' && 'firefox' || '' }}
       - run: pnpm verify:viz:e2e
         if: matrix.os == 'ubuntu-latest' && matrix.node == '22.14.0'
       - run: pnpm benchmark:layout
