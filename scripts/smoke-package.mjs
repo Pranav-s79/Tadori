@@ -55,7 +55,18 @@ async function verifyInstalledGui(url, engine) {
   const playwright = await import("playwright-core");
   const browserType = playwright[engine];
   assert.notEqual(browserType, undefined, `Unsupported TADORI_PACKAGE_BROWSER: ${engine}`);
-  const browser = await browserType.launch({ headless: true });
+  // Sigma renders through WebGL, and headless Firefox on Linux ships with it
+  // effectively unavailable. Without these prefs the app takes its (correct)
+  // renderer-error path and falls back to Table mode, which hides the canvas
+  // and makes the keyboard-descent check unreachable rather than failing
+  // honestly. Enabling WebGL exercises the real Atlas instead of asserting
+  // against a fallback. Chromium ignores unknown Firefox prefs.
+  const browser = await browserType.launch({
+    headless: true,
+    firefoxUserPrefs: engine === "firefox"
+      ? { "webgl.disabled": false, "webgl.force-enabled": true, "gfx.webrender.all": true }
+      : undefined
+  });
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
     const browserErrors = [];
@@ -108,11 +119,26 @@ async function verifyInstalledGui(url, engine) {
         expandedCount = await readShowing();
       }
     }
-    assert.ok(
-      expandedCount > initialCount,
-      `${engine} keyboard descent expanded no node from the installed artifact ` +
-        `(still ${initialCount} of ${initialCount})`
-    );
+    if (expandedCount === initialCount) {
+      // Browser errors and failed requests are asserted at the end of this
+      // function, so failing here would discard exactly the evidence that
+      // explains the failure. Report it inline instead of guessing remotely.
+      const focusState = await page.evaluate(() => {
+        const surface = document.querySelector(".package-map-canvas");
+        return {
+          focusedNode: surface?.dataset.focusedNode ?? null,
+          activeElement: document.activeElement?.className ?? null,
+          canvasCount: surface?.querySelectorAll("canvas").length ?? 0
+        };
+      });
+      assert.fail(
+        `${engine} keyboard descent expanded no node from the installed artifact ` +
+          `(still ${initialCount} of ${initialCount})\n` +
+          `focus state: ${JSON.stringify(focusState)}\n` +
+          `failed requests:\n${failedRequests.join("\n") || "(none)"}\n` +
+          `browser errors:\n${browserErrors.join("\n") || "(none)"}`
+      );
+    }
 
     await page.getByRole("tab", { name: "Table" }).click();
     await page.waitForFunction((expected) =>

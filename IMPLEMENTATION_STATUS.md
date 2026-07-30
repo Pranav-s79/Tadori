@@ -262,6 +262,43 @@ complete local gate is green at this tree: strict typecheck, lint, the root test
 command, 37 store/server files / 211 tests, 13 CLI files / 67 tests, and 46
 Atlas files / 371 tests. Frontend handoff is therefore unblocked.
 
+Frontend handoff begun (2026-07-30 UTC): PR #53 was retargeted from the dead
+`agent/archaeological-atlas` base to `main` and rebased, dropping the ten
+commits already squashed into `main` as `b641c1c`. CI had not run on the branch
+at all while its base pointed at that branch, so every earlier local-gate claim
+was remotely unverified.
+
+Two environment-dependent defects then surfaced that no local gate could see.
+First, the external validation runner audited its own repository for
+command-bearing Git configuration; hosted CI writes `includeIf.gitdir:*.path`
+into every checkout, so it failed on all five runners and the throw escaped the
+suite instead of recording a failed invariant. The validator is now baselined
+before the run and only newly introduced keys are a violation, while external
+checkouts keep the strict absolute rule under a new regression. Second, the
+installed-GUI smoke pressed one ArrowRight and required the node count to grow,
+which assumed `graph.nodes().sort()[0]` is descendable; the frozen contract is
+"Enter descends OR inspects", so the gate depended on path ordering and rode on
+the mixed oracle's single expandable node. It now walks the nodes, requires that
+some node descends, and names the observed counts on failure. Both were verified
+by reproducing the exact condition locally before pushing.
+
+Two frontend slices are delivered. `GET /api/v1/analysis` now has a UI: observed
+languages and bounded extraction diagnostics render in a navigation section with
+a top-bar severity status, where unavailable, still-loading, and genuinely-zero
+are three distinct sentences so an absent response never reads as clean.
+Workspace mode, spatial projection, active lenses, open story, and inspected
+entity are now carried in the query string, so a reload reopens the same reading
+and a link carries it; unknown values degrade to defaults because a shared link
+is untrusted input, and a `select=` key is re-resolved against the served graph
+rather than fabricating a selection. A dead `mode === "story"` comparison inside
+the Table branch was removed; it had silently starved the keyboard and
+assistive-technology peer of story emphasis.
+
+Known gap: `apps/viz` has no `typecheck` script and CI never type-checks it,
+which is how eleven pre-existing errors accumulated there, including the dead
+comparison above. Wiring `tsc --noEmit` for the app requires clearing those
+first and remains open.
+
 Claude Opus backend review queue and frontend handoff contract:
 
 1. Review the project-evidence correction in
