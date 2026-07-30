@@ -35,7 +35,7 @@ describe("TadoriTools", () => {
     expect(output.entryPoints.available).toBe(false);
     expect(output.boundaryRules.available).toBe(false);
     expect(output.languages).toEqual([
-      expect.objectContaining({ id: "typescript", fileCount: 3 })
+      expect.objectContaining({ id: "typescript", fileCount: 3, declaredSupport: "semantic" })
     ]);
     expect(output.diagnostics).toMatchObject({ total: 0, sample: [], omittedCount: 0 });
   });

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   CONFIDENCES,
+  CAPABILITY_FEATURES,
+  CAPABILITY_STATES,
   EVIDENCE_KINDS,
   NODE_KINDS,
   ORIGINS,
@@ -8,6 +10,7 @@ import {
   REPO_STATE_KINDS,
   RESOLUTIONS,
   confidenceSchema,
+  capabilityMatrixSchema,
   evidenceSchema,
   graphEdgeSchema,
   graphNodeSchema,
@@ -76,6 +79,36 @@ describe("frozen enums", () => {
     expect(confidenceSchema.safeParse("maybe").success).toBe(false);
     expect(resolutionSchema.safeParse("pending").success).toBe(false);
     expect(repoStateKindSchema.safeParse("branch").success).toBe(false);
+  });
+});
+
+describe("capability matrix schema", () => {
+  it("requires every feature and the exact ordered support vocabulary", () => {
+    const features = Object.fromEntries(
+      CAPABILITY_FEATURES.map((feature) => [feature, "unsupported"])
+    );
+    const matrix = {
+      version: 1,
+      claim: "Explicit support",
+      states: [...CAPABILITY_STATES],
+      languages: [{
+        id: "example",
+        extractorId: "example-extractor",
+        extractorVersion: "1",
+        features
+      }]
+    };
+    expect(capabilityMatrixSchema.safeParse(matrix).success).toBe(true);
+    const { calls: omittedCalls, ...incompleteFeatures } = features;
+    expect(omittedCalls).toBe("unsupported");
+    expect(capabilityMatrixSchema.safeParse({
+      ...matrix,
+      languages: [{ ...matrix.languages[0], features: incompleteFeatures }]
+    }).success).toBe(false);
+    expect(capabilityMatrixSchema.safeParse({
+      ...matrix,
+      languages: [...matrix.languages, matrix.languages[0]]
+    }).success).toBe(false);
   });
 });
 

@@ -5,6 +5,7 @@ import {
   type GraphNode,
   type Relation
 } from "@tadori/core";
+import { CAPABILITY_BY_LANGUAGE, declaredPrimaryCapability } from "@tadori/indexer";
 import type { EventLog, RetrievalCallLog } from "./events.js";
 import {
   findSymbolInputSchema,
@@ -615,6 +616,7 @@ export class TadoriTools {
       this.service.graph.files.flatMap((file) => file.language === null ? [] : [file.language])
     )].sort((left, right) => left.localeCompare(right)).map((id) => {
       const files = this.service.graph.files.filter((file) => file.language === id);
+      const declaration = CAPABILITY_BY_LANGUAGE.get(id);
       const capabilities = [...new Set(
         this.service.graph.extractors
           .filter((extractor) => extractor.languages.includes(id))
@@ -624,6 +626,9 @@ export class TadoriTools {
         id,
         fileCount: files.length,
         generatedFileCount: files.filter((file) => file.isGenerated).length,
+        declaredSupport: declaration === undefined
+          ? "repository-only" as const
+          : declaredPrimaryCapability(declaration),
         capabilities
       };
     });

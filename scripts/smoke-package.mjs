@@ -195,6 +195,24 @@ try {
 
   const snapshot = await responseJson(new URL("api/v1/snapshot", url));
   assert.equal(Number.isInteger(snapshot.context.snapshotId), true);
+  const capabilities = await responseJson(new URL("api/v1/capabilities", url));
+  assert.deepEqual(capabilities.states, [
+    "semantic", "structural", "repository-only", "unsupported", "experimental"
+  ]);
+  assert.equal(
+    capabilities.languages.find((language) => language.id === "python")
+      ?.features.structuralResolution,
+    "structural"
+  );
+  const capabilitySchema = await responseJson(new URL(
+    "api/v1/multilanguage-capabilities.schema.json",
+    url
+  ));
+  assert.equal(capabilitySchema.$schema, "https://json-schema.org/draft/2020-12/schema");
+  const analysis = await responseJson(new URL("api/v1/analysis?diagnosticLimit=1", url));
+  assert.equal(analysis.snapshotId, snapshot.context.snapshotId);
+  assert.equal(analysis.languages.some((language) => language.id === "python"), true);
+  assert.equal(Number.isInteger(analysis.diagnostics.total), true);
   const nodes = await responseJson(new URL("api/v1/nodes?level=file&limit=500", url));
   const python = nodes.items.find((node) => node.language === "python");
   assert.notEqual(python, undefined, "mixed-language artifact smoke did not expose Python");

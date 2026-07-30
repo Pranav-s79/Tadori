@@ -184,6 +184,7 @@ export const repoOverviewOutputSchema = z
         id: z.string().min(1),
         fileCount: z.number().int().min(0),
         generatedFileCount: z.number().int().min(0),
+        declaredSupport: z.enum(["semantic", "structural", "repository-only"]),
         capabilities: z.array(extractionCapabilitySchema)
       }).strict()
     ),
