@@ -103,7 +103,21 @@ async function verifyInstalledGui(url, engine) {
     // the alphabetically-first node is descendable makes this gate depend on
     // path ordering, which differs across platforms. Walk the nodes instead and
     // require that SOME node descends -- the property actually being asserted.
-    await canvas.focus();
+    // The canvas must actually hold focus before any key means anything. A bare
+    // locator.focus() did not land in headless Firefox on Linux -- the failure
+    // reported activeElement as "" while the renderer was healthy (41 canvases,
+    // no browser errors) -- so keydown never reached the container's listener
+    // and descent was unreachable. Focus through the DOM and assert it took:
+    // a map canvas that cannot receive focus is an accessibility defect and
+    // should say so rather than time out. locator.press() below then focuses
+    // and presses atomically instead of trusting focus to persist.
+    await canvas.evaluate((element) => { element.focus(); });
+    const focusedClass = await page.evaluate(() => document.activeElement?.className ?? "");
+    assert.ok(
+      focusedClass.includes("package-map-canvas"),
+      `${engine} could not focus the Atlas canvas, so keyboard descent is ` +
+        `unreachable (activeElement class: ${JSON.stringify(focusedClass)})`
+    );
     const readShowing = () => page.evaluate(() => {
       const value = [...document.querySelectorAll(".atlas-context-bar span")]
         .find((node) => node.textContent?.startsWith("Showing "))?.textContent ?? "";
@@ -111,8 +125,8 @@ async function verifyInstalledGui(url, engine) {
     });
     let expandedCount = initialCount;
     for (let attempt = 0; attempt < initialCount && expandedCount === initialCount; attempt += 1) {
-      await page.keyboard.press("ArrowRight");
-      await page.keyboard.press("Enter");
+      await canvas.press("ArrowRight");
+      await canvas.press("Enter");
       // Descent is a lazy fetch; poll briefly rather than racing a single read.
       for (let settle = 0; settle < 20 && expandedCount === initialCount; settle += 1) {
         await page.waitForTimeout(250);
