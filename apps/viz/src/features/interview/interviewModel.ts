@@ -1,5 +1,8 @@
 import type { ClaimBasis } from "../../design/ClaimBadge.tsx";
-import type { ApiEdge, ApiNode, SnapshotAnalysisDto } from "../../api/types.ts";
+import type { SnapshotAnalysisDto } from "../../api/types.ts";
+import type { NodeDetail, ToolEdge } from "../inspect/inspectApi.ts";
+import type { TestLink } from "../explore/exploreApi.ts";
+import type { RoutesState } from "../overview/overviewModel.ts";
 
 export type QuestionGroup =
   | "Basic comprehension"
@@ -14,13 +17,23 @@ export type QuestionGroup =
 
 export type Difficulty = "warm-up" | "core" | "probing";
 
+/**
+ * One piece of evidence behind a question. `entityKey` is non-null only when
+ * the label resolves to a served entity, so the view can offer inspection
+ * exactly where it will work and render everything else as plain text.
+ */
+export interface QuestionEvidence {
+  label: string;
+  entityKey: string | null;
+}
+
 export interface InterviewQuestion {
   group: QuestionGroup;
   question: string;
   /** What a strong answer should cover. */
   strongAnswer: string[];
   /** Repository evidence to inspect before answering. */
-  evidence: string[];
+  evidence: QuestionEvidence[];
   difficulty: Difficulty;
   /**
    * Whether the question is fully supported by extracted facts or leans on
@@ -30,20 +43,84 @@ export interface InterviewQuestion {
   basis: ClaimBasis;
 }
 
+/**
+ * Statically linked tests for the snapshot. `observed: false` is the server's
+ * own word: a test linking here is not evidence it was ever run.
+ */
+export type TestsState =
+  | { status: "loading" }
+  | { status: "ready"; tests: readonly TestLink[] }
+  | { status: "error" };
+
 export interface InterviewInput {
-  /** The selected subject, or null for a whole-repository interview. */
-  subject: ApiNode | null;
-  nodes: readonly ApiNode[];
-  edges: readonly ApiEdge[];
+  /**
+   * The selected subject with its own edges, or null for a whole-repository
+   * interview. Resolved from `/api/v1/nodes/:key` rather than the rendered
+   * graph: the landing view is level-of-detail bounded to a single repository
+   * node, so looking the subject up there silently produced a
+   * "this repository" interview even with an entity selected.
+   */
+  subject: NodeDetail | null;
+  routes: RoutesState;
+  tests: TestsState;
   analysis: SnapshotAnalysisDto | null;
 }
 
-function inbound(edges: readonly ApiEdge[], entityKey: string): ApiEdge[] {
-  return edges.filter((edge) => edge.dstEntityKey === entityKey);
+/** A file path is readable evidence but not a served entity, so it never links. */
+function fileEvidence(file: string | null): QuestionEvidence[] {
+  return file === null ? [] : [{ label: file, entityKey: null }];
 }
 
-function outbound(edges: readonly ApiEdge[], entityKey: string): ApiEdge[] {
-  return edges.filter((edge) => edge.srcEntityKey === entityKey);
+function edgeEvidence(edge: ToolEdge, end: "src" | "dst"): QuestionEvidence {
+  return end === "src"
+    ? { label: edge.srcQualifiedName, entityKey: edge.srcEntityKey }
+    : { label: edge.dstQualifiedName, entityKey: edge.dstEntityKey };
+}
+
+/**
+ * Four states, four questions. A pending or failed test read must not be asked
+ * as "no tests exist here" — that is the one framing a candidate could repeat
+ * aloud and be wrong about.
+ */
+function testingQuestion(tests: TestsState): InterviewQuestion {
+  if (tests.status !== "ready") {
+    return {
+      group: "Testing",
+      question: tests.status === "loading"
+        ? "Reading the repository's statically linked tests…"
+        : "The test projection could not be read. How would you check what is covered before relying on it?",
+      strongAnswer: ["Treat unavailable analysis as unknown, not as an absence of tests"],
+      evidence: [],
+      difficulty: "core",
+      basis: "unknown"
+    };
+  }
+  if (tests.tests.length === 0) {
+    return {
+      group: "Testing",
+      question: "No test entities were extracted here. How would you establish confidence before changing this system?",
+      strongAnswer: [
+        "Do not claim the project is untested; extraction found none, which is different",
+        "Propose characterisation tests around the highest fan-in entities first"
+      ],
+      evidence: [],
+      difficulty: "core",
+      basis: "unknown"
+    };
+  }
+  return {
+    group: "Testing",
+    question: `${String(tests.tests.length)} test entities are statically linked. `
+      + "What is covered, and what conspicuously is not?",
+    strongAnswer: [
+      "Distinguish static linkage from executed coverage — Tadori shows the former only",
+      "Name an area with no associated test",
+      "Say what you would add first and why"
+    ],
+    evidence: tests.tests.slice(0, 5).flatMap(({ node }) => fileEvidence(node.file)),
+    difficulty: "core",
+    basis: "observed"
+  };
 }
 
 /**
@@ -57,13 +134,13 @@ function outbound(edges: readonly ApiEdge[], entityKey: string): ApiEdge[] {
  * behind it.
  */
 export function buildInterviewQuestions(input: InterviewInput): InterviewQuestion[] {
-  const { subject, nodes, edges, analysis } = input;
+  const { subject, routes, tests, analysis } = input;
   const questions: InterviewQuestion[] = [];
 
   if (subject !== null) {
-    const dependents = inbound(edges, subject.entityKey);
-    const dependencies = outbound(edges, subject.entityKey);
-    const evidence = subject.file === null ? [] : [subject.file];
+    const dependents = subject.inEdges;
+    const dependencies = subject.outEdges;
+    const evidence = fileEvidence(subject.file);
 
     questions.push({
       group: "Basic comprehension",
@@ -88,7 +165,7 @@ export function buildInterviewQuestions(input: InterviewInput): InterviewQuestio
           "Separate compile-time coupling from runtime coupling",
           "Say which changes are safe and which are breaking"
         ],
-        evidence: dependents.slice(0, 6).map((edge) => edge.srcEntityKey),
+        evidence: dependents.slice(0, 6).map((edge) => edgeEvidence(edge, "src")),
         difficulty: "core",
         basis: "observed"
       });
@@ -103,7 +180,7 @@ export function buildInterviewQuestions(input: InterviewInput): InterviewQuestio
           "Name what is passed and what is returned at each hop",
           "Flag any relation whose resolution is partial or unresolved"
         ],
-        evidence: dependencies.slice(0, 6).map((edge) => edge.dstEntityKey),
+        evidence: dependencies.slice(0, 6).map((edge) => edgeEvidence(edge, "dst")),
         difficulty: "core",
         basis: "observed"
       });
@@ -124,18 +201,18 @@ export function buildInterviewQuestions(input: InterviewInput): InterviewQuestio
     });
   }
 
-  const routes = nodes.filter((node) => node.kind === "route");
-  if (routes.length > 0) {
+  if (routes.status === "ready" && routes.routes.length > 0) {
+    const registered = routes.routes;
     questions.push({
       group: "APIs and boundaries",
-      question: `This repository registers ${String(routes.length)} entry point(s), including `
-        + `\`${routes[0]?.displayName ?? ""}\`. How would you validate and version them?`,
+      question: `This repository registers ${String(registered.length)} entry point(s), including `
+        + `\`${registered[0]?.node.displayName ?? ""}\`. How would you validate and version them?`,
       strongAnswer: [
         "Name the actual routes rather than speaking generically",
         "Cover input validation at the boundary",
         "Address backward compatibility for existing callers"
       ],
-      evidence: routes.slice(0, 5).flatMap((route) => route.file === null ? [] : [route.file]),
+      evidence: registered.slice(0, 5).flatMap(({ node }) => fileEvidence(node.file)),
       difficulty: "core",
       basis: "observed"
     });
@@ -152,7 +229,7 @@ export function buildInterviewQuestions(input: InterviewInput): InterviewQuestio
         "Point at generated bindings, protocol definitions or config as the seam",
         "Acknowledge which cross-language edges the tooling could not resolve"
       ],
-      evidence: languages.map((language) => language.id),
+      evidence: languages.map((language) => ({ label: language.id, entityKey: null })),
       difficulty: "probing",
       basis: "observed"
     });
@@ -171,33 +248,13 @@ export function buildInterviewQuestions(input: InterviewInput): InterviewQuestio
       ],
       evidence: (analysis?.diagnostics.items ?? [])
         .slice(0, 5)
-        .flatMap((item) => item.file === null ? [] : [item.file]),
+        .flatMap((item) => fileEvidence(item.file)),
       difficulty: "probing",
       basis: "observed"
     });
   }
 
-  const tests = nodes.filter((node) => node.kind === "test");
-  questions.push({
-    group: "Testing",
-    question: tests.length > 0
-      ? `${String(tests.length)} test entities are indexed. What is covered, and what conspicuously is not?`
-      : "No test entities were extracted here. How would you establish confidence before changing this system?",
-    strongAnswer: tests.length > 0
-      ? [
-        "Distinguish static linkage from executed coverage — Tadori shows the former only",
-        "Name an area with no associated test",
-        "Say what you would add first and why"
-      ]
-      : [
-        "Do not claim the project is untested; extraction found none, which is different",
-        "Propose characterisation tests around the highest fan-in entities first"
-      ],
-    evidence: tests.slice(0, 5).flatMap((test) => test.file === null ? [] : [test.file]),
-    difficulty: "core",
-    basis: tests.length > 0 ? "observed" : "unknown"
-  });
-
+  questions.push(testingQuestion(tests));
   return questions;
 }
 
