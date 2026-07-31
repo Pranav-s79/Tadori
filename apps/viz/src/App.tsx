@@ -22,6 +22,7 @@ import { defaultFilters, type SearchFilters } from "./features/search/filterStat
 import { PackageMapCanvas, type RenderedGraphSnapshot, type StoryMapEmphasis, type ViewportPosition } from "./graph/PackageMapCanvas.tsx";
 import { usePackageGraph } from "./hooks/usePackageGraph.ts";
 import { useRegions } from "./hooks/useRegions.ts";
+import { useRoutes } from "./hooks/useRoutes.ts";
 import { useRefreshStatus } from "./hooks/useRefreshStatus.ts";
 import { useSnapshot } from "./hooks/useSnapshot.ts";
 import { ProvenanceLegend } from "./legend/ProvenanceLegend.tsx";
@@ -135,6 +136,7 @@ export function App(): ReactElement {
   const { snapshot, loading: snapshotLoading } = useSnapshot();
   const { data, loading: graphLoading, error: graphError, refetch: refetchGraph } = usePackageGraph();
   const regions = useRegions();
+  const routes = useRoutes();
   const inspection = useInspectionStore();
   const reviewStore = useReviewDiffStore();
   const boundaries = useBoundaries();
@@ -194,6 +196,14 @@ export function App(): ReactElement {
   }, [initialUrlState.selectedEntityKey, data, inspectionOpenEntity]);
 
   const inspectedEntityKey = inspection.current?.entityKey ?? null;
+  // Asked of the snapshot, not the rendered graph: the landing view holds one
+  // repository node, so testing the rendered set would deny a behavior trace to
+  // every route until the reader happened to descend to it.
+  const inspectedIsRoute = useMemo(
+    () => routes.status === "ready" && inspectedEntityKey !== null
+      && routes.routes.some(({ node }) => node.entityKey === inspectedEntityKey),
+    [routes, inspectedEntityKey]
+  );
   useEffect(() => {
     const query = writeUrlState({
       mode,
@@ -469,6 +479,7 @@ export function App(): ReactElement {
                 analysis={analysis.data}
                 regions={regions.data}
                 capabilities={capabilities.data}
+                routes={routes}
                 nodes={renderedGraph?.nodes ?? data?.nodes ?? []}
                 loading={analysis.loading}
                 error={graphError}
@@ -558,6 +569,21 @@ export function App(): ReactElement {
 
         <div className="atlas-inspector" hidden={inspection.current === null}>
           <InspectionPanel store={inspection} repoRoot={snapshot?.repository ?? null} />
+          {inspectedEntityKey !== null && (
+            <nav className="inspector-continuations" aria-label="Continue from this entity">
+              {/* A story starts at a route. Offering the action on entities that
+                  can only be refused would teach the reader to distrust it, so
+                  it appears when the graph says it will resolve. */}
+              {inspectedIsRoute && (
+                <button type="button" onClick={() => { openStory(inspectedEntityKey); }}>
+                  Trace execution flow
+                </button>
+              )}
+              <button type="button" onClick={() => { setMode("interview"); }}>
+                Prepare interview questions
+              </button>
+            </nav>
+          )}
         </div>
       </div>
     </div>
