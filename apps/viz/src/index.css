@@ -317,12 +317,19 @@ button { min-height: 2rem; }
   font-weight: 700;
 }
 
+/* Column rather than a two-row grid: the stage carries an optional notice
+   between the context bar and the workspace, and fixed rows made that notice
+   overlap the panel instead of displacing it. */
 .atlas-main {
-  display: grid;
-  grid-template-rows: 2rem minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
 }
+
+.atlas-main > .atlas-context-bar { flex: none; height: 2rem; }
+.atlas-main > .focus-unavailable-notice { flex: none; }
+.atlas-main > .mode-panel { flex: 1 1 auto; }
 
 .atlas-context-bar {
   display: flex;
@@ -982,7 +989,36 @@ button { min-height: 2rem; }
   font-family: var(--tadori-font-mono); font-size: var(--tadori-text-xs);
 }
 
+/* Explains why a focus request could not move the map. Restrained on purpose:
+   the entity is fine and its details are already open, so this is information,
+   not an error. */
+.focus-unavailable-notice {
+  display: flex;
+  gap: var(--tadori-space-3);
+  align-items: baseline;
+  margin: 0;
+  padding: var(--tadori-space-2) var(--tadori-space-3);
+  border-left: 3px solid var(--tadori-bronze);
+  background: var(--tadori-panel-raised);
+  color: var(--tadori-ink);
+  font-size: var(--tadori-text-sm);
+}
+
+.focus-unavailable-notice button {
+  flex: none;
+  border: 1px solid var(--tadori-rule);
+  background: transparent;
+  color: var(--tadori-ink);
+  padding: 0 var(--tadori-space-2);
+  cursor: pointer;
+  font: inherit;
+}
+
+.focus-unavailable-notice button:hover { background: var(--tadori-panel); }
+
 @media (forced-colors: active) {
   .claim-badge { border-color: CanvasText; color: CanvasText; }
   .overview-claim-link, .interview-evidence-link { color: LinkText; }
+  .focus-unavailable-notice { border-left-color: CanvasText; }
+  .focus-unavailable-notice button { border-color: ButtonBorder; color: ButtonText; }
 }
