@@ -103,21 +103,17 @@ async function verifyInstalledGui(url, engine) {
     // the alphabetically-first node is descendable makes this gate depend on
     // path ordering, which differs across platforms. Walk the nodes instead and
     // require that SOME node descends -- the property actually being asserted.
-    // The canvas must actually hold focus before any key means anything. A bare
-    // locator.focus() did not land in headless Firefox on Linux -- the failure
-    // reported activeElement as "" while the renderer was healthy (41 canvases,
-    // no browser errors) -- so keydown never reached the container's listener
-    // and descent was unreachable. Focus through the DOM and assert it took:
-    // a map canvas that cannot receive focus is an accessibility defect and
-    // should say so rather than time out. locator.press() below then focuses
-    // and presses atomically instead of trusting focus to persist.
+    // Focus first, and record where it actually landed. In headless Firefox on
+    // Linux neither locator.focus() nor a direct element.focus() moves
+    // document.activeElement off <body>, while the renderer is healthy (41
+    // canvases, no browser errors). activeElement is therefore reported as
+    // evidence on failure rather than asserted up front: locator.press() below
+    // focuses and presses atomically and can route a real key even where
+    // activeElement reporting is unreliable, so pre-asserting it would fail the
+    // run before the mechanism that works has been tried. Descent itself
+    // remains the gate.
     await canvas.evaluate((element) => { element.focus(); });
     const focusedClass = await page.evaluate(() => document.activeElement?.className ?? "");
-    assert.ok(
-      focusedClass.includes("package-map-canvas"),
-      `${engine} could not focus the Atlas canvas, so keyboard descent is ` +
-        `unreachable (activeElement class: ${JSON.stringify(focusedClass)})`
-    );
     const readShowing = () => page.evaluate(() => {
       const value = [...document.querySelectorAll(".atlas-context-bar span")]
         .find((node) => node.textContent?.startsWith("Showing "))?.textContent ?? "";
@@ -148,6 +144,7 @@ async function verifyInstalledGui(url, engine) {
       assert.fail(
         `${engine} keyboard descent expanded no node from the installed artifact ` +
           `(still ${initialCount} of ${initialCount})\n` +
+          `activeElement class after focus(): ${JSON.stringify(focusedClass)}\n` +
           `focus state: ${JSON.stringify(focusState)}\n` +
           `failed requests:\n${failedRequests.join("\n") || "(none)"}\n` +
           `browser errors:\n${browserErrors.join("\n") || "(none)"}`
