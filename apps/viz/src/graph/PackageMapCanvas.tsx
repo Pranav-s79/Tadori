@@ -562,6 +562,13 @@ export function PackageMapCanvas({
     sigmaRef.current = renderer;
 
     const publish = (): void => {
+      // The container is focusable as soon as it mounts, but the Sigma graph is
+      // populated a tick later. In that window an arrow key is delivered to a
+      // focused canvas, finds `graph.nodes()` empty, falls through to pan, and
+      // sets no focused node — the keyboard silently does nothing. Publishing
+      // readiness lets a caller wait for the real thing instead of inferring it
+      // from a painted canvas.
+      container.dataset.graphReady = graph.order > 0 ? "true" : "false";
       callbacksRef.current.onGraphReady?.(graph);
       callbacksRef.current.onRenderedGraphChange?.(renderedGraphSnapshot(graph));
       callbacksRef.current.onViewportPositionsChange?.(projectRenderedNodePositions(renderer, graph));

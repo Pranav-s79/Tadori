@@ -189,6 +189,12 @@ try {
     "document.querySelector('.spatial-workspace')?.hasAttribute('hidden') === false",
     Boolean
   );
+  // A painted canvas is not a populated graph: until the Sigma graph has nodes,
+  // an arrow key is delivered but finds nothing to focus and silently pans.
+  await browser.waitFor<boolean>(
+    "document.querySelector('.package-map-canvas')?.dataset.graphReady === 'true'",
+    Boolean
+  );
   await browser.evaluate("document.querySelector('.package-map-canvas').focus()");
   await press("ArrowRight", "ArrowRight", 39);
   await press("Enter", "Enter", 13);

@@ -91,6 +91,11 @@ async function verifyInstalledGui(url, engine) {
       const surface = document.querySelector(".package-map-canvas");
       const canvases = [...(surface?.querySelectorAll("canvas") ?? [])];
       return canvases.some((item) => item.width > 0 && item.height > 0)
+        // A painted canvas is not a populated graph. Until the Sigma graph has
+        // nodes, an arrow key reaches the handler, finds nothing to focus, and
+        // silently pans — which is exactly how this gate failed with keys
+        // provably delivered and focusedNode still null.
+        && surface?.dataset.graphReady === "true"
         && !(document.body.textContent?.includes("Loading repository graph") ?? false);
     });
 
