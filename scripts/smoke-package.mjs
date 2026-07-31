@@ -1,4 +1,4 @@
-/* global document, getComputedStyle, performance, location */
+/* global document, getComputedStyle, performance, location, KeyboardEvent */
 import assert from "node:assert/strict";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -142,6 +142,52 @@ async function verifyInstalledGui(url, engine) {
       Reflect.set(globalThis, "__tadoriKeyProbe", probe);
       element.addEventListener("keydown", (event) => probe.push(event.key), true);
     });
+
+    // Branch 2 investigation: keysSeen stayed empty for every press while the
+    // document had focus and the canvas was visible with tabIndex 0, so the
+    // event never reached the element. Three checks separate the remaining
+    // causes in one run, without touching application code.
+    const deliveryReport = await canvas.evaluate((element) => {
+      // (a) Can ANYTHING on this page take focus? Distinguishes "this element
+      // is unfocusable" from "focus does not work here at all".
+      const probeButton = document.createElement("button");
+      probeButton.textContent = "focus probe";
+      document.body.append(probeButton);
+      probeButton.focus();
+      const buttonTookFocus = document.activeElement === probeButton;
+      probeButton.remove();
+
+      // (b) Does anything in the ancestor chain make the canvas unfocusable?
+      const ancestors = [];
+      for (let node = element; node !== null; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        ancestors.push({
+          tag: node.tagName.toLowerCase(),
+          cls: node.className || null,
+          inert: node.hasAttribute("inert"),
+          hidden: node.hasAttribute("hidden"),
+          ariaHidden: node.getAttribute("aria-hidden"),
+          display: style.display,
+          visibility: style.visibility
+        });
+      }
+
+      // (c) Does a dispatched event reach the listener when a real key did not?
+      // Separates delivery from listener wiring.
+      const seenBefore = (Reflect.get(globalThis, "__tadoriKeyProbe") ?? []).length;
+      element.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+      const dispatchReached =
+        (Reflect.get(globalThis, "__tadoriKeyProbe") ?? []).length > seenBefore;
+
+      element.focus();
+      return {
+        buttonTookFocus,
+        canvasTookFocus: document.activeElement === element,
+        dispatchReached,
+        rect: element.getBoundingClientRect().toJSON(),
+        ancestors
+      };
+    });
     const readProbe = () => page.evaluate(() => ({
       keysSeen: [...(Reflect.get(globalThis, "__tadoriKeyProbe") ?? [])],
       focusedNode: document.querySelector(".package-map-canvas")?.dataset.focusedNode ?? null,
@@ -178,6 +224,7 @@ async function verifyInstalledGui(url, engine) {
           `(still ${initialCount} of ${initialCount})\n` +
           `focus report after bringToFront: ${JSON.stringify(focusReport)}\n` +
           `per-key evidence: ${JSON.stringify(perKey)}\n` +
+          `delivery report: ${JSON.stringify(deliveryReport)}\n` +
           `focus state: ${JSON.stringify(focusState)}\n` +
           `failed requests:\n${failedRequests.join("\n") || "(none)"}\n` +
           `browser errors:\n${browserErrors.join("\n") || "(none)"}`
