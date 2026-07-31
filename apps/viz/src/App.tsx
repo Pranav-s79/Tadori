@@ -186,14 +186,16 @@ export function App(): ReactElement {
   }, [forcedColorsActive]);
 
   const inspectionOpenEntity = inspection.openEntity;
-  // A `select=` link names an entity; the served graph decides whether it still
-  // exists. An unknown key opens nothing rather than inventing a selection.
+  // A `select=` link names an entity; the entity endpoint decides whether it
+  // still exists, not the rendered graph. The rendered graph is level-of-detail
+  // bounded — the landing view holds a single repository node — so gating the
+  // restore on it silently dropped every link to a route, file or symbol. The
+  // consumers resolve the key and say plainly when it cannot be found.
   useEffect(() => {
     const linked = initialUrlState.selectedEntityKey;
-    if (linked === null || data === null) return;
-    if (!data.representativeByEntityKey.has(linked)) return;
+    if (linked === null) return;
     inspectionOpenEntity({ entityKey: linked, entityType: "node" });
-  }, [initialUrlState.selectedEntityKey, data, inspectionOpenEntity]);
+  }, [initialUrlState.selectedEntityKey, inspectionOpenEntity]);
 
   const inspectedEntityKey = inspection.current?.entityKey ?? null;
   // Asked of the snapshot, not the rendered graph: the landing view holds one

@@ -14,6 +14,17 @@ export interface InterviewPanelProps extends Omit<InterviewInput, "subject" | "t
 }
 
 /**
+ * "Nothing was selected" and "the selected entity could not be found" must
+ * never render identically. Collapsing them is what makes a stale shared link
+ * look like a working whole-repository interview.
+ */
+type SubjectState =
+  | { status: "none" }
+  | { status: "loading" }
+  | { status: "ok"; node: NodeDetail }
+  | { status: "unavailable"; reason: "not_found" | "ambiguous" | "error" };
+
+/**
  * Interview preparation for the selected subject, or the whole repository when
  * nothing is selected.
  *
@@ -30,22 +41,30 @@ export function InterviewPanel({
   // The subject and its edges come from the snapshot, not the rendered graph:
   // the landing view is bounded to one repository node, so resolving the
   // subject there produced a "this repository" interview with an entity picked.
-  const [subject, setSubject] = useState<NodeDetail | null>(null);
+  const [subjectState, setSubjectState] = useState<SubjectState>({ status: "none" });
   const [tests, setTests] = useState<TestsState>({ status: "loading" });
 
   useEffect(() => {
     let cancelled = false;
     if (subjectEntityKey === null) {
-      setSubject(null);
+      setSubjectState({ status: "none" });
       return;
     }
+    setSubjectState({ status: "loading" });
     fetchNodeDetail(subjectEntityKey)
       .then((result) => {
-        if (!cancelled) setSubject(result.status === "ok" ? result.node : null);
+        if (cancelled) return;
+        setSubjectState(result.status === "ok"
+          ? { status: "ok", node: result.node }
+          : { status: "unavailable", reason: result.status });
       })
-      .catch(() => { if (!cancelled) setSubject(null); });
+      .catch(() => {
+        if (!cancelled) setSubjectState({ status: "unavailable", reason: "error" });
+      });
     return () => { cancelled = true; };
   }, [subjectEntityKey]);
+
+  const subject = subjectState.status === "ok" ? subjectState.node : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +73,31 @@ export function InterviewPanel({
       .catch(() => { if (!cancelled) setTests({ status: "error" }); });
     return () => { cancelled = true; };
   }, []);
+
+  if (subjectState.status === "loading") {
+    return (
+      <div className="mode-empty-state" role="status">
+        <h2>Resolving the selected entity…</h2>
+        <p>Reading it from the served snapshot.</p>
+      </div>
+    );
+  }
+
+  if (subjectState.status === "unavailable") {
+    return (
+      <div className="mode-empty-state" role="alert">
+        <h2>That entity could not be found in this snapshot</h2>
+        <p>
+          {subjectState.reason === "ambiguous"
+            ? "The link matches more than one entity, so Tadori will not guess which was meant."
+            : "The link names an entity this snapshot does not carry — it may have been renamed, removed, or indexed from a different repository."}
+          {" "}
+          Nothing below would be about it, so no questions are shown. Clear the
+          selection to interview the repository instead.
+        </p>
+      </div>
+    );
+  }
 
   const grouped = groupQuestions(buildInterviewQuestions({ ...input, subject, tests }));
   const subjectName = subject?.displayName ?? "this repository";
