@@ -299,6 +299,30 @@ which is how eleven pre-existing errors accumulated there, including the dead
 comparison above. Wiring `tsc --noEmit` for the app requires clearing those
 first and remains open.
 
+Orientation slice (2026-07-31): Overview is now the landing workspace and
+Interview sits beside it in the tab order and URL state, so a reader meets the
+repository before the graph. `GET /api/v1/overview` still reports
+`available: false`, so Overview is assembled from `analysis`, `regions`,
+`capabilities` and the served graph rather than served whole. Every statement
+carries an explicit basis — observed, documented, inferred or unknown — rendered
+as text and a `data-basis` attribute, never colour alone. Repository purpose
+reads `unknown` because nothing served establishes it, and an absent route set
+states that no registered entry point was found rather than that none exists.
+Interview generates questions only from entities, counts, languages and
+diagnostics this snapshot actually contains, marks interpretive questions
+`inferred`, and offers an inspection button only for evidence the served graph
+can resolve; file paths and language ids render as text instead of a selection
+that resolves to nothing. Atlas suite passes 52 files / 405 tests; repository
+lint, strict typecheck, and `git diff --check` pass.
+
+KF-001 (parked, `docs/KNOWN_FAILURES.md`): installed-GUI keyboard descent fails
+only on the `ubuntu-latest / Node 22.14.0` Firefox leg and blocks PR #53. No
+keydown reaches the canvas although the document has focus, the canvas is
+visible with `tabIndex 0`, and the renderer is healthy with zero browser errors.
+The assertion is unweakened. An instrumentation-only probe is now pushed and
+reports focusability, the ancestor chain, and synthetic-dispatch delivery beside
+the existing evidence; run `30635704089` at `7418b9a` is the decisive output.
+
 Claude Opus backend review queue and frontend handoff contract:
 
 1. Review the project-evidence correction in
