@@ -131,10 +131,30 @@ async function verifyInstalledGui(url, engine) {
         .find((node) => node.textContent?.startsWith("Showing "))?.textContent ?? "";
       return Number(/^Showing (\d+)/.exec(value)?.[1] ?? 0);
     });
+    // Evidence probe, owned entirely by this test: a capture-phase listener on
+    // the same element the application binds its keydown handler to. If a key
+    // reaches the element at all, this sees it. That separates "the event never
+    // arrived" from "the event arrived and the handler did not act", which the
+    // single post-loop sample could not distinguish. No production code is
+    // involved, so this cannot alter the behaviour under test.
+    await canvas.evaluate((element) => {
+      const probe = [];
+      Reflect.set(globalThis, "__tadoriKeyProbe", probe);
+      element.addEventListener("keydown", (event) => probe.push(event.key), true);
+    });
+    const readProbe = () => page.evaluate(() => ({
+      keysSeen: [...(Reflect.get(globalThis, "__tadoriKeyProbe") ?? [])],
+      focusedNode: document.querySelector(".package-map-canvas")?.dataset.focusedNode ?? null,
+      activeElement: document.activeElement?.className ?? ""
+    }));
+
     let expandedCount = initialCount;
+    const perKey = [];
     for (let attempt = 0; attempt < initialCount && expandedCount === initialCount; attempt += 1) {
       await canvas.press("ArrowRight");
+      perKey.push({ after: "ArrowRight", ...(await readProbe()), showing: await readShowing() });
       await canvas.press("Enter");
+      perKey.push({ after: "Enter", ...(await readProbe()), showing: await readShowing() });
       // Descent is a lazy fetch; poll briefly rather than racing a single read.
       for (let settle = 0; settle < 20 && expandedCount === initialCount; settle += 1) {
         await page.waitForTimeout(250);
@@ -157,6 +177,7 @@ async function verifyInstalledGui(url, engine) {
         `${engine} keyboard descent expanded no node from the installed artifact ` +
           `(still ${initialCount} of ${initialCount})\n` +
           `focus report after bringToFront: ${JSON.stringify(focusReport)}\n` +
+          `per-key evidence: ${JSON.stringify(perKey)}\n` +
           `focus state: ${JSON.stringify(focusState)}\n` +
           `failed requests:\n${failedRequests.join("\n") || "(none)"}\n` +
           `browser errors:\n${browserErrors.join("\n") || "(none)"}`
