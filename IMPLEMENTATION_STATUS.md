@@ -302,6 +302,33 @@ at this tree: 101 files are checked under `strict` with
 `noUncheckedIndexedAccess`, covering `src`, `test`, and `vite.config.ts`, and it
 passes. The frontend is type-checked in CI.
 
+Open, not investigated (2026-07-31) — Atlas suite is not parallel-stable:
+`pnpm vitest run` (default file parallelism) produced different results across
+runs at the same tree, while `--no-file-parallelism` and per-file isolation
+passed every time.
+
+- Parallel run A: 3 files / 4 tests failed; identities not captured.
+- Parallel run B: failures reported in `test/App.accessibility.test.tsx` (3),
+  `test/InspectorContinuations.test.tsx` (2),
+  `src/features/a11y/AccessibleGraphTable.test.tsx` (1),
+  `src/features/analysis/AnalysisPanel.test.tsx` (1),
+  `src/features/explore/explore.test.tsx` (1),
+  `src/features/interview/InterviewPanel.test.tsx` (1).
+- The `InspectorContinuations` and `InterviewPanel` failures in run B were
+  genuine stale-mock defects and are fixed. The `AccessibleGraphTable`,
+  `AnalysisPanel`, and `explore` failures are the unexplained ones: they passed
+  in isolation and serially with no code change between runs.
+- Parallel run C, after those fixes: 54 files / 420 tests passed. The
+  instability is therefore intermittent, not deterministic, and a single green
+  parallel run is not evidence it is resolved.
+
+No shared port or server is involved — these are jsdom component suites. The
+untested hypotheses are shared global DOM state, `matchMedia`/`history` stubs
+leaking across files, timer or `waitFor` sensitivity under CPU contention, and
+module-mock registry interaction. Deliberately not investigated during the
+deep-link slice. Until diagnosed, treat `--no-file-parallelism` as the
+authoritative local run and do not read a green parallel run as proof.
+
 Isolated, not closed: the `apps/viz`-local `lint` script reports two
 `no-unused-vars` errors in `test/lod-budgets.test.ts` that the authoritative
 root `eslint .` does not, because the app-local config lacks the root's `^_`
