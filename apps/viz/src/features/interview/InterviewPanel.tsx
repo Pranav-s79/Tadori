@@ -1,8 +1,15 @@
-import type { ReactElement } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import { ClaimBadge } from "../../design/ClaimBadge.tsx";
-import { buildInterviewQuestions, groupQuestions, type InterviewInput } from "./interviewModel.ts";
+import { fetchNodeDetail, type NodeDetail } from "../inspect/inspectApi.ts";
+import { fetchLikelyTests } from "../explore/exploreApi.ts";
+import {
+  buildInterviewQuestions, groupQuestions,
+  type InterviewInput, type TestsState
+} from "./interviewModel.ts";
 
-export interface InterviewPanelProps extends InterviewInput {
+export interface InterviewPanelProps extends Omit<InterviewInput, "subject" | "tests"> {
+  /** Entity to interview about; null runs a whole-repository interview. */
+  subjectEntityKey: string | null;
   onSelectEntity(entityKey: string): void;
 }
 
@@ -15,13 +22,41 @@ export interface InterviewPanelProps extends InterviewInput {
  * marked inferred: the graph evidences structure, never the reasoning behind
  * it, and a candidate should know which is which before repeating it aloud.
  */
-export function InterviewPanel({ onSelectEntity, ...input }: InterviewPanelProps): ReactElement {
-  const grouped = groupQuestions(buildInterviewQuestions(input));
-  const subjectName = input.subject?.displayName ?? "this repository";
-  // Evidence mixes entity keys with file paths and language ids. Only a key the
-  // served graph actually carries can be inspected; a button for the rest would
-  // promise a selection that silently resolves to nothing.
-  const inspectable = new Set(input.nodes.map((node) => node.entityKey));
+export function InterviewPanel({
+  subjectEntityKey,
+  onSelectEntity,
+  ...input
+}: InterviewPanelProps): ReactElement {
+  // The subject and its edges come from the snapshot, not the rendered graph:
+  // the landing view is bounded to one repository node, so resolving the
+  // subject there produced a "this repository" interview with an entity picked.
+  const [subject, setSubject] = useState<NodeDetail | null>(null);
+  const [tests, setTests] = useState<TestsState>({ status: "loading" });
+
+  useEffect(() => {
+    let cancelled = false;
+    if (subjectEntityKey === null) {
+      setSubject(null);
+      return;
+    }
+    fetchNodeDetail(subjectEntityKey)
+      .then((result) => {
+        if (!cancelled) setSubject(result.status === "ok" ? result.node : null);
+      })
+      .catch(() => { if (!cancelled) setSubject(null); });
+    return () => { cancelled = true; };
+  }, [subjectEntityKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchLikelyTests()
+      .then((body) => { if (!cancelled) setTests({ status: "ready", tests: body.tests }); })
+      .catch(() => { if (!cancelled) setTests({ status: "error" }); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const grouped = groupQuestions(buildInterviewQuestions({ ...input, subject, tests }));
+  const subjectName = subject?.displayName ?? "this repository";
 
   if (grouped.length === 0) {
     return (
@@ -65,17 +100,17 @@ export function InterviewPanel({ onSelectEntity, ...input }: InterviewPanelProps
                 {item.evidence.length > 0 && (
                   <p className="interview-evidence">
                     Inspect first:{" "}
-                    {item.evidence.map((key) => inspectable.has(key) ? (
+                    {item.evidence.map(({ label, entityKey }) => entityKey === null ? (
+                      <code key={label}>{label}</code>
+                    ) : (
                       <button
-                        key={key}
+                        key={label}
                         type="button"
                         className="interview-evidence-link"
-                        onClick={() => { onSelectEntity(key); }}
+                        onClick={() => { onSelectEntity(entityKey); }}
                       >
-                        <code>{key}</code>
+                        <code>{label}</code>
                       </button>
-                    ) : (
-                      <code key={key}>{key}</code>
                     ))}
                   </p>
                 )}

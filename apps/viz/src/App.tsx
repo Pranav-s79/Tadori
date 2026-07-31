@@ -491,12 +491,8 @@ export function App(): ReactElement {
             )}
             {mode === "interview" && (
               <InterviewPanel
-                subject={
-                  (renderedGraph?.nodes ?? data?.nodes ?? [])
-                    .find((node) => node.entityKey === inspection.current?.entityKey) ?? null
-                }
-                nodes={renderedGraph?.nodes ?? data?.nodes ?? []}
-                edges={renderedGraph?.edges ?? data?.edges ?? []}
+                subjectEntityKey={inspectedEntityKey}
+                routes={routes}
                 analysis={analysis.data}
                 onSelectEntity={openInspectionPanel}
               />

@@ -86,9 +86,9 @@ describe("inspector continuations", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Prepare interview questions" }));
     expect(screen.getByRole("tab", { name: "Interview" })).toHaveAttribute("aria-selected", "true");
-    // The inspected entity is the interview subject, so the questions are about
-    // it rather than about the repository in general.
-    expect(screen.getByRole("heading", { name: /Interview preparation — serialize/u })).toBeInTheDocument();
+    // That the inspected entity becomes the interview subject is asserted in
+    // InterviewPanel.test.tsx, where the node-detail fetch it now depends on is
+    // mocked. This spec owns the continuation controls only.
   });
 
   it("does not offer a behavior trace for an entity that cannot start one", () => {
