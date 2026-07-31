@@ -934,8 +934,8 @@ button { min-height: 2rem; }
   border-radius: var(--tadori-radius-sm);
   white-space: nowrap;
 }
-.claim-badge[data-basis="observed"] { border-color: var(--tadori-verdigris); color: var(--tadori-verdigris); }
-.claim-badge[data-basis="documented"] { border-color: var(--tadori-copper); color: var(--tadori-copper); }
+.claim-badge[data-basis="observed"] { border-color: var(--tadori-verdigris-text); color: var(--tadori-verdigris-text); }
+.claim-badge[data-basis="documented"] { border-color: var(--tadori-copper-text); color: var(--tadori-copper-text); }
 .claim-badge[data-basis="inferred"] { border-style: dashed; color: var(--tadori-ink-muted); }
 .claim-badge[data-basis="unknown"] { border-style: dotted; color: var(--tadori-ink-muted); }
 
