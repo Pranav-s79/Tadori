@@ -59,7 +59,6 @@ export interface OverviewInput {
   capabilities: CapabilityMatrixDto | null;
   routes: RoutesState;
   coupling: CouplingState;
-  nodes: readonly ApiNode[];
 }
 
 function plural(count: number, one: string, many: string): string {
@@ -156,7 +155,7 @@ function entryPointClaims(routes: RoutesState): OverviewClaim[] {
  * notably repository purpose, which nothing served today establishes.
  */
 export function buildOverview(input: OverviewInput): OverviewSection[] {
-  const { context, analysis, regions, capabilities, routes, coupling, nodes } = input;
+  const { context, analysis, regions, capabilities, routes, coupling } = input;
   const sections: OverviewSection[] = [];
 
   sections.push({

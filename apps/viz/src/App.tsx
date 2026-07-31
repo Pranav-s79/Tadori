@@ -508,7 +508,6 @@ export function App(): ReactElement {
                 capabilities={capabilities.data}
                 routes={routes}
                 coupling={coupling}
-                nodes={renderedGraph?.nodes ?? data?.nodes ?? []}
                 loading={analysis.loading}
                 error={graphError}
                 onSelectEntity={(entityKey) => {

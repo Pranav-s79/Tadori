@@ -23,8 +23,7 @@ function route(entityKey: string, displayName: string, file: string): RouteRow {
 const empty: OverviewInput = {
   context: null, analysis: null, regions: null, capabilities: null,
   routes: { status: "ready", routes: [] },
-  coupling: { status: "ready", nodes: [] },
-  nodes: []
+  coupling: { status: "ready", nodes: [] }
 };
 
 function sectionById(input: OverviewInput, id: string): OverviewSection | undefined {
@@ -64,7 +63,6 @@ describe("buildOverview", () => {
     // suppress a route the snapshot carries.
     const input = {
       ...empty,
-      nodes: [node({ entityKey: "pkg:root", kind: "package", displayName: "." })],
       routes: { status: "ready" as const, routes: [route("route:get", "GET /users/:id", "src/routes/users.ts")] }
     };
     const claim = sectionById(input, "entry-points")?.claims[0];
@@ -86,7 +84,6 @@ describe("buildOverview", () => {
     // or fragile" question answered UNKNOWN for every real repository.
     const input = {
       ...empty,
-      nodes: [node({ entityKey: "pkg:root", kind: "package" as const, displayName: ".", fanIn: 0 })],
       coupling: {
         status: "ready" as const,
         nodes: [
