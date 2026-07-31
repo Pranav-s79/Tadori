@@ -137,6 +137,8 @@ export function App(): ReactElement {
   const { data, loading: graphLoading, error: graphError, refetch: refetchGraph } = usePackageGraph();
   const regions = useRegions();
   const routes = useRoutes();
+  /** Entity the reader asked to focus that the current map view cannot show. */
+  const [focusUnavailable, setFocusUnavailable] = useState<string | null>(null);
   const inspection = useInspectionStore();
   const reviewStore = useReviewDiffStore();
   const boundaries = useBoundaries();
@@ -235,9 +237,19 @@ export function App(): ReactElement {
     return true;
   }, [inspection]);
 
+  // The camera can only reach what the map is drawing, and the map is
+  // level-of-detail bounded. A search hit or an Overview entry point usually
+  // names something deeper than the current view, so this used to return
+  // silently and the reader watched nothing happen. The entity is real and its
+  // details are open in the inspector; only the camera move is impossible, and
+  // that is what we say.
   const focusEntity = useCallback((entityKey: string) => {
     const representative = data?.representativeByEntityKey.get(entityKey);
-    if (representative === undefined) return;
+    if (representative === undefined) {
+      setFocusUnavailable(entityKey);
+      return;
+    }
+    setFocusUnavailable(null);
     setFocusRequest((current) => ({ entityKey: representative, requestId: (current?.requestId ?? 0) + 1 }));
     setMode("atlas");
   }, [data?.representativeByEntityKey]);
@@ -468,6 +480,17 @@ export function App(): ReactElement {
             <span>{`${renderedGraph?.lodLevel ?? "repository"} level`}</span>
             <span role="status" aria-live="polite" aria-atomic="true">{data === null ? "Graph unavailable" : `Showing ${visibleNodeCount} nodes and ${visibleEdgeCount} relations`}</span>
           </div>
+
+          {focusUnavailable !== null && (
+            <p className="focus-unavailable-notice" role="status" aria-live="polite">
+              That entity is not shown at this level, so the map cannot move to
+              it. Its details are open in the inspector. Expand a package to
+              descend toward it.
+              <button type="button" onClick={() => { setFocusUnavailable(null); }}>
+                Dismiss
+              </button>
+            </p>
+          )}
 
           <section
             id="workspace-mode-panel"
