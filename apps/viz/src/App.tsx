@@ -23,6 +23,7 @@ import { PackageMapCanvas, type RenderedGraphSnapshot, type StoryMapEmphasis, ty
 import { usePackageGraph } from "./hooks/usePackageGraph.ts";
 import { useRegions } from "./hooks/useRegions.ts";
 import { useRoutes } from "./hooks/useRoutes.ts";
+import { useCoupling } from "./hooks/useCoupling.ts";
 import { useRefreshStatus } from "./hooks/useRefreshStatus.ts";
 import { useSnapshot } from "./hooks/useSnapshot.ts";
 import { ProvenanceLegend } from "./legend/ProvenanceLegend.tsx";
@@ -137,6 +138,7 @@ export function App(): ReactElement {
   const { data, loading: graphLoading, error: graphError, refetch: refetchGraph } = usePackageGraph();
   const regions = useRegions();
   const routes = useRoutes();
+  const coupling = useCoupling();
   /** Entity the reader asked to focus that the current map view cannot show. */
   const [focusUnavailable, setFocusUnavailable] = useState<string | null>(null);
   const inspection = useInspectionStore();
@@ -505,6 +507,7 @@ export function App(): ReactElement {
                 regions={regions.data}
                 capabilities={capabilities.data}
                 routes={routes}
+                coupling={coupling}
                 nodes={renderedGraph?.nodes ?? data?.nodes ?? []}
                 loading={analysis.loading}
                 error={graphError}

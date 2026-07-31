@@ -41,17 +41,70 @@ export type RoutesState =
   | { status: "ready"; routes: readonly RouteRow[] }
   | { status: "error" };
 
+/**
+ * Symbol-level nodes for the whole snapshot, used to answer which entities the
+ * rest of the system leans on. Ranking fan-in over the rendered graph answered
+ * "unknown" for every real repository, because the landing view holds a single
+ * repository node whose fan-in is zero.
+ */
+export type CouplingState =
+  | { status: "loading" }
+  | { status: "ready"; nodes: readonly ApiNode[] }
+  | { status: "error" };
+
 export interface OverviewInput {
   context: ApiContext | null;
   analysis: SnapshotAnalysisDto | null;
   regions: RegionProjectionDto | null;
   capabilities: CapabilityMatrixDto | null;
   routes: RoutesState;
+  coupling: CouplingState;
   nodes: readonly ApiNode[];
 }
 
 function plural(count: number, one: string, many: string): string {
   return `${String(count)} ${count === 1 ? one : many}`;
+}
+
+/**
+ * An external dependency with high fan-in is a real answer to "what is this
+ * system leaning on", so it is kept rather than filtered out — but its kind is
+ * named, because "the whole app depends on express" and "the whole app depends
+ * on UserService" are different facts and must not read alike.
+ */
+function couplingClaims(coupling: CouplingState): OverviewClaim[] {
+  if (coupling.status !== "ready") {
+    return [{
+      label: "Coupling",
+      value: coupling.status === "loading"
+        ? "Ranking the most depended-upon entities…"
+        : "Coupling is unavailable: the symbol projection could not be read. "
+          + "This is not a statement that nothing depends on anything.",
+      basis: "unknown",
+      evidence: []
+    }];
+  }
+  const ranked = [...coupling.nodes]
+    .filter((node) => node.fanIn > 0)
+    .sort((left, right) => right.fanIn - left.fanIn || left.displayName.localeCompare(right.displayName))
+    .slice(0, 8);
+  if (ranked.length === 0) {
+    return [{
+      label: "Coupling",
+      value: "No incoming references were recorded anywhere in this snapshot.",
+      basis: "unknown",
+      evidence: []
+    }];
+  }
+  return ranked.map((node) => ({
+    label: node.displayName,
+    value: `${plural(node.fanIn, "incoming reference", "incoming references")}`
+      + ` · ${node.kind.replace(/_/gu, " ")}`
+      + " — changing this affects every dependent",
+    basis: "observed" as ClaimBasis,
+    evidence: node.file === null ? [] : [node.file],
+    entityKey: node.entityKey
+  }));
 }
 
 /**
@@ -103,7 +156,7 @@ function entryPointClaims(routes: RoutesState): OverviewClaim[] {
  * notably repository purpose, which nothing served today establishes.
  */
 export function buildOverview(input: OverviewInput): OverviewSection[] {
-  const { context, analysis, regions, capabilities, routes, nodes } = input;
+  const { context, analysis, regions, capabilities, routes, coupling, nodes } = input;
   const sections: OverviewSection[] = [];
 
   sections.push({
@@ -173,30 +226,11 @@ export function buildOverview(input: OverviewInput): OverviewSection[] {
     }]
   });
 
-  const coupled = [...nodes]
-    .filter((node) => node.fanIn > 0)
-    .sort((left, right) => right.fanIn - left.fanIn)
-    .slice(0, 8);
   sections.push({
     id: "risk",
     heading: "Most depended-upon",
     question: "What is technically important or fragile?",
-    claims: coupled.length > 0
-      ? coupled.map((node) => ({
-        label: node.displayName,
-        value: plural(node.fanIn, "incoming reference", "incoming references")
-          + " — changing this affects every dependent",
-        basis: "observed" as ClaimBasis,
-        evidence: node.file === null ? [] : [node.file],
-        entityKey: node.entityKey
-      }))
-      : [{
-        label: "Coupling",
-        value: "No incoming references were recorded among the entities "
-          + "currently rendered. Open Atlas and descend to compare symbols.",
-        basis: "unknown",
-        evidence: []
-      }]
+    claims: couplingClaims(coupling)
   });
 
   const diagnostics = analysis?.diagnostics;
