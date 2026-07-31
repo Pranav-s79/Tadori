@@ -302,6 +302,50 @@ at this tree: 101 files are checked under `strict` with
 `noUncheckedIndexedAccess`, covering `src`, `test`, and `vite.config.ts`, and it
 passes. The frontend is type-checked in CI.
 
+Frontend journey coherent (2026-07-31): one defect class accounted for every
+broken step in the reading journey — the UI derived entity facts from the
+*rendered* graph rather than the snapshot. The rendered graph is level-of-detail
+bounded to a single repository node at the landing view, so anything asked of it
+answered "none". Six instances, all closed and each verified live against
+`packages/fixtures/02-express-routes/repo`:
+
+1. Overview entry points said "No route node was extracted from this
+   repository" for a repository registering two routes.
+2. The inspector withheld "Trace execution flow" from every route.
+3. Interview produced a "this repository" interview with an entity selected,
+   and claimed no tests existed beside two test files.
+4. `select=` deep links dropped silently, so a shared link degraded to a
+   generic interview.
+5. `focusEntity` returned silently, so clicking an Overview entry point or a
+   search result moved nothing and explained nothing.
+6. Overview coupling answered UNKNOWN to "what is technically important or
+   fragile?".
+
+The shared correction is to ask the snapshot — `/api/v1/routes`,
+`/api/v1/nodes/:key`, `/api/v1/tests`, `/api/v1/nodes?level=symbol` — and to
+keep loading and unavailable distinct from a genuine zero at every one. Where
+the snapshot genuinely cannot answer, the UI now says so: an unresolvable
+`select=` key renders an explicit unavailable state, and a focus request the map
+cannot honour explains that the entity is not shown at this level rather than
+doing nothing.
+
+Verified journey: launch `pnpm tadori serve <repo> --port <p> --no-open` →
+Overview (purpose UNKNOWN, languages, entry points, regions, coupling, analysis
+limits, snapshot) → click an entry point → Inspector (kind, language,
+capability, derivation, location, evidence with editor deep link, source,
+design rationale, connections) → Trace execution flow → Story across
+`user-controller.ts` → `infra/db.ts` → `user-service.ts` with per-step
+provenance → Interview on that entity, 7 questions across 6 groups → search
+`UserController`, 3 results, click restores Atlas + inspector without losing
+context. Atlas suite 55 files / 425 tests serial, strict typecheck, root lint,
+and production build all pass.
+
+Known frontend gap, not started: the Inspector shows extracted facts but not the
+understanding-focused sections the product goal names — responsibility,
+inputs/outputs, execution role, tradeoffs, and risk interpretation. Fan-in is
+shown as a bare number with no reading. This is a design question, not a data
+one; the evidence to support it exists.
+
 Open, not investigated (2026-07-31) — Atlas suite is not parallel-stable:
 `pnpm vitest run` (default file parallelism) produced different results across
 runs at the same tree, while `--no-file-parallelism` and per-file isolation
