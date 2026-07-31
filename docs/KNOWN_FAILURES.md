@@ -98,6 +98,41 @@ component/browser test, retain the remaining installed-package GUI checks
 (title, mode tabs, node count, Table parity, inspection), and report the
 Firefox/Linux limitation explicitly instead of skipping it silently.
 
+### New evidence (2026-07-31): a hidden canvas cannot take focus
+
+Overview became the landing mode, which puts the Atlas workspace — and the
+canvas inside it — behind `hidden`. Playwright reports this directly when the
+smoke runs against the installed artifact:
+
+```
+locator resolved to hidden <div tabindex="0" role="application"
+  class="package-map-canvas" aria-label="Package map; arrows move focus…">
+```
+
+An element inside a `hidden` subtree is in the DOM, keeps `tabIndex 0`, and is
+counted by `querySelectorAll` — but it cannot take focus. `element.focus()`
+succeeds silently, `document.activeElement` stays on `<body>`, and no keydown
+is ever delivered, while the renderer looks entirely healthy.
+
+**That signature is identical to KF-001's.** Both gates now enter Atlas before
+touching the canvas, and the smoke passes locally under chromium and firefox
+(4 -> 5 nodes).
+
+**This does not retroactively explain KF-001.** The failure was recorded at
+`254af7c`, where Atlas was still the landing mode and the canvas was not
+hidden, so the mechanism above did not exist on that tree. Two possibilities
+remain open and are not being guessed between:
+
+1. The original failure has a different cause and will reappear now that the
+   gate can reach the keyboard step again.
+2. Something else placed the canvas in a non-focusable state on that leg — for
+   example `onRendererError` switching to Table mode, which hides the same
+   subtree — in which case the mechanism is shared and the trigger differs.
+
+The probe is unchanged and still reports focusability, the ancestor chain, and
+synthetic-dispatch delivery. The next matrix run at a green lint step is the
+first real signal since this entry was opened.
+
 ### Cost note
 
 Four speculative fixes were pushed before instrumentation produced a decisive
