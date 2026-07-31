@@ -340,11 +340,44 @@ provenance → Interview on that entity, 7 questions across 6 groups → search
 context. Atlas suite 55 files / 425 tests serial, strict typecheck, root lint,
 and production build all pass.
 
-Known frontend gap, not started: the Inspector shows extracted facts but not the
-understanding-focused sections the product goal names — responsibility,
-inputs/outputs, execution role, tradeoffs, and risk interpretation. Fan-in is
-shown as a bare number with no reading. This is a design question, not a data
-one; the evidence to support it exists.
+Inspector interpretation layer (2026-07-31): the Inspector showed extracted
+facts and left the reader to interpret them — "Fan-in: 0" tells a newcomer
+nothing, which is the gap between holding the data and understanding the
+codebase. It now renders at most one deterministic sentence per structural
+metric, derived only from counts and relations shown beside it.
+
+The honesty rules are enforced in code and locked by tests. Fan-in zero reads as
+"no incoming relation was extracted in this snapshot", never as a runtime claim,
+because dynamic dispatch is not extracted. Responsibility is `Observed` only
+where structure states it mechanically — a route's registered path — and
+`Unknown` for a class, with a test asserting the entity name never leaks into
+the claim. Risks name the signal ("5 extracted dependents increase the potential
+change surface") and a test rejects the words fragile, unsafe, poorly and slow.
+Tradeoffs and original rationale remain `Documented` when an ADR resolves and
+`Unknown` otherwise; graph shape never manufactures rationale. Where the graph
+supports no reading the layer stays silent rather than restating a legible
+number.
+
+Accessibility correction (2026-07-31): axe reported a serious color-contrast
+violation across the Overview questions and every claim badge. Measured on
+`--tadori-ground`, muted ink was 3.75:1 and verdigris 4.13:1, both under AA's
+4.5:1 — failing on the product's core reading surfaces. `--tadori-ink-muted` is
+now #4f4d47 (5.46:1); the material hues keep their values because they colour
+marks on the map, and text-safe variants were added for badge labels
+(verdigris-text #2f5142 at 5.72:1, copper-text #7a4820 at 4.89:1).
+
+CI classification (2026-07-31): all five red legs at `56c82f1` shared one cause
+— an unused binding failing `pnpm lint` — introduced when coupling moved off the
+rendered node set. Not KF-001, which never executed because lint precedes the
+smoke. `main` is red on a sixth, separate defect: a boundary badge projecting
+~15px below a 916-tall viewport in `verify:viz:e2e`. Full matrix on branch
+`fix/kf-001-ubuntu` in `CI-FAILURE-MATRIX.md`.
+
+Both browser gates additionally assumed Atlas was the landing mode and drove a
+canvas that Overview now leaves hidden; Playwright reported the canvas as hidden
+outright. They enter Atlas first, and their stale four-tab assertions match the
+six-tab contract. `verify:viz:e2e` exits 0 locally and `package:smoke` passes
+under chromium and firefox (4 -> 5 nodes).
 
 Open, not investigated (2026-07-31) — Atlas suite is not parallel-stable:
 `pnpm vitest run` (default file parallelism) produced different results across
