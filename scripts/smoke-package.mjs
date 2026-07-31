@@ -112,8 +112,20 @@ async function verifyInstalledGui(url, engine) {
     // activeElement reporting is unreliable, so pre-asserting it would fail the
     // run before the mechanism that works has been tried. Descent itself
     // remains the gate.
+    // Firefox makes element.focus() a no-op when the DOCUMENT itself is not
+    // focused, which a headless browsing context can be. That is the one
+    // remaining explanation consistent with the evidence so far: renderer
+    // healthy, no errors, yet activeElement never leaves <body> for either
+    // locator.focus(), element.focus(), or locator.press(). bringToFront gives
+    // the context focus first; hasFocus is recorded so a further failure says
+    // which of the two causes it was instead of needing another round trip.
+    await page.bringToFront();
     await canvas.evaluate((element) => { element.focus(); });
-    const focusedClass = await page.evaluate(() => document.activeElement?.className ?? "");
+    const focusReport = await page.evaluate(() => ({
+      activeElement: document.activeElement?.className ?? "",
+      documentHasFocus: document.hasFocus(),
+      canvasTabIndex: document.querySelector(".package-map-canvas")?.tabIndex ?? null
+    }));
     const readShowing = () => page.evaluate(() => {
       const value = [...document.querySelectorAll(".atlas-context-bar span")]
         .find((node) => node.textContent?.startsWith("Showing "))?.textContent ?? "";
@@ -144,7 +156,7 @@ async function verifyInstalledGui(url, engine) {
       assert.fail(
         `${engine} keyboard descent expanded no node from the installed artifact ` +
           `(still ${initialCount} of ${initialCount})\n` +
-          `activeElement class after focus(): ${JSON.stringify(focusedClass)}\n` +
+          `focus report after bringToFront: ${JSON.stringify(focusReport)}\n` +
           `focus state: ${JSON.stringify(focusState)}\n` +
           `failed requests:\n${failedRequests.join("\n") || "(none)"}\n` +
           `browser errors:\n${browserErrors.join("\n") || "(none)"}`
