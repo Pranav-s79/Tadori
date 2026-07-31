@@ -294,10 +294,19 @@ rather than fabricating a selection. A dead `mode === "story"` comparison inside
 the Table branch was removed; it had silently starved the keyboard and
 assistive-technology peer of story emphasis.
 
-Known gap: `apps/viz` has no `typecheck` script and CI never type-checks it,
-which is how eleven pre-existing errors accumulated there, including the dead
-comparison above. Wiring `tsc --noEmit` for the app requires clearing those
-first and remains open.
+Closed (2026-07-31), previously recorded here as open: `apps/viz` had no
+`typecheck` script and CI never type-checked it, which is how eleven errors
+accumulated there. Commit `148db8a` cleared them, added the script, and wired
+`pnpm --filter @tadori/viz typecheck` into `.github/workflows/ci.yml`. Verified
+at this tree: 101 files are checked under `strict` with
+`noUncheckedIndexedAccess`, covering `src`, `test`, and `vite.config.ts`, and it
+passes. The frontend is type-checked in CI.
+
+Isolated, not closed: the `apps/viz`-local `lint` script reports two
+`no-unused-vars` errors in `test/lod-budgets.test.ts` that the authoritative
+root `eslint .` does not, because the app-local config lacks the root's `^_`
+args-ignore pattern. CI runs the root command, which passes. The app-local
+script is unreferenced by any gate; either align its config or delete it.
 
 Orientation slice (2026-07-31): Overview is now the landing workspace and
 Interview sits beside it in the tab order and URL state, so a reader meets the
