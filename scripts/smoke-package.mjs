@@ -79,6 +79,12 @@ async function verifyInstalledGui(url, engine) {
       failedRequests.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText ?? "unknown failure"}`);
     });
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    // Overview is the landing mode, so the Atlas workspace starts hidden and
+    // its canvas — present in the DOM — is neither visible nor focusable. Enter
+    // Atlas before waiting on the canvas at all. This is a precondition of the
+    // GUI checks, not a KF-001 fix: the focus probe further down is unchanged
+    // and still reports why focus failed if it still does.
+    await page.getByRole("tab", { name: "Atlas" }).click();
     const canvas = page.locator(".package-map-canvas");
     await canvas.waitFor({ state: "visible", timeout: 60_000 });
     await page.waitForFunction(() => {
@@ -91,7 +97,10 @@ async function verifyInstalledGui(url, engine) {
     assert.equal(await page.title(), "Tadori");
     const modeNames = await page.getByRole("tablist", { name: "Repository views" })
       .getByRole("tab").allTextContents();
-    assert.deepEqual(modeNames.map((name) => name.trim()), ["Atlas", "Story", "Changes", "Table"]);
+    assert.deepEqual(
+      modeNames.map((name) => name.trim()),
+      ["Overview", "Atlas", "Interview", "Story", "Changes", "Table"]
+    );
     const showing = page.locator(".atlas-context-bar span").filter({ hasText: /^Showing / });
     const initialCount = Number(/^Showing (\d+)/.exec(await showing.textContent() ?? "")?.[1] ?? 0);
     assert.ok(initialCount > 0, `${engine} rendered no package nodes from the installed artifact`);
