@@ -914,3 +914,75 @@ button { min-height: 2rem; }
   vertical-align: top;
 }
 .capability-languages tr[data-observation="not_in_snapshot"] td { color: var(--tadori-ink-muted); }
+
+/* Claim provenance. Basis is text plus a data hook, never colour alone, so it
+   survives forced-colors and greyscale. Inferred and unknown read weaker on
+   purpose: skimming must not mistake either for documented fact. */
+.claim-badge {
+  font: 600 var(--tadori-text-xs) / 1 var(--tadori-font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  white-space: nowrap;
+}
+.claim-badge[data-basis="observed"] { border-color: var(--tadori-verdigris); color: var(--tadori-verdigris); }
+.claim-badge[data-basis="documented"] { border-color: var(--tadori-copper); color: var(--tadori-copper); }
+.claim-badge[data-basis="inferred"] { border-style: dashed; color: var(--tadori-ink-muted); }
+.claim-badge[data-basis="unknown"] { border-style: dotted; color: var(--tadori-ink-muted); }
+
+/* Overview and Interview: reading surfaces, not dashboards. Measure is capped
+   so long-form explanation stays legible. */
+.overview-panel, .interview-panel {
+  overflow-y: auto;
+  padding: var(--tadori-space-6);
+  display: grid;
+  gap: var(--tadori-space-6);
+  align-content: start;
+}
+.overview-intro h2, .interview-intro h2 { margin: 0 0 var(--tadori-space-2); font-size: var(--tadori-text-xl); }
+.overview-intro p, .interview-intro p {
+  margin: 0; max-width: 68ch;
+  color: var(--tadori-ink-muted); font-size: var(--tadori-text-sm);
+}
+.overview-section h3, .interview-group h3 {
+  margin: 0 0 var(--tadori-space-1);
+  font: 600 var(--tadori-text-md) / 1.3 var(--tadori-font-label);
+  border-bottom: 1px solid var(--tadori-rule);
+  padding-bottom: var(--tadori-space-1);
+}
+.overview-question { margin: 0 0 var(--tadori-space-3); color: var(--tadori-ink-muted); font-size: var(--tadori-text-sm); }
+.overview-claims { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--tadori-space-3); }
+.overview-claim-head { display: flex; align-items: baseline; gap: var(--tadori-space-2); flex-wrap: wrap; }
+.overview-claim-link {
+  background: none; border: none; padding: 0;
+  font: 600 var(--tadori-text-sm) / 1.3 var(--tadori-font-ui);
+  color: var(--tadori-focus); text-decoration: underline; cursor: pointer;
+}
+.overview-claim-value { margin: var(--tadori-space-1) 0 0; max-width: 72ch; font-size: var(--tadori-text-sm); }
+.overview-claim-evidence, .interview-evidence {
+  margin: var(--tadori-space-1) 0 0;
+  font-size: var(--tadori-text-xs); color: var(--tadori-ink-muted);
+  display: flex; flex-wrap: wrap; gap: var(--tadori-space-2);
+}
+.overview-claim-evidence code { font-family: var(--tadori-font-mono); }
+
+.interview-questions { margin: 0; padding-left: var(--tadori-space-4); display: grid; gap: var(--tadori-space-4); }
+.interview-question-head { display: flex; align-items: baseline; gap: var(--tadori-space-2); flex-wrap: wrap; }
+.interview-question-text { margin: 0; max-width: 72ch; font-size: var(--tadori-text-sm); font-weight: 600; }
+.interview-difficulty {
+  font-size: var(--tadori-text-xs); text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--tadori-ink-muted);
+}
+.interview-answer { margin: var(--tadori-space-1) 0 0; padding-left: var(--tadori-space-4); font-size: var(--tadori-text-sm); }
+.interview-evidence-link {
+  background: none; border: none; padding: 0;
+  color: var(--tadori-focus); text-decoration: underline; cursor: pointer;
+  font-family: var(--tadori-font-mono); font-size: var(--tadori-text-xs);
+}
+
+@media (forced-colors: active) {
+  .claim-badge { border-color: CanvasText; color: CanvasText; }
+  .overview-claim-link, .interview-evidence-link { color: LinkText; }
+}

@@ -23,7 +23,9 @@ export interface UrlState {
   selectedEntityKey: string | null;
 }
 
-const MODES: readonly WorkspaceMode[] = ["atlas", "story", "changes", "table"];
+const MODES: readonly WorkspaceMode[] = [
+  "overview", "atlas", "interview", "story", "changes", "table"
+];
 const PROJECTIONS: readonly SpatialProjection[] = ["plan", "relief"];
 const LENS_NAMES = ["boundaries", "changes", "observations", "provenance"] as const;
 

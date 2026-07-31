@@ -171,6 +171,8 @@ describe("App focus ownership", () => {
 
   it("falls back to the structured graph when the map renderer is unavailable", async () => {
     render(<App />);
+    // Overview is the landing mode now, so enter Atlas before driving the map.
+    fireEvent.click(screen.getByRole("tab", { name: "Atlas" }));
     fireEvent.click(screen.getByRole("button", { name: "Fail renderer" }));
 
     await waitFor(() => expect(screen.getByRole("tab", { name: "Table" })).toHaveAttribute("aria-selected", "true"));
@@ -196,6 +198,8 @@ describe("App focus ownership", () => {
 
   it("keeps the rendered expansion available to Table mode and its inspector", async () => {
     render(<App />);
+    // Overview is the landing mode now, so enter Atlas before driving the map.
+    fireEvent.click(screen.getByRole("tab", { name: "Atlas" }));
     fireEvent.click(screen.getByRole("button", { name: "Publish expanded graph" }));
     expect(screen.getByText("Showing 2 nodes and 0 relations")).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Atlas location" })).toHaveTextContent("Repositorypkg");

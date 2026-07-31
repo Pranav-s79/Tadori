@@ -3,6 +3,8 @@ import { AnalysisPanel, diagnosticSeveritySummary } from "./features/analysis/An
 import { useAnalysis } from "./hooks/useAnalysis.ts";
 import { CapabilityPanel } from "./features/analysis/CapabilityPanel.tsx";
 import { useCapabilities } from "./hooks/useCapabilities.ts";
+import { OverviewPanel } from "./features/overview/OverviewPanel.tsx";
+import { InterviewPanel } from "./features/interview/InterviewPanel.tsx";
 import { BoundaryBadgeOverlay } from "./features/boundaries/BoundaryBadgeOverlay.tsx";
 import { useBoundaries } from "./features/boundaries/useBoundaries.ts";
 import { InspectionPanel } from "./features/inspect/InspectionPanel.tsx";
@@ -144,7 +146,9 @@ export function App(): ReactElement {
   // the same reading. Defaults are captured once so the writer can omit them and
   // an untouched session keeps a clean URL.
   const [defaultUrlState] = useState<UrlState>(() => ({
-    mode: "atlas",
+    // Overview is the landing mode: a reader meeting an unfamiliar repository
+    // should get oriented before being handed a graph.
+    mode: "overview",
     projection: "plan",
     lenses: { ...DEFAULT_LENSES, boundaries: !currentNavigationDrawerMode() },
     storyEntityKey: null,
@@ -274,7 +278,8 @@ export function App(): ReactElement {
       positions={data.positions}
       filters={searchFilters}
       focusRequest={focusRequest}
-      active={mode !== "table" && spatialProjection === "plan"}
+      active={mode !== "table" && mode !== "overview" && mode !== "interview"
+        && spatialProjection === "plan"}
       onRendererError={() => {
         setRendererError(true);
         setMode("table");
@@ -432,7 +437,14 @@ export function App(): ReactElement {
 
         <main id="workspace-stage" className="atlas-main" tabIndex={-1}>
           <div className="atlas-context-bar">
-            <span>{mode === "atlas" ? (spatialProjection === "relief" ? "Repository relief" : "Repository map") : mode === "story" ? "Static behavior" : mode === "changes" ? "Change review" : "Structured graph"}</span>
+            <span>{
+              mode === "overview" ? "Repository overview"
+                : mode === "interview" ? "Interview preparation"
+                : mode === "atlas" ? (spatialProjection === "relief" ? "Repository relief" : "Repository map")
+                : mode === "story" ? "Static behavior"
+                : mode === "changes" ? "Change review"
+                : "Structured graph"
+            }</span>
             {mode !== "table" && <SpatialProjectionToggle active={spatialProjection} onChange={setSpatialProjection} />}
             <nav aria-label="Atlas location">
               <ol>
@@ -451,9 +463,36 @@ export function App(): ReactElement {
             role="tabpanel"
             aria-labelledby={`mode-tab-${mode}`}
           >
+            {mode === "overview" && (
+              <OverviewPanel
+                context={snapshot}
+                analysis={analysis.data}
+                regions={regions.data}
+                capabilities={capabilities.data}
+                nodes={renderedGraph?.nodes ?? data?.nodes ?? []}
+                loading={analysis.loading}
+                error={graphError}
+                onSelectEntity={(entityKey) => {
+                  openInspectionPanel(entityKey);
+                  focusEntity(entityKey);
+                }}
+              />
+            )}
+            {mode === "interview" && (
+              <InterviewPanel
+                subject={
+                  (renderedGraph?.nodes ?? data?.nodes ?? [])
+                    .find((node) => node.entityKey === inspection.current?.entityKey) ?? null
+                }
+                nodes={renderedGraph?.nodes ?? data?.nodes ?? []}
+                edges={renderedGraph?.edges ?? data?.edges ?? []}
+                analysis={analysis.data}
+                onSelectEntity={openInspectionPanel}
+              />
+            )}
             <div
               className={`spatial-workspace spatial-workspace-${mode}`}
-              hidden={mode === "table"}
+              hidden={mode === "table" || mode === "overview" || mode === "interview"}
             >
               {mapSurface}
               {mode === "story" && (

@@ -1,6 +1,12 @@
 import { useRef, type KeyboardEvent, type ReactElement } from "react";
 
-export type WorkspaceMode = "atlas" | "story" | "changes" | "table";
+export type WorkspaceMode =
+  | "overview"
+  | "atlas"
+  | "interview"
+  | "story"
+  | "changes"
+  | "table";
 
 interface ModeDefinition {
   id: WorkspaceMode;
@@ -9,7 +15,9 @@ interface ModeDefinition {
 }
 
 export const WORKSPACE_MODES: readonly ModeDefinition[] = [
+  { id: "overview", label: "Overview", description: "Understand what this repository is" },
   { id: "atlas", label: "Atlas", description: "Explore the repository map" },
+  { id: "interview", label: "Interview", description: "Prepare to discuss this codebase" },
   { id: "story", label: "Story", description: "Trace static behavior" },
   { id: "changes", label: "Changes", description: "Review repository changes" },
   { id: "table", label: "Table", description: "Use the structured graph view" }
