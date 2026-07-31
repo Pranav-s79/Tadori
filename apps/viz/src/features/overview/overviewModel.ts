@@ -1,4 +1,5 @@
 import type { ClaimBasis } from "../../design/ClaimBadge.tsx";
+import type { RouteRow } from "../explore/exploreApi.ts";
 import type {
   ApiContext,
   ApiNode,
@@ -28,16 +29,71 @@ export interface OverviewSection {
   claims: OverviewClaim[];
 }
 
+/**
+ * Registered entry points come from `/api/v1/routes`, which reports the whole
+ * snapshot. The rendered graph is level-of-detail bounded — at the landing view
+ * it holds a single repository node — so counting `route` nodes there reported
+ * "no entry points" for a repository that plainly has them. Loading and
+ * unavailable stay distinct from a genuine zero for the same reason.
+ */
+export type RoutesState =
+  | { status: "loading" }
+  | { status: "ready"; routes: readonly RouteRow[] }
+  | { status: "error" };
+
 export interface OverviewInput {
   context: ApiContext | null;
   analysis: SnapshotAnalysisDto | null;
   regions: RegionProjectionDto | null;
   capabilities: CapabilityMatrixDto | null;
+  routes: RoutesState;
   nodes: readonly ApiNode[];
 }
 
 function plural(count: number, one: string, many: string): string {
   return `${String(count)} ${count === 1 ? one : many}`;
+}
+
+/**
+ * Four outcomes, four sentences. "Still loading" and "the endpoint failed" must
+ * never be rendered as "this repository has no entry points".
+ */
+function entryPointClaims(routes: RoutesState): OverviewClaim[] {
+  if (routes.status === "loading") {
+    return [{
+      label: "Registered entry points",
+      value: "Reading registered entry points from the snapshot…",
+      basis: "unknown",
+      evidence: []
+    }];
+  }
+  if (routes.status === "error") {
+    return [{
+      label: "Registered entry points",
+      value: "Entry points are unavailable: the route projection could not be "
+        + "read. This is not a statement that the repository has none.",
+      basis: "unknown",
+      evidence: []
+    }];
+  }
+  if (routes.routes.length === 0) {
+    return [{
+      label: "Registered entry points",
+      value: "No route node was extracted from this repository. That means no "
+        + "registered HTTP entry point was found, not that the system has none.",
+      basis: "unknown",
+      evidence: []
+    }];
+  }
+  return routes.routes.slice(0, 12).map(({ node }) => ({
+    label: node.displayName,
+    value: node.file === null
+      ? "no file recorded"
+      : `${node.file}:${String(node.lineStart ?? 0)}`,
+    basis: "observed" as ClaimBasis,
+    evidence: node.file === null ? [] : [node.file],
+    entityKey: node.entityKey
+  }));
 }
 
 /**
@@ -47,7 +103,7 @@ function plural(count: number, one: string, many: string): string {
  * notably repository purpose, which nothing served today establishes.
  */
 export function buildOverview(input: OverviewInput): OverviewSection[] {
-  const { context, analysis, regions, capabilities, nodes } = input;
+  const { context, analysis, regions, capabilities, routes, nodes } = input;
   const sections: OverviewSection[] = [];
 
   sections.push({
@@ -87,26 +143,11 @@ export function buildOverview(input: OverviewInput): OverviewSection[] {
     }]
   });
 
-  const routes = nodes.filter((node) => node.kind === "route");
   sections.push({
     id: "entry-points",
     heading: "Entry points",
     question: "Where does execution begin?",
-    claims: routes.length > 0
-      ? routes.slice(0, 12).map((route) => ({
-        label: route.displayName,
-        value: route.file ?? "no file recorded",
-        basis: "observed" as ClaimBasis,
-        evidence: route.file === null ? [] : [route.file],
-        entityKey: route.entityKey
-      }))
-      : [{
-        label: "Registered entry points",
-        value: "No route node was extracted from this repository. That means no "
-          + "registered HTTP entry point was found, not that the system has none.",
-        basis: "unknown",
-        evidence: []
-      }]
+    claims: entryPointClaims(routes)
   });
 
   const regionClaims: OverviewClaim[] = (regions?.regions ?? []).map((region) => ({
@@ -151,7 +192,8 @@ export function buildOverview(input: OverviewInput): OverviewSection[] {
       }))
       : [{
         label: "Coupling",
-        value: "No incoming references were recorded at this level.",
+        value: "No incoming references were recorded among the entities "
+          + "currently rendered. Open Atlas and descend to compare symbols.",
         basis: "unknown",
         evidence: []
       }]

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildOverview, type OverviewInput, type OverviewSection } from "./overviewModel.ts";
 import type { ApiNode } from "../../api/types.ts";
+import type { RouteRow } from "../explore/exploreApi.ts";
 
 function node(overrides: Partial<ApiNode> = {}): ApiNode {
   return {
@@ -9,8 +10,19 @@ function node(overrides: Partial<ApiNode> = {}): ApiNode {
   };
 }
 
+function route(entityKey: string, displayName: string, file: string): RouteRow {
+  return {
+    node: {
+      entityKey, kind: "route", qualifiedName: displayName, displayName,
+      file, lineStart: 7, lineEnd: 7, exported: false, fanIn: 0
+    },
+    pathSourceOrigin: "compiler"
+  } as unknown as RouteRow;
+}
+
 const empty: OverviewInput = {
-  context: null, analysis: null, regions: null, capabilities: null, nodes: []
+  context: null, analysis: null, regions: null, capabilities: null,
+  routes: { status: "ready", routes: [] }, nodes: []
 };
 
 function sectionById(input: OverviewInput, id: string): OverviewSection | undefined {
@@ -35,12 +47,35 @@ describe("buildOverview", () => {
   it("reports observed routes with the file as evidence", () => {
     const input = {
       ...empty,
-      nodes: [node({ entityKey: "route:get", kind: "route", displayName: "GET /a", file: "src/api.ts" })]
+      routes: { status: "ready" as const, routes: [route("route:get", "GET /a", "src/api.ts")] }
     };
     const claim = sectionById(input, "entry-points")?.claims[0];
     expect(claim?.basis).toBe("observed");
     expect(claim?.evidence).toEqual(["src/api.ts"]);
     expect(claim?.entityKey).toBe("route:get");
+  });
+
+  it("reads entry points from the snapshot, not the level-of-detail view", () => {
+    // Regression: the landing view renders a single repository node, so counting
+    // `route` nodes in the rendered graph reported "no entry points" for a
+    // repository that has them. A rendered graph with no route node must not
+    // suppress a route the snapshot carries.
+    const input = {
+      ...empty,
+      nodes: [node({ entityKey: "pkg:root", kind: "package", displayName: "." })],
+      routes: { status: "ready" as const, routes: [route("route:get", "GET /users/:id", "src/routes/users.ts")] }
+    };
+    const claim = sectionById(input, "entry-points")?.claims[0];
+    expect(claim?.basis).toBe("observed");
+    expect(claim?.label).toBe("GET /users/:id");
+  });
+
+  it("never renders a pending or failed route read as 'no entry points'", () => {
+    for (const routes of [{ status: "loading" as const }, { status: "error" as const }]) {
+      const claim = sectionById({ ...empty, routes }, "entry-points")?.claims[0];
+      expect(claim?.basis).toBe("unknown");
+      expect(claim?.value).not.toMatch(/No route node was extracted/u);
+    }
   });
 
   it("ranks the most depended-upon entities by real fan-in", () => {
