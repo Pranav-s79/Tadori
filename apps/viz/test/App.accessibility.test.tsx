@@ -22,6 +22,17 @@ vi.mock("../src/features/boundaries/useBoundaries.ts", () => ({
 vi.mock("../src/features/review/useReviewDiffStore.ts", () => ({
   useReviewDiffStore: () => ({ page: null })
 }));
+vi.mock("../src/hooks/useCapabilities.ts", () => ({
+  useCapabilities: () => ({
+    data: {
+      version: 1,
+      claim: "Tadori can structurally map mixed-language repositories.",
+      states: ["semantic", "structural", "repository-only", "unsupported", "experimental"],
+      languages: []
+    },
+    loading: false, error: null, refetch: vi.fn()
+  })
+}));
 vi.mock("../src/hooks/useAnalysis.ts", () => ({
   useAnalysis: () => ({
     data: {

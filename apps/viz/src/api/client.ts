@@ -3,6 +3,7 @@ import type {
   ApiEdge,
   ApiNode,
   LayoutPositionDto,
+  CapabilityMatrixDto,
   RegionProjectionDto,
   SnapshotAnalysisDto
 } from "./types.ts";
@@ -152,6 +153,15 @@ export async function fetchSnapshot(): Promise<ApiContext> {
 
 export async function fetchRegions(): Promise<RegionProjectionDto> {
   return await getJson("/regions") as RegionProjectionDto;
+}
+
+/**
+ * The declared product capability contract, served verbatim from the
+ * checked-in matrix. Declared support is not evidence that this snapshot
+ * observed anything — pair it with `fetchAnalysis` for the observed side.
+ */
+export async function fetchCapabilities(): Promise<CapabilityMatrixDto> {
+  return await getJson("/capabilities") as CapabilityMatrixDto;
 }
 
 /**

@@ -891,3 +891,26 @@ button { min-height: 2rem; }
   .analysis-diagnostics > li[data-severity="error"],
   .analysis-diagnostics > li[data-severity="warning"] { border-left-color: LinkText; }
 }
+
+/* Declared capability contract. Declared support and observed extraction are
+   separate claims, so they occupy separate columns and are never merged. */
+.capability-panel { display: grid; gap: var(--tadori-space-3); }
+.capability-claim {
+  margin: 0;
+  font-size: var(--tadori-text-sm);
+  border-left: 3px solid var(--tadori-copper);
+  padding-left: var(--tadori-space-2);
+}
+.capability-languages { width: 100%; border-collapse: collapse; font-size: var(--tadori-text-xs); }
+.capability-languages caption {
+  text-align: left;
+  color: var(--tadori-ink-muted);
+  padding-bottom: var(--tadori-space-2);
+}
+.capability-languages th, .capability-languages td {
+  text-align: left;
+  padding: var(--tadori-space-1) var(--tadori-space-2) var(--tadori-space-1) 0;
+  border-bottom: 1px solid var(--tadori-rule);
+  vertical-align: top;
+}
+.capability-languages tr[data-observation="not_in_snapshot"] td { color: var(--tadori-ink-muted); }

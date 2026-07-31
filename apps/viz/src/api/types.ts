@@ -255,3 +255,30 @@ export interface SnapshotAnalysisDto {
     bySeverity: Record<"info" | "warning" | "error", number>;
   };
 }
+
+/** The declared support vocabulary, ordered strongest to weakest. */
+export type CapabilityState =
+  | "semantic"
+  | "structural"
+  | "repository-only"
+  | "unsupported"
+  | "experimental";
+
+export interface CapabilityLanguageDto {
+  id: string;
+  extractorId: string;
+  extractorVersion: string;
+  features: Record<string, CapabilityState>;
+}
+
+/**
+ * The checked-in product capability contract, served verbatim. This is what
+ * Tadori DECLARES it supports and is never evidence that a given snapshot
+ * observed anything — `SnapshotAnalysisDto` is the observed side.
+ */
+export interface CapabilityMatrixDto {
+  version: number;
+  claim: string;
+  states: CapabilityState[];
+  languages: CapabilityLanguageDto[];
+}

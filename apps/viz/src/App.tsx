@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
 import { AnalysisPanel, diagnosticSeveritySummary } from "./features/analysis/AnalysisPanel.tsx";
 import { useAnalysis } from "./hooks/useAnalysis.ts";
+import { CapabilityPanel } from "./features/analysis/CapabilityPanel.tsx";
+import { useCapabilities } from "./hooks/useCapabilities.ts";
 import { BoundaryBadgeOverlay } from "./features/boundaries/BoundaryBadgeOverlay.tsx";
 import { useBoundaries } from "./features/boundaries/useBoundaries.ts";
 import { InspectionPanel } from "./features/inspect/InspectionPanel.tsx";
@@ -135,6 +137,7 @@ export function App(): ReactElement {
   const reviewStore = useReviewDiffStore();
   const boundaries = useBoundaries();
   const analysis = useAnalysis();
+  const capabilities = useCapabilities();
   const navigationDrawerMode = useNavigationDrawerMode();
   const forcedColorsActive = useForcedColors();
   // The address bar is the session's memory: a reload or a shared link reopens
@@ -416,6 +419,13 @@ export function App(): ReactElement {
           <details className="navigation-section">
             <summary>Analysis and diagnostics</summary>
             <AnalysisPanel analysis={analysis} />
+          </details>
+          <details className="navigation-section">
+            <summary>Declared language support</summary>
+            <CapabilityPanel
+              capabilities={capabilities}
+              observedLanguageIds={(analysis.data?.languages ?? []).map((language) => language.id)}
+            />
           </details>
           {lenses.observations && <ObservationOverlayBadges onInspectFile={inspectObservationFile} />}
         </aside>
