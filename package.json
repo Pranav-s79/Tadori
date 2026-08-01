@@ -18,6 +18,8 @@
   "scripts": {
     "skills:sync": "node scripts/sync-skills.mjs",
     "skills:check": "node scripts/check-skills.mjs",
+    "gate": "node scripts/gate.mjs",
+    "gate:fast": "node scripts/gate.mjs --fast",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "pnpm --filter @tadori/viz build && vitest run --exclude=packages/cli/test/**/*.test.ts && vitest run packages/cli/test --pool=forks --minWorkers=1 --maxWorkers=1 --no-file-parallelism && pnpm --filter @tadori/viz test",
