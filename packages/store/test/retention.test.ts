@@ -26,7 +26,9 @@ function seedRepo(): { repoId: number; snapshotId: number; fileId: number } {
   const snapshotId = Number(
     db
       .prepare(
-        "INSERT INTO repository_snapshots (repo_id, kind, workspace_hash) VALUES (?, 'working_tree', 'wh')"
+        `INSERT INTO repository_snapshots
+           (repo_id, kind, workspace_hash, analyzer_version)
+         VALUES (?, 'working_tree', 'wh', 'retention-test/1')`
       )
       .run(repoId).lastInsertRowid
   );

@@ -1,4 +1,15 @@
-import type { Confidence, Evidence, Origin, Relation, Resolution } from "@tadori/core";
+import type {
+  Confidence,
+  Evidence,
+  ExtractionCapability,
+  ExtractionDerivation,
+  NodeKind,
+  Origin,
+  Relation,
+  Resolution,
+  SnapshotDiagnostic,
+  SnapshotExtractor
+} from "@tadori/core";
 import type { BoundaryViolation, EdgeDiffRow } from "@tadori/store";
 import type { FreshnessStatus } from "@tadori/mcp";
 import type { ToolEdge, ToolNode } from "@tadori/mcp";
@@ -250,6 +261,67 @@ export interface NotYetImplementedDto {
   reason: "not_yet_implemented";
 }
 
+/** Why a repository region exists. This slice never infers a responsibility. */
+export interface RegionRoleDto {
+  text: string | null;
+  status: "documented" | "derived_from_graph";
+  evidence: Evidence[];
+  evidenceOmittedCount: number;
+}
+
+/** Evidence-backed project-root or package-containment basis for one region. */
+export type RegionBasisDto =
+  | {
+      kind: "project_root";
+      projectId: string;
+      root: string;
+      manifest: string | null;
+      evidence: Evidence[];
+      evidenceOmittedCount: number;
+    }
+  | {
+      kind: "package_containment";
+      packageEntityKey: string;
+      sourceEdgeCount: number;
+      evidence: Evidence[];
+      evidenceOmittedCount: number;
+    };
+
+export interface RegionCountsDto {
+  entities: number;
+  byKind: Record<NodeKind, number>;
+  incomingCrossRegionRelations: number;
+  outgoingCrossRegionRelations: number;
+}
+
+/**
+ * One language-neutral repository region projected from discovered project
+ * roots and canonical package containment. Labels remain factual names.
+ */
+export interface RegionDto {
+  regionKey: string;
+  label: string;
+  memberPackageKeys: string[];
+  role: RegionRoleDto;
+  basis: RegionBasisDto;
+  counts: RegionCountsDto;
+  languages: string[];
+  capabilities: ExtractionCapability[];
+  derivations: ExtractionDerivation[];
+}
+
+export interface RegionProjectionDto {
+  regions: RegionDto[];
+  accounting: {
+    packageCount: number;
+    projectCount: number;
+    regionCount: number;
+    assignedEntityCount: number;
+    ambiguousEntityCount: number;
+    unownedEntityCount: number;
+  };
+}
+
 export interface TourProgressDto {
   tourId: string;
   stepIndex: number;
@@ -297,6 +369,30 @@ export interface SnapshotSummaryDto {
   context: ApiContext;
   analyzerVersion: string;
   counts: { files: number; nodes: number; edges: number };
+}
+
+/** Observed extraction capability for one language in the active snapshot. */
+export interface SnapshotLanguageAnalysisDto {
+  id: string;
+  fileCount: number;
+  generatedFileCount: number;
+  capabilities: ExtractionCapability[];
+  extractors: Array<Pick<SnapshotExtractor, "id" | "version" | "capability">>;
+}
+
+/** Bounded, deterministic analysis facts for explaining the active snapshot. */
+export interface SnapshotAnalysisDto {
+  snapshotId: number;
+  analyzerVersion: string;
+  languages: SnapshotLanguageAnalysisDto[];
+  extractors: SnapshotExtractor[];
+  diagnostics: {
+    items: SnapshotDiagnostic[];
+    total: number;
+    omittedCount: number;
+    nextCursor: string | null;
+    bySeverity: Record<SnapshotDiagnostic["severity"], number>;
+  };
 }
 
 /**

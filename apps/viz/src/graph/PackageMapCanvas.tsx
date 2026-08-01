@@ -55,7 +55,11 @@ export interface ViewportPosition {
 export interface RenderedGraphSnapshot {
   nodes: ApiNode[];
   edges: ApiEdge[];
+  positions: LayoutPositionDto[];
+  packageKeyByEntityKey: Readonly<Record<string, string>>;
   selectedEntityKey: string | null;
+  lodLevel: "repository" | "file" | "symbol";
+  breadcrumb: readonly string[];
 }
 
 export interface StoryMapTransition {
@@ -79,6 +83,7 @@ export interface PackagePlate {
   labelPosition: ViewportPosition;
 }
 
+
 function apiNode(graph: Graph, graphKey: string): ApiNode {
   const value = graph.getNodeAttribute(graphKey, "apiNode") as ApiNode | undefined;
   if (value === undefined) throw new Error(`Rendered graph node ${JSON.stringify(graphKey)} has no API node backing`);
@@ -87,10 +92,36 @@ function apiNode(graph: Graph, graphKey: string): ApiNode {
 
 export function renderedGraphSnapshot(graph: Graph): RenderedGraphSnapshot {
   const nodeByCanonicalKey = new Map<string, ApiNode>();
+  const positionByCanonicalKey = new Map<string, LayoutPositionDto>();
+  const packageKeyByEntityKey: Record<string, string> = {};
   const selectedCanonicalKeys = new Set<string>();
   for (const graphKey of graph.nodes().sort()) {
     const node = apiNode(graph, graphKey);
-    if (!nodeByCanonicalKey.has(node.entityKey)) nodeByCanonicalKey.set(node.entityKey, { ...node });
+    if (!nodeByCanonicalKey.has(node.entityKey)) {
+      nodeByCanonicalKey.set(node.entityKey, { ...node });
+      const attrs = graph.getNodeAttributes(graphKey);
+      positionByCanonicalKey.set(node.entityKey, {
+        entityKey: node.entityKey,
+        x: Number(attrs.x),
+        y: Number(attrs.y),
+        z: Number(attrs.z ?? 0),
+        pinned: attrs.pinned === true
+      });
+      if (node.kind === "package") {
+        packageKeyByEntityKey[node.entityKey] = node.entityKey;
+      } else {
+        const expandedFrom = attrs.expandedFrom;
+        const expandedFromFile = attrs.expandedFromFile;
+        const packageGraphKey = typeof expandedFrom === "string"
+          ? expandedFrom
+          : typeof expandedFromFile === "string" && graph.hasNode(expandedFromFile)
+            ? graph.getNodeAttribute(expandedFromFile, "expandedFrom")
+            : undefined;
+        if (typeof packageGraphKey === "string" && graph.hasNode(packageGraphKey)) {
+          packageKeyByEntityKey[node.entityKey] = apiNode(graph, packageGraphKey).entityKey;
+        }
+      }
+    }
     if (graph.getNodeAttribute(graphKey, "selected") === true) selectedCanonicalKeys.add(node.entityKey);
   }
   const edgeByCanonicalKey = new Map<string, ApiEdge>();
@@ -107,11 +138,41 @@ export function renderedGraphSnapshot(graph: Graph): RenderedGraphSnapshot {
   }
   const nodes = [...nodeByCanonicalKey.values()].sort((a, b) => a.entityKey.localeCompare(b.entityKey));
   const edges = [...edgeByCanonicalKey.values()].sort((a, b) => a.entityKey.localeCompare(b.entityKey));
+  const positions = nodes.flatMap((node) => {
+    const position = positionByCanonicalKey.get(node.entityKey);
+    return position === undefined ? [] : [position];
+  });
+  const expandedPackageLabels = graph.nodes()
+    .filter((graphKey) => graph.getNodeAttribute(graphKey, "kind") === "package"
+      && graph.someNode((_key, attrs) => attrs.expandedFrom === graphKey))
+    .map((graphKey) => apiNode(graph, graphKey).displayName)
+    .sort();
+  const expandedFileLabels = graph.nodes()
+    .filter((graphKey) => graph.getNodeAttribute(graphKey, "kind") === "file"
+      && graph.someNode((_key, attrs) => attrs.expandedFromFile === graphKey))
+    .map((graphKey) => apiNode(graph, graphKey).displayName)
+    .sort();
+  const summarizeLevel = (labels: readonly string[], plural: string): string | null =>
+    labels.length === 0 ? null : labels.length === 1 ? labels[0]! : `${labels.length} ${plural}`;
+  const expandedPackage = summarizeLevel(expandedPackageLabels, "packages");
+  const expandedFile = summarizeLevel(expandedFileLabels, "files");
+  const lodLevel = expandedFile !== null ? "symbol" : expandedPackage !== null ? "file" : "repository";
   return {
     nodes,
     edges,
-    selectedEntityKey: [...selectedCanonicalKeys].sort()[0] ?? null
+    positions,
+    packageKeyByEntityKey,
+    selectedEntityKey: [...selectedCanonicalKeys].sort()[0] ?? null,
+    lodLevel,
+    breadcrumb: ["Repository", expandedPackage, expandedFile].filter((label): label is string => label !== null)
   };
+}
+
+export function graphFocusAnnouncement(graph: Graph, graphKey: string): string | null {
+  if (!graph.hasNode(graphKey)) return null;
+  const node = apiNode(graph, graphKey);
+  const visual = atlasNodeVisual(node, graph.getNodeAttribute(graphKey, "selected") === true);
+  return `${node.displayName}. ${node.kind}. ${visual.formLabel}. ${visual.materialLabel}. Capability: ${visual.capabilityLabel}.`;
 }
 
 export function projectRenderedNodePositions(
@@ -435,6 +496,7 @@ export function PackageMapCanvas({
   const prevExpandedFilesRef = useRef<ReadonlySet<string>>(new Set());
   const publishRef = useRef<(() => void) | null>(null);
   const [packagePlates, setPackagePlates] = useState<PackagePlate[]>([]);
+  const [focusAnnouncement, setFocusAnnouncement] = useState("");
   const callbacksRef = useRef({ onGraphReady, onRenderedGraphChange, onViewportPositionsChange, onInspect, onRendererError });
   callbacksRef.current = { onGraphReady, onRenderedGraphChange, onViewportPositionsChange, onInspect, onRendererError };
   const { expandedPackages, fileData, expand, collapse } = usePackageExpansion();
@@ -500,6 +562,13 @@ export function PackageMapCanvas({
     sigmaRef.current = renderer;
 
     const publish = (): void => {
+      // The container is focusable as soon as it mounts, but the Sigma graph is
+      // populated a tick later. In that window an arrow key is delivered to a
+      // focused canvas, finds `graph.nodes()` empty, falls through to pan, and
+      // sets no focused node — the keyboard silently does nothing. Publishing
+      // readiness lets a caller wait for the real thing instead of inferring it
+      // from a painted canvas.
+      container.dataset.graphReady = graph.order > 0 ? "true" : "false";
       callbacksRef.current.onGraphReady?.(graph);
       callbacksRef.current.onRenderedGraphChange?.(renderedGraphSnapshot(graph));
       callbacksRef.current.onViewportPositionsChange?.(projectRenderedNodePositions(renderer, graph));
@@ -512,6 +581,7 @@ export function PackageMapCanvas({
       applyFiltersToCanvasGraph(graph, filtersRef.current);
       applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
       container.dataset.focusedNode = nodeKey;
+      setFocusAnnouncement(graphFocusAnnouncement(graph, nodeKey) ?? "");
       focusGraphEntity(renderer, graph, nodeKey, prefersReducedMotion());
       renderer.refresh();
       publish();
@@ -528,6 +598,7 @@ export function PackageMapCanvas({
       applyFiltersToCanvasGraph(graph, filtersRef.current);
       applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
       container.dataset.focusedNode = nodeKey;
+      setFocusAnnouncement(graphFocusAnnouncement(graph, nodeKey) ?? "");
       renderer.refresh();
       // A file node (surfaced by a package expansion) toggles the THIRD zoom
       // level — its exported symbols. Any other node is a package node and
@@ -683,6 +754,7 @@ export function PackageMapCanvas({
       applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
       renderer.refresh();
       if (containerRef.current !== null) containerRef.current.dataset.focusedNode = focusRequest.entityKey;
+      setFocusAnnouncement(graphFocusAnnouncement(graph, focusRequest.entityKey) ?? "");
       publishRef.current?.();
     }
   }, [focusRequest]);
@@ -763,6 +835,7 @@ export function PackageMapCanvas({
     if (focusKey !== null && graph.hasNode(focusKey)) {
       focusGraphEntity(renderer, graph, focusKey, prefersReducedMotion());
       if (containerRef.current !== null) containerRef.current.dataset.focusedNode = focusKey;
+      setFocusAnnouncement(graphFocusAnnouncement(graph, focusKey) ?? "");
     }
     renderer.refresh();
     publishRef.current?.();
@@ -804,6 +877,9 @@ export function PackageMapCanvas({
           {`Unresolved termination from ${storyEmphasis.unresolvedFromEntityKey}; destination unknown.`}
         </p>
       )}
+      <p className="tadori-visually-hidden" aria-live="polite" aria-atomic="true">
+        {focusAnnouncement}
+      </p>
       <div
         ref={containerRef}
         className="package-map-canvas"

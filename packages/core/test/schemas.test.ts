@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   CONFIDENCES,
+  CAPABILITY_FEATURES,
+  CAPABILITY_STATES,
   EVIDENCE_KINDS,
   NODE_KINDS,
   ORIGINS,
@@ -8,14 +10,17 @@ import {
   REPO_STATE_KINDS,
   RESOLUTIONS,
   confidenceSchema,
+  capabilityMatrixSchema,
   evidenceSchema,
   graphEdgeSchema,
   graphNodeSchema,
+  graphProjectSchema,
   nodeKindSchema,
   originSchema,
   relationSchema,
   repoStateKindSchema,
-  resolutionSchema
+  resolutionSchema,
+  snapshotGraphSchema
 } from "@tadori/core";
 
 describe("frozen enums", () => {
@@ -74,6 +79,36 @@ describe("frozen enums", () => {
     expect(confidenceSchema.safeParse("maybe").success).toBe(false);
     expect(resolutionSchema.safeParse("pending").success).toBe(false);
     expect(repoStateKindSchema.safeParse("branch").success).toBe(false);
+  });
+});
+
+describe("capability matrix schema", () => {
+  it("requires every feature and the exact ordered support vocabulary", () => {
+    const features = Object.fromEntries(
+      CAPABILITY_FEATURES.map((feature) => [feature, "unsupported"])
+    );
+    const matrix = {
+      version: 1,
+      claim: "Explicit support",
+      states: [...CAPABILITY_STATES],
+      languages: [{
+        id: "example",
+        extractorId: "example-extractor",
+        extractorVersion: "1",
+        features
+      }]
+    };
+    expect(capabilityMatrixSchema.safeParse(matrix).success).toBe(true);
+    const { calls: omittedCalls, ...incompleteFeatures } = features;
+    expect(omittedCalls).toBe("unsupported");
+    expect(capabilityMatrixSchema.safeParse({
+      ...matrix,
+      languages: [{ ...matrix.languages[0], features: incompleteFeatures }]
+    }).success).toBe(false);
+    expect(capabilityMatrixSchema.safeParse({
+      ...matrix,
+      languages: [...matrix.languages, matrix.languages[0]]
+    }).success).toBe(false);
   });
 });
 
@@ -137,5 +172,46 @@ describe("graph zod schemas", () => {
       evidence: []
     });
     expect(bad.success).toBe(false);
+  });
+
+  it("validates discovered projects and defaults legacy snapshots to none", () => {
+    expect(graphProjectSchema.parse({
+      projectId: hex,
+      root: "services/api",
+      manifest: "services/api/pyproject.toml",
+      kind: "manifest",
+      name: "api",
+      languages: ["python"]
+    })).toMatchObject({ root: "services/api", languages: ["python"] });
+    expect(graphProjectSchema.safeParse({
+      projectId: hex,
+      root: "../outside",
+      manifest: null,
+      kind: "manifest",
+      name: null,
+      languages: ["python"]
+    }).success).toBe(false);
+    expect(graphProjectSchema.safeParse({
+      projectId: hex,
+      root: ".",
+      manifest: "go.mod",
+      kind: "manifest",
+      name: null,
+      languages: ["python", "go"]
+    }).success).toBe(false);
+
+    const legacy = snapshotGraphSchema.parse({
+      repoRootPath: "C:/legacy",
+      kind: "commit",
+      label: null,
+      baseCommitSha: null,
+      workspaceHash: hex,
+      analyzerVersion: "legacy/1",
+      files: [],
+      nodes: [],
+      edges: []
+    });
+    expect(legacy.projects).toEqual([]);
+    expect(legacy.diagnostics).toEqual([]);
   });
 });

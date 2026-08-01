@@ -1,5 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { existsSync } from "node:fs";
+import { lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import path from "node:path";
 import {
   detectLanguage,
@@ -21,10 +20,27 @@ export interface ScannedFile {
   registration: LanguageRegistration;
 }
 
+export interface ScanDiagnostic {
+  code: string;
+  message: string;
+  language: LanguageId;
+  /** Repository-relative path whose entry was omitted from capture. */
+  normalizedPath: string;
+}
+
 export interface ScanResult {
   indexedFiles: ScannedFile[];
   supportFiles: ScannedFile[];
-  diagnostics: Array<{ code: string; message: string }>;
+  diagnostics: ScanDiagnostic[];
+}
+
+function isWithinRoot(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return relative === "" || (
+    relative !== ".." &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
 }
 
 /** Built-in exclusions per frozen corrections §8. */
@@ -67,16 +83,22 @@ const LEGACY_TS_SUPPORT_ONLY_NAMES = new Set([
 const MAX_INDEXABLE_FILE_BYTES = 5 * 1024 * 1024;
 
 export function normalizePath(root: string, absolute: string): string {
-  const rel = path.relative(root, absolute).split(path.sep).join("/");
-  if (rel.startsWith("..")) {
+  const relative = path.relative(root, absolute);
+  if (!isWithinRoot(root, absolute)) {
     throw new Error(`Path ${absolute} escapes repository root ${root}`);
   }
-  return rel;
+  return relative.split(path.sep).join("/");
 }
 
 interface IgnoreRule {
   kind: "dir" | "suffix" | "exact";
   value: string;
+}
+
+/** Returns true only for a regular file at this path, never its link target. */
+function isRegularFileWithoutFollowingLinks(filePath: string): boolean {
+  const stats = lstatSync(filePath, { throwIfNoEntry: false });
+  return stats !== undefined && !stats.isSymbolicLink() && stats.isFile();
 }
 
 /**
@@ -88,7 +110,7 @@ function readIgnoreRules(root: string): IgnoreRule[] {
   const rules: IgnoreRule[] = [];
   for (const name of [".gitignore", ".tadoriignore"]) {
     const filePath = path.join(root, name);
-    if (!existsSync(filePath)) {
+    if (!isRegularFileWithoutFollowingLinks(filePath)) {
       continue;
     }
     for (const rawLine of readFileSync(filePath, "utf8").split(/\r?\n/)) {
@@ -155,7 +177,7 @@ function classify(
 /** Walks the repository and splits files into indexed and support sets. */
 export function scanRepository(root: string): ScanResult {
   const rules = readIgnoreRules(root);
-  const diagnostics: Array<{ code: string; message: string }> = [];
+  const diagnostics: ScanResult["diagnostics"] = [];
   const indexedFiles: ScannedFile[] = [];
   const supportFiles: ScannedFile[] = [];
 
@@ -163,11 +185,25 @@ export function scanRepository(root: string): ScanResult {
     for (const entry of readdirSync(dir).sort()) {
       const absolute = path.join(dir, entry);
       const rel = normalizePath(root, absolute);
-      const stats = statSync(absolute);
+      const stats = lstatSync(absolute);
+      // lstat reports the link itself, including Windows junctions, so linked
+      // files and directories are never read or traversed.
+      if (stats.isSymbolicLink()) {
+        diagnostics.push({
+          code: "repository-symbolic-link-skipped",
+          message: `Skipped symbolic link ${rel}; link targets are outside the repository trust boundary`,
+          language: (detectLanguage(rel, "") ?? UNKNOWN_TEXT_LANGUAGE).id,
+          normalizedPath: rel
+        });
+        continue;
+      }
       if (stats.isDirectory()) {
         if (!isIgnored(rel, true, rules)) {
           walk(absolute);
         }
+        continue;
+      }
+      if (!stats.isFile()) {
         continue;
       }
       if (isIgnored(rel, false, rules)) {
@@ -201,11 +237,16 @@ export function scanRepository(root: string): ScanResult {
 
 /** Nearest package.json `name` walking up from the file toward the root. */
 export function detectPackageName(root: string, fileAbsolutePath: string): string | null {
-  let dir = path.dirname(fileAbsolutePath);
-  const rootResolved = path.resolve(root);
+  if (!isRegularFileWithoutFollowingLinks(fileAbsolutePath)) return null;
+  const rootResolved = realpathSync.native(path.resolve(root));
+  const fileResolved = realpathSync.native(path.resolve(fileAbsolutePath));
+  if (!isWithinRoot(rootResolved, fileResolved)) {
+    throw new Error(`Path ${fileAbsolutePath} escapes repository root ${root}`);
+  }
+  let dir = path.dirname(fileResolved);
   for (;;) {
     const manifest = path.join(dir, "package.json");
-    if (existsSync(manifest)) {
+    if (isRegularFileWithoutFollowingLinks(manifest)) {
       try {
         const parsed = JSON.parse(readFileSync(manifest, "utf8")) as { name?: unknown };
         if (typeof parsed.name === "string" && parsed.name.length > 0) {
@@ -215,7 +256,7 @@ export function detectPackageName(root: string, fileAbsolutePath: string): strin
         // Malformed manifest: fall through to the parent directory.
       }
     }
-    if (path.resolve(dir) === rootResolved) {
+    if (dir === rootResolved) {
       return null;
     }
     const parent = path.dirname(dir);

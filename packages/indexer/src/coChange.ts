@@ -24,6 +24,8 @@ export interface CoChangeOptions {
 
 const DEFAULT_MAX_COMMITS = 200;
 const DEFAULT_MIN_SHARED_COMMITS = 2;
+export const CO_CHANGE_EXTRACTOR_ID = "tadori-git-co-change";
+export const CO_CHANGE_EXTRACTOR_VERSION = "1";
 
 /**
  * `git log` of the last `maxCommits` commits with each commit's changed files.
@@ -87,13 +89,18 @@ export function computeCoChangeEdges(
   const maxCommits = options.maxCommits ?? DEFAULT_MAX_COMMITS;
   const minShared = options.minSharedCommits ?? DEFAULT_MIN_SHARED_COMMITS;
 
-  const keyByPath = new Map<string, string>();
+  const fileByPath = new Map<string, { entityKey: string; language: string }>();
   for (const node of fileNodes) {
     if (node.kind === "file" && node.file !== null) {
-      keyByPath.set(node.file, node.entityKey);
+      if (node.language === null || node.language === undefined) {
+        throw new Error(
+          `Co-change file node ${JSON.stringify(node.file)} has no language attribution`
+        );
+      }
+      fileByPath.set(node.file, { entityKey: node.entityKey, language: node.language });
     }
   }
-  if (keyByPath.size === 0) {
+  if (fileByPath.size === 0) {
     return [];
   }
 
@@ -102,7 +109,7 @@ export function computeCoChangeEdges(
   // Count co-change per unordered pair of graph-present files.
   const pairCounts = new Map<string, { a: string; b: string; count: number; sha: string }>();
   for (const commit of commits) {
-    const present = commit.files.filter((f) => keyByPath.has(f));
+    const present = commit.files.filter((f) => fileByPath.has(f));
     // Dedup within a commit (a path listed twice must not self-inflate the count).
     const unique = [...new Set(present)].sort();
     for (let i = 0; i < unique.length; i += 1) {
@@ -126,10 +133,14 @@ export function computeCoChangeEdges(
     if (count < minShared) {
       continue;
     }
-    const keyA = keyByPath.get(a)!;
-    const keyB = keyByPath.get(b)!;
+    const fileA = fileByPath.get(a)!;
+    const fileB = fileByPath.get(b)!;
     // Deterministic endpoint order: lexicographic by entityKey.
-    const [srcKey, srcPath, dstKey] = keyA <= keyB ? [keyA, a, keyB] : [keyB, b, keyA];
+    const [source, sourcePath, destination] = fileA.entityKey <= fileB.entityKey
+      ? [fileA, a, fileB]
+      : [fileB, b, fileA];
+    const srcKey = source.entityKey;
+    const dstKey = destination.entityKey;
     const canonical = edgeCanonicalIdentity(srcKey, "changed_with", dstKey);
     edges.push({
       srcEntityKey: srcKey,
@@ -140,9 +151,17 @@ export function computeCoChangeEdges(
       origin: "git",
       confidence: "inferred",
       resolution: "resolved",
+      language: source.language,
+      provenance: {
+        extractorId: CO_CHANGE_EXTRACTOR_ID,
+        extractorVersion: CO_CHANGE_EXTRACTOR_VERSION,
+        capability: "repository",
+        derivation: "repository-derived",
+        unresolvedReason: null
+      },
       evidence: [
         {
-          file: srcPath,
+          file: sourcePath,
           kind: "git",
           lineStart: 1,
           lineEnd: 1,

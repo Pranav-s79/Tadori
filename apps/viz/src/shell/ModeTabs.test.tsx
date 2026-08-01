@@ -21,17 +21,19 @@ describe("ModeTabs", () => {
     render(<ModeTabs active="atlas" onChange={onChange} />);
     const atlas = screen.getByRole("tab", { name: "Atlas" });
 
+    // Order is Overview, Atlas, Interview, Story, Changes, Table: the reader
+    // gets oriented before being handed a graph.
     atlas.focus();
     fireEvent.keyDown(atlas, { key: "ArrowRight" });
-    expect(onChange).toHaveBeenLastCalledWith("story");
-    expect(screen.getByRole("tab", { name: "Story" })).toHaveFocus();
+    expect(onChange).toHaveBeenLastCalledWith("interview");
+    expect(screen.getByRole("tab", { name: "Interview" })).toHaveFocus();
 
-    fireEvent.keyDown(screen.getByRole("tab", { name: "Story" }), { key: "End" });
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Interview" }), { key: "End" });
     expect(onChange).toHaveBeenLastCalledWith("table");
     expect(screen.getByRole("tab", { name: "Table" })).toHaveFocus();
 
     fireEvent.keyDown(screen.getByRole("tab", { name: "Table" }), { key: "Home" });
-    expect(onChange).toHaveBeenLastCalledWith("atlas");
-    expect(atlas).toHaveFocus();
+    expect(onChange).toHaveBeenLastCalledWith("overview");
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveFocus();
   });
 });

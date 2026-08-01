@@ -1,6 +1,8 @@
 import { useMemo, type ReactElement } from "react";
 import type { ApiEdge, ApiNode } from "../../api/types.ts";
 import { applyFiltersToGraph, defaultFilters, type SearchFilters } from "../search/filterState.ts";
+import type { StoryMapEmphasis } from "../../graph/PackageMapCanvas.tsx";
+import { atlasNodeVisual } from "../../graph/atlasVisuals.ts";
 
 interface AccessibleGraphTableProps {
   nodes: readonly ApiNode[];
@@ -8,6 +10,16 @@ interface AccessibleGraphTableProps {
   /** Open a node in the existing inspection panel. */
   onInspect?: (entityKey: string) => void;
   filters?: SearchFilters;
+  /** Evidence-backed Story emphasis, when a Story has been selected. */
+  storyEmphasis?: StoryMapEmphasis | null;
+}
+
+export function tableStoryState(entityKey: string, storyEmphasis: StoryMapEmphasis | null): string {
+  if (storyEmphasis === null) return "no active story";
+  if (storyEmphasis.unresolvedFromEntityKey === entityKey) return "active unresolved termination source";
+  if (storyEmphasis.activeEntityKey === entityKey) return "active story step";
+  if (storyEmphasis.pathEntityKeys.includes(entityKey)) return "on active story path";
+  return "outside active story path";
 }
 
 /**
@@ -23,7 +35,8 @@ export function AccessibleGraphTable({
   nodes,
   edges,
   onInspect,
-  filters = defaultFilters()
+  filters = defaultFilters(),
+  storyEmphasis = null
 }: AccessibleGraphTableProps): ReactElement {
   const filtered = useMemo(() => applyFiltersToGraph({ nodes: [...nodes], edges: [...edges] }, filters), [nodes, edges, filters]);
   const nodeEmphasis = useMemo(() => new Map(filtered.nodes.map((item) => [item.node.entityKey, item.visible])), [filtered]);
@@ -81,6 +94,8 @@ export function AccessibleGraphTable({
             <tr>
               <th scope="col">Name</th>
               <th scope="col">Kind</th>
+              <th scope="col">Archaeological form</th>
+              <th scope="col">Material</th>
               <th scope="col">Language</th>
               <th scope="col">Capability</th>
               <th scope="col">Derivation</th>
@@ -89,10 +104,13 @@ export function AccessibleGraphTable({
               <th scope="col">Outgoing relations</th>
               <th scope="col">Outgoing provenance</th>
               <th scope="col">Filter emphasis</th>
+              <th scope="col">Story state</th>
             </tr>
           </thead>
           <tbody>
-            {nodes.map((node) => (
+            {nodes.map((node) => {
+              const visual = atlasNodeVisual(node);
+              return (
               <tr key={node.entityKey} data-filter-dimmed={nodeEmphasis.get(node.entityKey) === false ? "true" : "false"}>
                 <th scope="row">
                   <button
@@ -104,6 +122,8 @@ export function AccessibleGraphTable({
                   </button>
                 </th>
                 <td>{node.kind}</td>
+                <td>{visual.formLabel}</td>
+                <td>{`${visual.materialLabel}; ${visual.capabilityLabel}`}</td>
                 <td>{node.language ?? node.aggregateLanguages?.join(", ") ?? "not attributed"}</td>
                 <td>{node.provenance?.capability ?? node.aggregateCapabilities?.join(", ") ?? "not attributed"}</td>
                 <td>{node.provenance?.derivation ?? node.aggregateDerivations?.join(", ") ?? "not attributed"}</td>
@@ -115,8 +135,10 @@ export function AccessibleGraphTable({
                 </td>
                 <td>{outProvenanceByNode.get(node.entityKey) ?? "none"}</td>
                 <td>{nodeEmphasis.get(node.entityKey) === false ? "dimmed by filters" : "emphasized"}</td>
+                <td>{tableStoryState(node.entityKey, storyEmphasis)}</td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       )}

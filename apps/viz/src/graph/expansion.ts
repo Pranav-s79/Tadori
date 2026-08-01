@@ -56,7 +56,12 @@ function bumpProvenance(provenance: AggregatedProvenance[], edge: ApiEdge): void
     existing.count += 1;
     return;
   }
-  provenance.push({ origin: edge.origin, confidence: edge.confidence, resolution: edge.resolution, count: 1 });
+  provenance.push({
+    origin: edge.origin ?? null,
+    confidence: edge.confidence ?? null,
+    resolution: edge.resolution ?? null,
+    count: 1
+  });
 }
 
 export interface ExpansionDiff {
@@ -126,6 +131,7 @@ export function applyExpansion(graph: Graph, packageKey: string, data: FileLevel
       provenance: node.provenance ?? null,
       x: pos.x,
       y: pos.y,
+      z: pos.z,
       pinned: pos.pinned,
       expandedFrom: packageKey,
       size: 4,
@@ -218,6 +224,7 @@ export function applySymbolExpansion(graph: Graph, fileKey: string, data: FileLe
       provenance: node.provenance ?? null,
       x: pos.x,
       y: pos.y,
+      z: pos.z,
       pinned: pos.pinned,
       expandedFromFile: fileKey,
       size: 3,

@@ -1,10 +1,12 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { EvidenceList } from "./EvidenceList.tsx";
+import { inferredRisks, responsibilityOf, structuralInterpretation } from "./interpretation.ts";
 import {
   fetchLinkedDoc,
   fetchNodeDetail,
   fetchSource,
   type LinkedDoc,
+  type NodeDetail,
   type NodeDetailResult,
   type SourceSliceResult,
   type ToolEdge
@@ -97,6 +99,8 @@ export function NodeView({ entityKey, repoRoot, onPivot }: NodeViewProps): React
         </dl>
       </div>
 
+      <InterpretationSection node={node} />
+
       <EvidenceList evidence={node.evidence} omittedCount={node.evidenceOmittedCount} repoRoot={repoRoot} />
 
       <SourceView result={source} loading={sourceLoading} />
@@ -124,5 +128,57 @@ export function NodeView({ entityKey, repoRoot, onPivot }: NodeViewProps): React
         </ul>
       </section>
     </div>
+  );
+}
+
+/**
+ * The reading layer. Observed facts stay above in the metric list; this adds at
+ * most one sentence each for responsibility, structure and risk, and renders
+ * nothing at all when the graph supports no reading. Every inferred line is
+ * labelled, because a reader skimming must never mistake a derived sentence for
+ * something the repository states.
+ */
+function InterpretationSection({ node }: { node: NodeDetail }): ReactElement | null {
+  const responsibility = responsibilityOf(node);
+  const readings = structuralInterpretation(node);
+  const risks = inferredRisks(node);
+
+  return (
+    <section aria-label="Interpretation" className="inspect-interpretation">
+      <h4>Responsibility</h4>
+      <p>
+        <span className="claim-badge" data-basis={responsibility.observed ? "observed" : "unknown"}>
+          {responsibility.observed ? "Observed" : "Unknown"}
+        </span>{" "}
+        {responsibility.text}
+      </p>
+
+      {readings.length > 0 && (
+        <>
+          <h4>Structure</h4>
+          <ul className="inspect-readings">
+            {readings.map((reading) => (
+              <li key={reading.metric}>
+                <span className="claim-badge" data-basis="inferred">Inferred from structure</span>{" "}
+                <strong>{reading.metric}:</strong> {reading.sentence}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {risks.length > 0 && (
+        <>
+          <h4>Risk signals</h4>
+          <ul className="inspect-readings">
+            {risks.map((risk) => (
+              <li key={risk}>
+                <span className="claim-badge" data-basis="inferred">Inferred risk</span> {risk}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
   );
 }

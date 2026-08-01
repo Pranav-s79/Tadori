@@ -1,5 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Ordering and cross-field invariant relationships are additionally enforced by the runtime Zod schema.",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "repositories"],
@@ -12,13 +13,54 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "url", "commit", "license", "purpose"],
+        "required": ["id", "url", "commit", "license", "purpose", "invariants"],
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
-          "url": { "type": "string", "pattern": "^https://" },
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "url": { "type": "string", "format": "uri", "pattern": "^https://" },
           "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
           "license": { "type": "string", "minLength": 1 },
-          "purpose": { "type": "string", "minLength": 1 }
+          "purpose": { "type": "string", "minLength": 1 },
+          "invariants": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "minimumFiles",
+              "minimumNodes",
+              "minimumEdges",
+              "minimumDistinctLanguages",
+              "maximumErrorDiagnostics",
+              "requiredLanguages",
+              "requiredCapabilities"
+            ],
+            "properties": {
+              "minimumFiles": { "type": "integer", "minimum": 1 },
+              "minimumNodes": { "type": "integer", "minimum": 1 },
+              "minimumEdges": { "type": "integer", "minimum": 1 },
+              "minimumDistinctLanguages": { "type": "integer", "minimum": 1 },
+              "maximumErrorDiagnostics": { "type": "integer", "minimum": 0 },
+              "requiredLanguages": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+              },
+              "requiredCapabilities": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["language", "capability", "minimumAttributedItems"],
+                  "properties": {
+                    "language": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+                    "capability": { "enum": ["semantic", "structural", "repository"] },
+                    "minimumAttributedItems": { "type": "integer", "minimum": 1 }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

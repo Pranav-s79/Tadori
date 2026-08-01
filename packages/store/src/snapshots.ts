@@ -5,17 +5,20 @@ import type {
   GraphEdge,
   GraphFile,
   GraphNode,
+  GraphProject,
   NodeKind,
   Origin,
   Relation,
   RepoStateKind,
   Resolution,
   SnapshotGraph,
+  SnapshotGraphInput,
+  SnapshotDiagnostic,
   SnapshotExtractor,
   ExtractionCapability,
   ExtractionDerivation
 } from "@tadori/core";
-import { entityKey } from "@tadori/core";
+import { entityKey, graphProjectSchema, snapshotGraphSchema } from "@tadori/core";
 import { isDeepStrictEqual } from "node:util";
 import type { Database } from "./database.js";
 
@@ -26,6 +29,8 @@ export interface SnapshotRow {
   label: string | null;
   base_commit_sha: string | null;
   workspace_hash: string;
+  /** Absent only on the controlled migration-1-to-5 compatibility read path. */
+  analyzer_version?: string;
   parent_snapshot_id: number | null;
   created_at: string;
   pinned: number;
@@ -251,7 +256,9 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
   }
 }
 
-function normalizedMembershipGraph(graph: Pick<SnapshotGraph, "files" | "nodes" | "edges">) {
+function normalizedMembershipGraph(
+  graph: Pick<SnapshotGraph, "files" | "nodes" | "edges" | "projects" | "diagnostics">
+) {
   const evidence = (items: readonly Evidence[]): Evidence[] =>
     [...items].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
   return {
@@ -263,7 +270,11 @@ function normalizedMembershipGraph(graph: Pick<SnapshotGraph, "files" | "nodes" 
       .sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity)),
     edges: graph.edges
       .map((edge) => ({ ...edge, evidence: evidence(edge.evidence) }))
-      .sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity))
+      .sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity)),
+    projects: [...graph.projects].sort((left, right) => left.projectId.localeCompare(right.projectId)),
+    diagnostics: [...graph.diagnostics].sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right))
+    )
   };
 }
 
@@ -355,19 +366,20 @@ export function activateSnapshot(
  */
 export function insertSnapshotGraph(
   db: Database,
-  graph: SnapshotGraph,
+  graphInput: SnapshotGraphInput,
   options: InsertSnapshotOptions = {}
 ): InsertSnapshotResult {
+  const graph = snapshotGraphSchema.parse(graphInput);
   const run = db.transaction((): InsertSnapshotResult => {
     throwIfAborted(options.signal);
     const repoId = ensureRepository(db, graph.repoRootPath);
 
     const existing = db
       .prepare(
-        `SELECT * FROM repository_snapshots
-         WHERE repo_id = ? AND kind = ? AND workspace_hash = ?`
+         `SELECT * FROM repository_snapshots
+         WHERE repo_id = ? AND kind = ? AND workspace_hash = ? AND analyzer_version = ?`
       )
-      .get(repoId, graph.kind, graph.workspaceHash) as SnapshotRow | undefined;
+      .get(repoId, graph.kind, graph.workspaceHash, graph.analyzerVersion) as SnapshotRow | undefined;
     if (existing) {
       if (existing.status !== "active") {
         throw new Error(
@@ -386,20 +398,39 @@ export function insertSnapshotGraph(
              (SELECT COUNT(*) FROM snapshot_files WHERE snapshot_id = @snapshotId) AS files,
              (SELECT COUNT(*) FROM snapshot_nodes WHERE snapshot_id = @snapshotId) AS nodes,
              (SELECT COUNT(*) FROM snapshot_edges WHERE snapshot_id = @snapshotId) AS edges,
-             (SELECT COUNT(DISTINCT analyzer_version) FROM snapshot_nodes
-                WHERE snapshot_id = @snapshotId AND analyzer_version = @analyzerVersion) AS analyzer_versions`
+             (SELECT COUNT(*) FROM snapshot_projects WHERE snapshot_id = @snapshotId) AS projects,
+             (SELECT COUNT(*) FROM snapshot_diagnostics WHERE snapshot_id = @snapshotId) AS diagnostics,
+             (SELECT COUNT(*) FROM (
+                SELECT analyzer_version FROM snapshot_nodes WHERE snapshot_id = @snapshotId
+                UNION
+                SELECT analyzer_version FROM snapshot_edges WHERE snapshot_id = @snapshotId
+              ) WHERE analyzer_version <> @analyzerVersion) AS mismatched_analyzer_versions`
         )
         .get({ snapshotId: existing.id, analyzerVersion: graph.analyzerVersion }) as {
         files: number;
         nodes: number;
         edges: number;
-        analyzer_versions: number;
+        projects: number;
+        diagnostics: number;
+        mismatched_analyzer_versions: number;
       };
+      if (counts.projects !== graph.projects.length) {
+        throw new Error(
+          `Workspace ${graph.workspaceHash} matches immutable snapshot ${existing.id}, but its ` +
+            "discovered-project memberships predate the current schema; purge and re-index this repository"
+        );
+      }
+      if (counts.diagnostics !== graph.diagnostics.length) {
+        throw new Error(
+          `Workspace ${graph.workspaceHash} matches immutable snapshot ${existing.id}, but its ` +
+            "extraction diagnostics predate the current schema; purge and re-index this repository"
+        );
+      }
       if (
         counts.files !== graph.files.length ||
         counts.nodes !== graph.nodes.length ||
         counts.edges !== graph.edges.length ||
-        (counts.nodes > 0 && counts.analyzer_versions !== 1)
+        counts.mismatched_analyzer_versions > 0
       ) {
         throw new Error(
           `Workspace ${graph.workspaceHash} matches snapshot ${existing.id}, but its graph shape ` +
@@ -422,9 +453,11 @@ export function insertSnapshotGraph(
 
     const snapshotResult = db
       .prepare(
-        `INSERT INTO repository_snapshots
-           (repo_id, kind, label, base_commit_sha, workspace_hash, parent_snapshot_id, pinned)
-         VALUES (@repoId, @kind, @label, @baseCommitSha, @workspaceHash, @parentSnapshotId, @pinned)`
+         `INSERT INTO repository_snapshots
+           (repo_id, kind, label, base_commit_sha, workspace_hash, analyzer_version,
+            parent_snapshot_id, pinned)
+         VALUES (@repoId, @kind, @label, @baseCommitSha, @workspaceHash, @analyzerVersion,
+                 @parentSnapshotId, @pinned)`
       )
       .run({
         repoId,
@@ -432,6 +465,7 @@ export function insertSnapshotGraph(
         label: graph.label,
         baseCommitSha: graph.baseCommitSha,
         workspaceHash: graph.workspaceHash,
+        analyzerVersion: graph.analyzerVersion,
         parentSnapshotId: options.parentSnapshotId ?? null,
         pinned: options.pinned ? 1 : 0
       });
@@ -622,6 +656,54 @@ export function insertSnapshotGraph(
       );
     }
 
+    const insertSnapshotProject = db.prepare(
+      `INSERT INTO snapshot_projects
+         (snapshot_id, project_id, root, manifest, kind, name, languages_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    );
+    for (const project of graph.projects) {
+      insertSnapshotProject.run(
+        snapshotId,
+        project.projectId,
+        project.root,
+        project.manifest,
+        project.kind,
+        project.name,
+        JSON.stringify(project.languages)
+      );
+    }
+
+    const insertSnapshotDiagnostic = db.prepare(
+      `INSERT INTO snapshot_diagnostics
+         (snapshot_id, ordinal, code, severity, message, file_id, language,
+          extractor_id, extractor_version, line_start, line_end)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+    graph.diagnostics.forEach((diagnostic, ordinal) => {
+      const fileId = diagnostic.file === null
+        ? null
+        : fileIdByPath.get(diagnostic.file) ?? null;
+      if (diagnostic.file !== null && fileId === null) {
+        throw new Error(
+          `Diagnostic ${diagnostic.code} references ${JSON.stringify(diagnostic.file)} ` +
+            "which is not a member of this snapshot"
+        );
+      }
+      insertSnapshotDiagnostic.run(
+        snapshotId,
+        ordinal,
+        diagnostic.code,
+        diagnostic.severity,
+        diagnostic.message,
+        fileId,
+        diagnostic.language,
+        diagnostic.extractorId,
+        diagnostic.extractorVersion,
+        diagnostic.lineStart,
+        diagnostic.lineEnd
+      );
+    });
+
     if (!options.dangerouslySkipValidation) {
       const dangling = findDanglingEndpoints(db, snapshotId);
       if (dangling.length > 0) {
@@ -701,7 +783,9 @@ export interface StoredSnapshotGraph {
   files: GraphFile[];
   nodes: GraphNode[];
   edges: GraphEdge[];
+  projects: GraphProject[];
   extractors: SnapshotExtractor[];
+  diagnostics: SnapshotDiagnostic[];
 }
 
 interface StoredEvidenceRow {
@@ -743,7 +827,21 @@ export function loadSnapshotGraph(db: Database, snapshotId: number): StoredSnaps
   if (analyzerRows.length > 1) {
     throw new Error(`Snapshot ${snapshotId} contains mixed analyzer versions`);
   }
-  const analyzerVersion = analyzerRows[0]?.analyzer_version ?? "unknown";
+  const snapshotAnalyzerVersion =
+    typeof snapshot.analyzer_version === "string" && snapshot.analyzer_version.length > 0
+      ? snapshot.analyzer_version
+      : null;
+  if (
+    snapshotAnalyzerVersion !== null &&
+    analyzerRows[0] !== undefined &&
+    analyzerRows[0].analyzer_version !== snapshotAnalyzerVersion
+  ) {
+    throw new Error(
+      `Snapshot ${snapshotId} analyzer metadata ${JSON.stringify(snapshotAnalyzerVersion)} ` +
+      `does not match membership version ${JSON.stringify(analyzerRows[0].analyzer_version)}`
+    );
+  }
+  const analyzerVersion = snapshotAnalyzerVersion ?? analyzerRows[0]?.analyzer_version ?? "unknown";
 
   const files = (
     db
@@ -930,5 +1028,58 @@ export function loadSnapshotGraph(db: Database, snapshotId: number): StoredSnaps
     languages: JSON.parse(row.languages_json) as string[]
   }));
 
-  return { snapshot, analyzerVersion, files, nodes, edges, extractors };
+  const projects = (
+    db.prepare(
+      `SELECT project_id, root, manifest, kind, name, languages_json
+       FROM snapshot_projects WHERE snapshot_id = ? ORDER BY project_id`
+    ).all(snapshotId) as Array<{
+      project_id: string;
+      root: string;
+      manifest: string | null;
+      kind: string;
+      name: string | null;
+      languages_json: string;
+    }>
+  ).map((row): GraphProject => graphProjectSchema.parse({
+    projectId: row.project_id,
+    root: row.root,
+    manifest: row.manifest,
+    kind: row.kind,
+    name: row.name,
+    languages: JSON.parse(row.languages_json) as unknown
+  }));
+
+  const diagnostics = (
+    db.prepare(
+      `SELECT sd.code, sd.severity, sd.message, sf.normalized_path,
+              sd.language, sd.extractor_id, sd.extractor_version,
+              sd.line_start, sd.line_end
+       FROM snapshot_diagnostics sd
+       LEFT JOIN snapshot_files sf
+         ON sf.snapshot_id = sd.snapshot_id AND sf.file_id = sd.file_id
+       WHERE sd.snapshot_id = ? ORDER BY sd.ordinal`
+    ).all(snapshotId) as Array<{
+      code: string;
+      severity: SnapshotDiagnostic["severity"];
+      message: string;
+      normalized_path: string | null;
+      language: string | null;
+      extractor_id: string;
+      extractor_version: string;
+      line_start: number | null;
+      line_end: number | null;
+    }>
+  ).map((row): SnapshotDiagnostic => ({
+    code: row.code,
+    severity: row.severity,
+    message: row.message,
+    file: row.normalized_path,
+    language: row.language,
+    extractorId: row.extractor_id,
+    extractorVersion: row.extractor_version,
+    lineStart: row.line_start,
+    lineEnd: row.line_end
+  }));
+
+  return { snapshot, analyzerVersion, files, nodes, edges, projects, extractors, diagnostics };
 }

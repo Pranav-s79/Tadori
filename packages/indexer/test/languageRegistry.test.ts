@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { CAPABILITY_FEATURES, CAPABILITY_STATES } from "@tadori/core";
 import {
+  CAPABILITY_MATRIX,
   LANGUAGE_BY_ID,
   LANGUAGE_REGISTRY,
   UNKNOWN_TEXT_LANGUAGE,
@@ -10,12 +11,19 @@ import {
 
 describe("multi-language registry", () => {
   it("stays in exact ID parity with the active capability matrix", () => {
-    const matrix = JSON.parse(readFileSync(
-      new URL("../../../docs/MULTILANGUAGE_CAPABILITIES.json", import.meta.url),
-      "utf8"
-    )) as { languages: Array<{ id: string }> };
     const registryIds = [...LANGUAGE_REGISTRY.map((entry) => entry.id), UNKNOWN_TEXT_LANGUAGE.id].sort();
-    expect(registryIds).toEqual(matrix.languages.map((entry) => entry.id).sort());
+    expect(registryIds).toEqual(CAPABILITY_MATRIX.languages.map((entry) => entry.id).sort());
+    expect(CAPABILITY_MATRIX.states).toEqual(CAPABILITY_STATES);
+    for (const language of CAPABILITY_MATRIX.languages) {
+      expect(Object.keys(language.features).sort()).toEqual([...CAPABILITY_FEATURES].sort());
+      const registration = language.id === UNKNOWN_TEXT_LANGUAGE.id
+        ? UNKNOWN_TEXT_LANGUAGE
+        : LANGUAGE_BY_ID.get(language.id);
+      expect(registration).toMatchObject({
+        extractorId: language.extractorId,
+        extractorVersion: language.extractorVersion
+      });
+    }
   });
 
   it("registers the required baseline languages with deterministic precedence", () => {

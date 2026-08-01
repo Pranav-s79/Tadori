@@ -156,6 +156,29 @@ describe("snapshot insertion", () => {
     expect(listSnapshots(db, firstA.repoId)).toHaveLength(2);
   });
 
+  it("stores analyzer-distinct immutable snapshots for the same workspace", () => {
+    const graph = { ...smallGraph("working_tree"), workspaceHash: sha256Hex("same-source") };
+    const first = insertSnapshotGraph(db, graph);
+    const upgraded = insertSnapshotGraph(db, {
+      ...graph,
+      analyzerVersion: "tadori-test/0.0.1"
+    }, { expectedActivationId: first.activationId });
+
+    expect(upgraded).toMatchObject({ reused: false });
+    expect(upgraded.snapshotId).not.toBe(first.snapshotId);
+    expect(getSnapshotHead(db, first.repoId, "working_tree")).toMatchObject({
+      activationId: upgraded.activationId,
+      snapshot: {
+        id: upgraded.snapshotId,
+        workspace_hash: graph.workspaceHash,
+        analyzer_version: "tadori-test/0.0.1"
+      }
+    });
+    expect(loadSnapshotGraph(db, first.snapshotId).analyzerVersion).toBe(graph.analyzerVersion);
+    expect(loadSnapshotGraph(db, upgraded.snapshotId).analyzerVersion).toBe("tadori-test/0.0.1");
+    expect(listSnapshots(db, first.repoId)).toHaveLength(2);
+  });
+
   it("uses activation generations to reject a stale writer even after an ABA cycle", () => {
     const graphA = { ...smallGraph("working_tree"), workspaceHash: sha256Hex("workspace-a") };
     const graphB = { ...smallGraph("working_tree"), workspaceHash: sha256Hex("workspace-b") };

@@ -1,7 +1,7 @@
 name: ci
 on:
   push:
-    branches: [main, "Sprint*", "chore/**", "feat/**", "fix/**"]
+    branches: [main, "Sprint*"]
   pull_request:
     branches: [main]
 permissions:
@@ -78,6 +78,11 @@ jobs:
         run: pnpm --filter @tadori/store exec node -e "const D=require('better-sqlite3'); const db=new D(':memory:'); db.exec('CREATE TABLE t(x)'); db.prepare('INSERT INTO t VALUES (?)').run(1); if (db.prepare('SELECT x FROM t').get().x !== 1) { throw new Error('better-sqlite3 query failed'); } db.close(); console.log('better-sqlite3 OK on', process.version);"
       - run: pnpm skills:check
       - run: pnpm typecheck
+      # The root tsconfig scopes to packages/*, so the Atlas app was never
+      # type-checked by any gate. Eleven errors accumulated there unnoticed,
+      # including a dead comparison that silently starved Table mode of story
+      # emphasis. Checking it here keeps that class of defect from returning.
+      - run: pnpm --filter @tadori/viz typecheck
       - run: pnpm lint
       - run: pnpm test
       - run: python validate_fixtures.py
@@ -86,10 +91,11 @@ jobs:
       - run: pnpm fixtures:typecheck
       - run: pnpm package:artifact
       - run: npm pack --dry-run --json ./dist/package
-      # The installed-artifact smoke stays on every leg: its CLI, API, layout,
-      # shutdown and purge checks are deterministic and are the only
-      # cross-platform proof the published package works. Only the browser-driven
-      # gate below is isolated.
+      # The installed-artifact smoke stays on every leg with the default engine:
+      # its CLI, API, layout, shutdown and purge checks are deterministic and are
+      # the only cross-platform proof the published package works. The Firefox
+      # engine — KF-001's leg — runs in the `browser` job instead, so one
+      # engine-specific defect cannot take the whole matrix down with it.
       - run: pnpm package:smoke
         env:
           TADORI_PACKAGE_AUDIT: ${{ matrix.os == 'ubuntu-latest' && matrix.node == '22.14.0' && '1' || '0' }}
@@ -104,7 +110,11 @@ jobs:
           git diff --cached --exit-code
 
   browser:
-    # Reporting, not blocking — see the comment above the jobs block.
+    # Reporting, not blocking — see the comment above the jobs block. main has
+    # no required-status-checks rule, so this red X never withholds a merge
+    # button; the display name says so directly rather than relying on that
+    # being known.
+    name: "browser (tracking KF-001, non-blocking)"
     continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -120,3 +130,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Chrome: offline-bundle, keyboard, and axe accessibility contracts.
       - run: pnpm verify:viz:e2e
+      # Firefox: KF-001's leg. `if: always()` so it still runs — and still
+      # reports its probe evidence — when the Chrome gate above has failed.
+      - run: pnpm exec playwright-core install --with-deps firefox
+        if: always()
+      - run: pnpm package:artifact
+        if: always()
+      - run: pnpm package:smoke
+        if: always()
+        env:
+          TADORI_PACKAGE_AUDIT: "0"
+          TADORI_PACKAGE_BROWSER: firefox

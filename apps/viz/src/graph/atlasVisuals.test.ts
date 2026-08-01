@@ -52,6 +52,9 @@ describe("Stable Atlas visual mapping", () => {
     }))).toBe("structural");
     expect(atlasCapabilityForNode(node({ aggregateCapabilities: ["semantic", "structural"] }))).toBe("mixed");
     expect(atlasCapabilityForNode(node())).toBe("unknown");
+    expect(atlasNodeVisual(node({ aggregateCapabilities: ["semantic"] })).materialLabel)
+      .toBe("restored ochre stone");
+    expect(atlasNodeVisual(node()).materialLabel).toBe("partially buried neutral stone");
   });
 
   it("uses fan-in and selection without moving the node", () => {

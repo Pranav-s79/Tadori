@@ -55,7 +55,8 @@ function metadataOf(graph: SnapshotGraph): SnapshotGraphMetadata {
     baseCommitSha: graph.baseCommitSha,
     workspaceHash: graph.workspaceHash,
     analyzerVersion: graph.analyzerVersion,
-    extractors: graph.extractors
+    extractors: graph.extractors,
+    diagnostics: graph.diagnostics
   };
 }
 

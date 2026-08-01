@@ -34,6 +34,10 @@ describe("TadoriTools", () => {
     expect(output.routes).toHaveLength(1);
     expect(output.entryPoints.available).toBe(false);
     expect(output.boundaryRules.available).toBe(false);
+    expect(output.languages).toEqual([
+      expect.objectContaining({ id: "typescript", fileCount: 3, declaredSupport: "semantic" })
+    ]);
+    expect(output.diagnostics).toMatchObject({ total: 0, sample: [], omittedCount: 0 });
   });
 
   it("searches with exact boost and paginates without losing total counts", () => {

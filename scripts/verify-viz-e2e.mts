@@ -157,7 +157,9 @@ try {
   assert.equal(initial.title, "Tadori");
   assert.equal(initial.heading, "Tadori");
   assert.equal(initial.tagline, "Archaeological circuit atlas");
-  assert.deepEqual(initial.modeNames, ["Atlas", "Story", "Changes", "Table"]);
+  // Overview leads and Interview follows Atlas: a reader gets oriented before
+  // being handed a graph, and can prepare to discuss what they just read.
+  assert.deepEqual(initial.modeNames, ["Overview", "Atlas", "Interview", "Story", "Changes", "Table"]);
   assert.equal(initial.canvasPresent, true);
   assert.deepEqual(initial.viewport, { width: 1440, height: 1000 }, "Desktop browser viewport was not 1440px wide");
   assert.ok(
@@ -177,6 +179,22 @@ try {
   const initialNodeCount = Number(/^Showing (\d+)/.exec(initial.showing ?? "")?.[1] ?? "0");
   assert.ok(initialNodeCount > 0, "Atlas rendered no package nodes");
   await browser.waitFor<boolean>("Boolean(document.querySelector('.package-map-canvas'))", Boolean);
+  // Overview is the landing mode, so the Atlas workspace starts hidden. A
+  // canvas inside a `hidden` subtree is in the DOM but cannot take focus:
+  // focus() succeeds silently and activeElement stays on <body>, so no keydown
+  // is ever delivered. Enter Atlas before driving the keyboard.
+  await browser.evaluate(`[...document.querySelectorAll('[role="tab"]')]
+    .find((tab) => tab.textContent?.trim() === 'Atlas')?.click()`);
+  await browser.waitFor<boolean>(
+    "document.querySelector('.spatial-workspace')?.hasAttribute('hidden') === false",
+    Boolean
+  );
+  // A painted canvas is not a populated graph: until the Sigma graph has nodes,
+  // an arrow key is delivered but finds nothing to focus and silently pans.
+  await browser.waitFor<boolean>(
+    "document.querySelector('.package-map-canvas')?.dataset.graphReady === 'true'",
+    Boolean
+  );
   await browser.evaluate("document.querySelector('.package-map-canvas').focus()");
   await press("ArrowRight", "ArrowRight", 39);
   await press("Enter", "Enter", 13);

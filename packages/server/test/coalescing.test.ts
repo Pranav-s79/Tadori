@@ -32,6 +32,40 @@ function node(kind: NodeKind, qualifiedName: string, bodyHash: string | null): G
   } as GraphNode;
 }
 
+function attributedNode(
+  kind: NodeKind,
+  qualifiedName: string,
+  bodyHash: string | null,
+  extractorVersion: string
+): GraphNode {
+  return {
+    ...node(kind, qualifiedName, bodyHash),
+    language: "python",
+    provenance: {
+      extractorId: "tadori-tree-sitter",
+      extractorVersion,
+      capability: "structural",
+      derivation: "parser-derived",
+      unresolvedReason: null
+    }
+  };
+}
+
+/** An attributed node whose extractor identity is chosen by the caller. */
+function namedExtractorNode(
+  kind: NodeKind,
+  qualifiedName: string,
+  bodyHash: string | null,
+  extractorId: string,
+  extractorVersion: string
+): GraphNode {
+  const attributed = attributedNode(kind, qualifiedName, bodyHash, extractorVersion);
+  return {
+    ...attributed,
+    provenance: { ...attributed.provenance, extractorId }
+  } as GraphNode;
+}
+
 describe("unqualifiedName", () => {
   it("file → basename; symbol → trailing dot segment", () => {
     expect(unqualifiedName(node("file", "src/legacy/helper.ts", "h"))).toBe("helper.ts");
@@ -40,14 +74,21 @@ describe("unqualifiedName", () => {
   });
 });
 
-describe("stageAMatch (identity basis: kind + unqualifiedName + bodyHash + analyzerVersion)", () => {
+describe("stageAMatch (identity basis includes analyzer and extractor versions)", () => {
   it("pairs a pure file move (path changes, basename+hash+kind stable) — fixture-04 shape", () => {
     const removed = [node("file", "src/legacy/helper.ts", "hashA")];
     const added = [node("file", "src/helpers/helper.ts", "hashA")];
     const { pairs, remainingRemoved, remainingAdded } = stageAMatch(removed, added, AV);
     expect(pairs).toHaveLength(1);
     expect(pairs[0]?.stage).toBe("A");
-    expect(pairs[0]?.basis).toEqual(["kind", "unqualifiedName", "bodyHash", "analyzerVersion"]);
+    expect(pairs[0]?.basis).toEqual([
+      "kind",
+      "unqualifiedName",
+      "bodyHash",
+      "analyzerVersion",
+      "extractorId",
+      "extractorVersion"
+    ]);
     expect(remainingRemoved).toHaveLength(0);
     expect(remainingAdded).toHaveLength(0);
   });
@@ -74,6 +115,31 @@ describe("stageAMatch (identity basis: kind + unqualifiedName + bodyHash + analy
     expect(stageAMatch(removed, added, "v1").pairs).toHaveLength(1);
   });
 
+  it("does not pair nodes produced by different extractor versions", () => {
+    const removed = [attributedNode("file", "a/x.py", "h", "1")];
+    const added = [attributedNode("file", "b/x.py", "h", "2")];
+    const { pairs, remainingRemoved, remainingAdded } = stageAMatch(removed, added, AV);
+    expect(pairs).toHaveLength(0);
+    expect(remainingRemoved).toEqual(removed);
+    expect(remainingAdded).toEqual(added);
+  });
+
+  it("does not pair legacy and attributed nodes", () => {
+    const removed = [node("file", "a/x.py", "h")];
+    const added = [attributedNode("file", "b/x.py", "h", "1")];
+    expect(stageAMatch(removed, added, AV).pairs).toHaveLength(0);
+  });
+
+  it("does not let an extractor named like the legacy sentinel pair with a legacy node", () => {
+    // The legacy sentinel must stay unrepresentable as a real extractor
+    // identity. `extractorId` is only `z.string().min(1)`, so a pronounceable
+    // sentinel would be forgeable by a registered extractor and would silently
+    // reopen the attribution boundary this guard exists to close.
+    const removed = [node("file", "a/x.py", "h")];
+    const added = [namedExtractorNode("file", "b/x.py", "h", "legacy", "legacy")];
+    expect(stageAMatch(removed, added, AV).pairs).toHaveLength(0);
+  });
+
   it("leaves a non-unique basis group unpaired (deferred to Stage B / ambiguity)", () => {
     // two removed files share basename+hash → not unique on removed side
     const removed = [node("file", "a/helper.ts", "h"), node("file", "b/helper.ts", "h")];
@@ -93,7 +159,7 @@ describe("stageAMatch (identity basis: kind + unqualifiedName + bodyHash + analy
   });
 });
 
-describe("stageBMatch (body-hash-only among Stage-A residuals + uniqueCandidate)", () => {
+describe("stageBMatch (body hash and extractor identity among Stage-A residuals)", () => {
   it("pairs a method rename with a unique matching body hash — fixture-04 Stage-B shape", () => {
     // formatValue → renderValue: name changed, body hash identical (body did not
     // reference its own name), unique remaining candidate on each side.
@@ -102,7 +168,14 @@ describe("stageBMatch (body-hash-only among Stage-A residuals + uniqueCandidate)
     const { pairs, ambiguousGroups, residualRemoved, residualAdded } = stageBMatch(removed, added, AV);
     expect(pairs).toHaveLength(1);
     expect(pairs[0]?.stage).toBe("B");
-    expect(pairs[0]?.basis).toEqual(["kind", "bodyHash", "analyzerVersion", "uniqueCandidate"]);
+    expect(pairs[0]?.basis).toEqual([
+      "kind",
+      "bodyHash",
+      "analyzerVersion",
+      "extractorId",
+      "extractorVersion",
+      "uniqueCandidate"
+    ]);
     expect(ambiguousGroups).toHaveLength(0);
     expect(residualRemoved).toHaveLength(0);
     expect(residualAdded).toHaveLength(0);
@@ -118,6 +191,24 @@ describe("stageBMatch (body-hash-only among Stage-A residuals + uniqueCandidate)
     expect(pairs).toHaveLength(0);
     expect(residualRemoved).toHaveLength(1);
     expect(residualAdded).toHaveLength(1);
+  });
+
+  it("does not report an extractor-version change as a rename", () => {
+    const removed = [attributedNode("function", "a.py.oldName", "same", "1")];
+    const added = [attributedNode("function", "a.py.newName", "same", "2")];
+    const { pairs, residualRemoved, residualAdded } = stageBMatch(removed, added, AV);
+    expect(pairs).toHaveLength(0);
+    expect(residualRemoved).toEqual(removed);
+    expect(residualAdded).toEqual(added);
+  });
+
+  it("does not let an extractor named like the legacy sentinel forge a rename", () => {
+    const removed = [node("function", "a.py.oldName", "same")];
+    const added = [namedExtractorNode("function", "a.py.newName", "same", "legacy", "legacy")];
+    const { pairs, residualRemoved, residualAdded } = stageBMatch(removed, added, AV);
+    expect(pairs).toHaveLength(0);
+    expect(residualRemoved).toEqual(removed);
+    expect(residualAdded).toEqual(added);
   });
 
   it("reports an ambiguous group (2+ residuals share a body hash), pairing none", () => {

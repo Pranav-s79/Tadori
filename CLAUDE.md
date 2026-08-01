@@ -1,30 +1,34 @@
 # Tadori project instructions
 
 - Treat `IMPLEMENTATION_STATUS.md` as the source of truth for current state, completed work, active milestone, and next dependency-ready task.
-- Read only the relevant current-state sections, current execution card, newest result, and applicable project-local skill before starting.
-- Do not reread historical documentation unless resolving a contradiction or validating an architectural decision.
-- Continue autonomously from the highest dependency-ready task. Do not stop for routine implementation, naming, UI, sequencing, or tooling decisions.
-- Use the recommended implementation based on repository evidence and existing architecture.
-- Reuse existing index, graph, evidence, snapshot, diff, layout, API, and visualization systems before creating new abstractions.
-- Avoid parallel implementations of the same concern, including duplicate graph models, evidence models, diff systems, layout engines, or repository databases.
+- At startup, read only the relevant current-state section, current execution card, newest result, and applicable project-local skill.
+- Read historical documentation only to resolve a contradiction or validate a consequential architectural decision.
+- Continue autonomously from the highest dependency-ready task and make routine implementation, naming, UI, sequencing, tooling, and merge decisions without asking.
+- A completed PR, slice, or milestone is not a stopping condition; continue to the next dependency-ready task.
+- Prefer the simplest execution topology that can safely complete the work.
+- Default to one lead agent executing a direct implementation loop: inspect → implement → test → review diff → PR → CI → merge → sync → continue.
+- Use subagents only when work is genuinely independent, specialized review materially reduces risk, or CI/PR monitoring can proceed concurrently with implementation.
+- Do not create a subagent for routine coding, status summaries, branch cleanup, or checks the lead can perform directly.
+- Do not use parallel agents when their file ownership, contracts, or dependencies overlap.
+- When subagents are used, define their owned files, inputs, expected artifact, and completion condition; prohibit recursive delegation.
+- Reuse existing index, graph, evidence, snapshot, diff, layout, API, and visualization systems before introducing abstractions.
+- Do not create duplicate graph models, evidence models, diff systems, layout engines, indexers, APIs, or repository databases.
 - Prefer coherent vertical slices over broad speculative refactors.
-- Keep one primary owner per file area and one branch or worktree per coherent slice.
-- Use focused subagents when they improve speed, including implementation, read-only review, and GitHub operations agents.
-- Shared contracts must be reviewed and frozen before parallel agents implement against them.
 - Preserve deterministic behavior, stable identifiers, snapshot correctness, truthful provenance, and explicit unresolved states.
 - Never present inferred static behavior as runtime-observed behavior.
-- Preserve local-first operation, accessibility, Linux support, Windows support, and the frozen MCP interface unless the active milestone explicitly changes it.
+- Preserve local-first operation, accessibility, Linux and Windows support, and frozen interfaces unless the active milestone explicitly changes them.
 - Golden fixtures, schemas, contracts, and validation gates must not be weakened to make work pass.
-- Every production change must include focused tests and run the relevant validation, typecheck, lint, build, and package-level gates.
-- Fix real failures. Do not silently skip unavailable checks or classify reproducible failures as flaky.
+- Every production change must include focused tests and run only the validation, typecheck, lint, build, and package gates relevant to its scope.
+- Run broader repository gates before merge when required by project policy or when shared behavior changed.
+- Fix reproducible failures; do not silently skip checks or label real failures as flaky.
 - Pushing branches, opening or updating PRs, requesting reviews, rerunning CI, and creating remotes are pre-approved.
 - Never push directly to `main`.
-- A GitHub operations agent may verify scope, monitor CI, detect duplicate commits, squash-merge green implementation PRs, delete merged remote branches, and report the new `main` SHA.
-- Do not merge failing PRs, bypass branch protection, dismiss valid blocking findings, or weaken required checks.
-- Architectural contracts, database migrations, security-sensitive changes, frozen interface changes, and major dependencies require lead review before merge.
-- After each merged slice, update local `main`, record concise evidence, and update only the current state, frontier, and newest result sections of `IMPLEMENTATION_STATUS.md`.
+- The lead may verify scope, monitor CI, squash-merge approved green implementation PRs, clean merged branches and safe worktrees, and report the new `main` SHA directly.
+- Use a GitHub operations subagent only when CI monitoring or PR handling can proceed concurrently with useful implementation work.
+- Do not merge failing PRs, bypass branch protection, dismiss valid blocking findings, weaken required checks, or force-push `main`.
+- Architectural contracts, database migrations, security-sensitive changes, frozen interface changes, and major dependencies require main-lead review before merge, not repository-owner approval unless explicitly stated.
+- After each merge, sync local `main`, verify the change exists exactly once, update the current state and frontier in `IMPLEMENTATION_STATUS.md`, then continue.
+- Keep status and result updates concise; do not repeatedly restate completed history.
 - Do not rewrite historical status entries unless correcting a proven factual error.
-- After finishing one slice, continue directly to the next dependency-ready task.
 - Stop only for missing credentials, unavoidable destructive risk, genuinely incompatible architectural directions, or usage limits.
 - Project-local Tadori rules and skills override conflicting general-purpose guidance.
-- Architectural contracts, database migrations, security-sensitive changes, frozen interface changes, and major dependencies require review and approval by the main Claude lead before merge; they do not require repository-owner approval unless explicitly stated.

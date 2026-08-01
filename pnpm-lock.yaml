@@ -99,6 +99,12 @@ importers:
       '@tadori/indexer':
         specifier: workspace:*
         version: link:../indexer
+      '@tadori/store':
+        specifier: workspace:*
+        version: link:../store
+      ajv:
+        specifier: ^8.17.1
+        version: 8.20.0
       zod:
         specifier: ^3.23.8
         version: 3.25.76

@@ -25,6 +25,17 @@ export const HTTP_VERB_NAMES = new Set([
   "OPTIONS"
 ]);
 
+/**
+ * Markdown links document source; by themselves they do not prove a
+ * cross-language integration boundary.
+ */
+export const MARKDOWN_NON_INTEGRATION_REASON =
+  "markdown-link-is-documentation-not-integration-evidence";
+
+/** Stable legacy-adapter identity marker for an unresolved documentation link. */
+export const MARKDOWN_NON_INTEGRATION_NODE_PREFIX =
+  "<unresolved-documentation-link:";
+
 export interface EdgeMetadata {
   origin: Origin;
   confidence: Confidence;

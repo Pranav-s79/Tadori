@@ -22,11 +22,39 @@ vi.mock("../src/features/boundaries/useBoundaries.ts", () => ({
 vi.mock("../src/features/review/useReviewDiffStore.ts", () => ({
   useReviewDiffStore: () => ({ page: null })
 }));
+vi.mock("../src/hooks/useCapabilities.ts", () => ({
+  useCapabilities: () => ({
+    data: {
+      version: 1,
+      claim: "Tadori can structurally map mixed-language repositories.",
+      states: ["semantic", "structural", "repository-only", "unsupported", "experimental"],
+      languages: []
+    },
+    loading: false, error: null, refetch: vi.fn()
+  })
+}));
+vi.mock("../src/hooks/useAnalysis.ts", () => ({
+  useAnalysis: () => ({
+    data: {
+      snapshotId: 1,
+      analyzerVersion: "tadori-indexer/0.2.1",
+      languages: [],
+      extractors: [],
+      diagnostics: {
+        items: [], total: 0, omittedCount: 0, nextCursor: null,
+        bySeverity: { info: 0, warning: 0, error: 0 }
+      }
+    },
+    loading: false, error: null, refetch: vi.fn()
+  })
+}));
 vi.mock("../src/graph/PackageMapCanvas.tsx", () => ({
   PackageMapCanvas: (props: { onRenderedGraphChange?: (snapshot: {
     nodes: Array<{ entityKey: string; kind: "package" | "file"; qualifiedName: string; displayName: string; file: string | null; exported: boolean; fanIn: number }>;
     edges: never[];
     selectedEntityKey: string | null;
+    lodLevel: "repository" | "file" | "symbol";
+    breadcrumb: readonly string[];
   }) => void; onRendererError?: (error: Error) => void }) => (
     <div>
       map
@@ -39,7 +67,9 @@ vi.mock("../src/graph/PackageMapCanvas.tsx", () => ({
           { entityKey: "file:expanded.py", kind: "file", qualifiedName: "expanded.py", displayName: "expanded.py", file: "expanded.py", exported: true, fanIn: 0 }
         ],
         edges: [],
-        selectedEntityKey: "file:expanded.py"
+        selectedEntityKey: "file:expanded.py",
+        lodLevel: "file",
+        breadcrumb: ["Repository", "pkg"]
       })}>Publish expanded graph</button>
     </div>
   )
@@ -56,7 +86,7 @@ vi.mock("../src/features/inspect/NodeView.tsx", () => ({
 
 import { App, mapStoryPlaybackToGraph } from "../src/App.tsx";
 import type { StoryPlaybackState } from "../src/features/story/StoryView.tsx";
-import type { BehaviorStory } from "../src/features/story/storyApi.ts";
+import type { BehaviorStory, StoryTransition } from "../src/features/story/storyApi.ts";
 
 function installNavigationMediaQuery(initialMatches: boolean): { setMatches(matches: boolean): void } {
   let matches = initialMatches;
@@ -71,7 +101,11 @@ function installNavigationMediaQuery(initialMatches: boolean): { setMatches(matc
     removeListener: () => undefined,
     dispatchEvent: () => true
   } as MediaQueryList;
-  vi.stubGlobal("matchMedia", vi.fn(() => query));
+  const inactiveQuery = {
+    ...query,
+    get matches() { return false; }
+  } as MediaQueryList;
+  vi.stubGlobal("matchMedia", vi.fn((media: string) => media === "(max-width: 860px)" ? query : inactiveQuery));
   return {
     setMatches(nextMatches: boolean): void {
       matches = nextMatches;
@@ -84,6 +118,10 @@ function installNavigationMediaQuery(initialMatches: boolean): { setMatches(matc
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  // The app persists mode/lens/selection in the query string, and jsdom keeps
+  // one location for the whole file. Without this reset a test that switches
+  // mode would silently decide the next test's starting view.
+  window.history.replaceState(null, "", window.location.pathname);
 });
 
 describe("App focus ownership", () => {
@@ -133,6 +171,8 @@ describe("App focus ownership", () => {
 
   it("falls back to the structured graph when the map renderer is unavailable", async () => {
     render(<App />);
+    // Overview is the landing mode now, so enter Atlas before driving the map.
+    fireEvent.click(screen.getByRole("tab", { name: "Atlas" }));
     fireEvent.click(screen.getByRole("button", { name: "Fail renderer" }));
 
     await waitFor(() => expect(screen.getByRole("tab", { name: "Table" })).toHaveAttribute("aria-selected", "true"));
@@ -142,10 +182,28 @@ describe("App focus ownership", () => {
     expect(screen.getByText("1 node")).toBeInTheDocument();
   });
 
+  it("automatically uses the text-equivalent Table in forced-colors mode", async () => {
+    const query = {
+      media: "(forced-colors: active)", matches: true, onchange: null,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn()
+    } as unknown as MediaQueryList;
+    const inactive = { ...query, matches: false } as MediaQueryList;
+    vi.stubGlobal("matchMedia", vi.fn((media: string) => media === "(forced-colors: active)" ? query : inactive));
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Table" })).toHaveAttribute("aria-selected", "true"));
+    expect(screen.getByRole("alert")).toHaveTextContent("Forced-colors mode is active");
+    fireEvent.click(screen.getByRole("tab", { name: "Atlas" }));
+    expect(screen.getByRole("tab", { name: "Table" })).toHaveAttribute("aria-selected", "true");
+  });
+
   it("keeps the rendered expansion available to Table mode and its inspector", async () => {
     render(<App />);
+    // Overview is the landing mode now, so enter Atlas before driving the map.
+    fireEvent.click(screen.getByRole("tab", { name: "Atlas" }));
     fireEvent.click(screen.getByRole("button", { name: "Publish expanded graph" }));
     expect(screen.getByText("Showing 2 nodes and 0 relations")).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Atlas location" })).toHaveTextContent("Repositorypkg");
+    expect(screen.getByText("file level")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Table" }));
     expect(screen.getByText("2 nodes")).toBeInTheDocument();
@@ -191,7 +249,7 @@ describe("Story representative mapping", () => {
   });
 
   it("keeps an unresolved termination on its known source without a destination", () => {
-    const unresolved = { from: "a", to: null, relation: "calls", origin: "heuristic", confidence: "inferred", resolution: "unresolved", resolved: false, evidence: [] } as const;
+    const unresolved: StoryTransition = { from: "a", to: null, relation: "calls", origin: "heuristic", confidence: "inferred", resolution: "unresolved", resolved: false, evidence: [] };
     const unresolvedStory: BehaviorStory = {
       ...story,
       steps: [...story.steps, { id: "step:wall", entityKey: null, kind: "unresolved", resolved: false, label: "unresolved", origin: "heuristic", confidence: "inferred", resolution: "unresolved", evidence: [] }],

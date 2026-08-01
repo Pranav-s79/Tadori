@@ -34,6 +34,7 @@
     "benchmark:serve:coldstart": "tsx scripts/benchmark-serve-coldstart.mts",
     "benchmark:serve:positions": "tsx scripts/benchmark-serve-positions-identity.mts",
     "benchmark:serve:memory": "tsx scripts/benchmark-serve-memory.mts",
+    "external:validate": "tsx packages/bench/src/cli-external.ts",
     "verify:viz:e2e": "pnpm --filter @tadori/viz build && tsx scripts/verify-viz-e2e.mts",
     "tadori": "tsx scripts/tadori.mts"
   },

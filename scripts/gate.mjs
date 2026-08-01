@@ -18,11 +18,10 @@ const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const steps = [
   { name: "skills:check", cmd: pnpm, args: ["skills:check"] },
   { name: "typecheck", cmd: pnpm, args: ["typecheck"] },
-  // NOTE: `pnpm --filter @tadori/viz typecheck` is deliberately absent. The app
-  // has no typecheck script yet, and pnpm exits 0 with "None of the selected
-  // packages has a typecheck script" — a step that reports PASS while checking
-  // nothing is worse than no step. It is added together with the script and the
-  // errors it surfaces, not before.
+  // The root tsconfig scopes to packages/*, so the Atlas app is not covered by
+  // the step above. Note pnpm exits 0 when a filtered script does not exist, so
+  // this is only meaningful while apps/viz actually defines `typecheck`.
+  { name: "viz typecheck", cmd: pnpm, args: ["--filter", "@tadori/viz", "typecheck"] },
   { name: "lint", cmd: pnpm, args: ["lint"] },
   { name: "test", cmd: pnpm, args: ["test"], slow: true },
   { name: "fixtures:validate", cmd: pnpm, args: ["fixtures:validate"], slow: true },

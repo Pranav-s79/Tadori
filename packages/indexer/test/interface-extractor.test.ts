@@ -26,6 +26,7 @@ function contextFor(files: Readonly<Record<string, { language: string; source: s
       scan: { indexedFiles, supportFiles, diagnostics: [] },
       fileContents,
       fileHashes: new Map([...fileContents].map(([name, bytes]) => [name, createHash("sha256").update(bytes).digest("hex")])),
+      manifestHashes: new Map([...fileContents].map(([name, bytes]) => [name, createHash("sha256").update(bytes).digest("hex")])),
       workspaceHash: "0".repeat(64)
     }
   };
@@ -83,6 +84,28 @@ describe("repository and interface-file extractor", () => {
     expect(result.edges.some((edge) => edge.relation === "references" && edge.resolution === "resolved")).toBe(true);
     expect(result.edges.filter((edge) => edge.relation === "calls").length).toBeGreaterThanOrEqual(4);
     expect(result.edges.every((edge) => edge.evidence.length > 0)).toBe(true);
+  });
+
+  test("keeps Markdown-to-source links explicit without claiming an integration boundary", () => {
+    const result = interfaceExtractor.extract(contextFor({
+      "README.md": { language: "markdown", source: "# Design\nSee [implementation](src/main.go).\n" },
+      "src/main.go": { language: "go", source: "package main\n" }
+    }));
+    const unresolved = result.nodes.find((node) =>
+      node.kind === "unresolved" && node.displayName === "src/main.go"
+    );
+
+    expect(unresolved?.provenance.unresolvedReason)
+      .toBe("markdown-link-is-documentation-not-integration-evidence");
+    expect(result.edges).toContainEqual(expect.objectContaining({
+      dstEntityKey: unresolved?.entityKey,
+      language: "markdown",
+      relation: "references",
+      resolution: "unresolved",
+      provenance: expect.objectContaining({
+        unresolvedReason: "markdown-link-is-documentation-not-integration-evidence"
+      })
+    }));
   });
 
   test("discovers manifest projects and isolates malformed files", () => {

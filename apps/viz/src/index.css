@@ -317,12 +317,19 @@ button { min-height: 2rem; }
   font-weight: 700;
 }
 
+/* Column rather than a two-row grid: the stage carries an optional notice
+   between the context bar and the workspace, and fixed rows made that notice
+   overlap the panel instead of displacing it. */
 .atlas-main {
-  display: grid;
-  grid-template-rows: 2rem minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
 }
+
+.atlas-main > .atlas-context-bar { flex: none; height: 2rem; }
+.atlas-main > .focus-unavailable-notice { flex: none; }
+.atlas-main > .mode-panel { flex: 1 1 auto; }
 
 .atlas-context-bar {
   display: flex;
@@ -340,6 +347,43 @@ button { min-height: 2rem; }
 }
 
 .atlas-context-bar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atlas-context-bar nav { min-width: 0; }
+.atlas-context-bar ol {
+  display: flex;
+  gap: var(--tadori-space-1);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+}
+.atlas-context-bar li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.atlas-context-bar li + li::before { content: "/"; margin-right: var(--tadori-space-1); }
+
+.spatial-projection-toggle {
+  display: inline-flex;
+  flex: none;
+  border: 1px solid var(--tadori-rule);
+  background: var(--tadori-panel-raised);
+}
+
+.spatial-projection-toggle button {
+  min-height: 1.5rem;
+  padding: 0 var(--tadori-space-2);
+  border: 0;
+  border-right: 1px solid var(--tadori-rule);
+  background: transparent;
+  cursor: pointer;
+  font-size: var(--tadori-text-xs);
+  text-transform: uppercase;
+}
+
+.spatial-projection-toggle button:last-child { border-right: 0; }
+.spatial-projection-toggle button[aria-pressed="true"] { background: var(--tadori-copper); color: var(--tadori-panel-raised); }
 .mode-panel, .story-workspace, .changes-workspace { min-width: 0; min-height: 0; }
 .mode-panel { position: relative; overflow: hidden; }
 
@@ -367,6 +411,127 @@ button { min-height: 2rem; }
 }
 
 .package-map-canvas { position: absolute; z-index: 1; inset: 0; }
+
+.atlas-plan-layer { position: absolute; inset: 0; }
+
+.relief-stage {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  overflow: hidden;
+}
+
+.relief-scene,
+.relief-hit-targets { position: absolute; inset: 0; width: 100%; height: 100%; }
+.relief-scene { overflow: visible; }
+.relief-hit-targets { pointer-events: none; }
+
+.relief-plates polygon {
+  fill: color-mix(in srgb, var(--relief-region, var(--tadori-region-ochre)) 50%, var(--tadori-ground));
+  stroke: color-mix(in srgb, var(--relief-region, var(--tadori-region-ochre)) 72%, var(--tadori-ink));
+  stroke-width: 1.5;
+}
+
+.relief-plates [data-region-token="ochre"] { --relief-region: var(--tadori-region-ochre); }
+.relief-plates [data-region-token="green"] { --relief-region: var(--tadori-region-green); }
+.relief-plates [data-region-token="clay"] { --relief-region: var(--tadori-region-clay); }
+.relief-plates [data-region-token="violet"] { --relief-region: var(--tadori-region-violet); }
+.relief-plates [data-region-token="gold"] { --relief-region: var(--tadori-region-gold); }
+.relief-plates [data-region-token="blue"] { --relief-region: var(--tadori-region-blue); }
+
+.relief-plates text {
+  fill: var(--tadori-ink);
+  font-family: var(--tadori-font-label);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-anchor: middle;
+  text-transform: uppercase;
+  paint-order: stroke;
+  stroke: var(--tadori-panel-raised);
+  stroke-width: 4px;
+}
+
+.relief-plates .relief-region-role { fill: var(--tadori-ink-muted); font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+
+.relief-traces line {
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.relief-traces line[data-pattern="dashed"] { stroke-dasharray: 7 5; }
+.relief-traces line[data-pattern="dotted"] { stroke-dasharray: 2 5; }
+.relief-traces line[data-filter-dimmed="true"] { opacity: 0.18; }
+.relief-traces line[data-story-active="true"] { stroke: #b87333; stroke-width: 4; filter: drop-shadow(0 0 2px rgb(184 115 51 / 75%)); }
+
+.relief-structures polygon,
+.relief-form-carving { vector-effect: non-scaling-stroke; }
+.relief-structures polygon { stroke: color-mix(in srgb, var(--tadori-ink) 70%, transparent); stroke-width: 1; }
+.relief-face-top { fill: #b88d55; }
+.relief-face-left { fill: #8d6943; }
+.relief-face-right { fill: #9f7950; }
+.relief-form-carving { fill: none; stroke: color-mix(in srgb, var(--tadori-ink) 72%, transparent); stroke-width: 1.5; }
+.relief-structures [data-capability="structural"] .relief-face-top { fill: url("#relief-structural"); }
+.relief-structures [data-capability="repository"] .relief-face-top { fill: url("#relief-repository"); }
+.relief-structures [data-capability="mixed"] .relief-face-top { fill: var(--tadori-region-violet); stroke-dasharray: 5 2; }
+.relief-structures [data-capability="unknown"] .relief-face-top { fill: var(--tadori-clay); stroke-dasharray: 2 3; }
+.relief-structures [data-form="terminus"] polygon { fill: none; stroke-dasharray: 3 3; }
+.relief-structures [data-form="scaffold"] polygon { fill-opacity: 0.42; stroke-width: 2; }
+.relief-structures [data-selected="true"] polygon { stroke: var(--tadori-focus); stroke-width: 3; }
+.relief-structures [data-filter-dimmed="true"],
+.relief-structures [data-story-dimmed="true"] { opacity: 0.22; }
+.relief-structures [data-story-active="true"] polygon { stroke: var(--tadori-copper); stroke-width: 3; }
+
+.relief-hit-target {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.relief-hit-target > span {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  display: none;
+  max-width: 14rem;
+  padding: 2px 5px;
+  transform: translateX(-50%);
+  border: 1px solid var(--tadori-rule);
+  background: var(--tadori-panel-raised);
+  color: var(--tadori-ink);
+  font-family: var(--tadori-font-mono);
+  font-size: var(--tadori-text-xs);
+  white-space: nowrap;
+}
+
+.relief-hit-target:hover > span,
+.relief-hit-target:focus-visible > span,
+.relief-hit-target[data-selected="true"] > span { display: block; }
+
+.relief-metric-card {
+  position: absolute;
+  z-index: 5;
+  top: var(--tadori-space-3);
+  left: var(--tadori-space-3);
+  display: grid;
+  gap: 0.125rem;
+  max-width: min(24rem, calc(100% - 1.5rem));
+  padding: var(--tadori-space-2) var(--tadori-space-3);
+  border: 1px solid var(--tadori-rule);
+  background: color-mix(in srgb, var(--tadori-panel-raised) 94%, transparent);
+  color: var(--tadori-ink-muted);
+  font-size: var(--tadori-text-xs);
+}
+
+.relief-metric-card strong { color: var(--tadori-ink); text-transform: uppercase; }
 
 .package-plate-overlay {
   position: absolute;
@@ -655,14 +820,205 @@ button { min-height: 2rem; }
   .mode-tabs button { min-width: 0; }
   .atlas-context-bar span:last-child,
   .atlas-legend-cartouche { display: none; }
+
+  .relief-region-role { display: none; }
+  .relief-metric-card { max-width: calc(100% - 1rem); top: var(--tadori-space-2); left: var(--tadori-space-2); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .atlas-navigation { transition: none; }
+  .relief-traces line { filter: none !important; }
 }
 
 @media (forced-colors: active) {
   .atlas-ground { background: Canvas; }
   .lens-button[aria-pressed="true"],
-  .mode-tabs button[aria-selected="true"] { outline: 2px solid Highlight; }
+  .mode-tabs button[aria-selected="true"],
+  .spatial-projection-toggle button[aria-pressed="true"] { outline: 2px solid Highlight; }
+
+  .relief-plates polygon,
+  .relief-structures polygon { fill: Canvas; stroke: CanvasText; }
+  .relief-traces line { stroke: LinkText; filter: none; }
+  .relief-traces line[data-story-active="true"],
+  .relief-structures [data-selected="true"] polygon { stroke: Highlight; }
+  .relief-hit-target:focus-visible { outline-color: Highlight; }
+}
+
+/* Analysis and extraction diagnostics. Severity is named in text, never by
+   color alone, so the panel survives forced-colors and grayscale. */
+.atlas-diagnostics-summary { font-size: var(--tadori-text-xs); color: var(--tadori-ink-muted); }
+
+.analysis-panel { display: grid; gap: var(--tadori-space-3); }
+.analysis-empty, .analysis-budget, .analysis-analyzer {
+  font-size: var(--tadori-text-xs);
+  color: var(--tadori-ink-muted);
+  margin: 0;
+}
+.analysis-subheading { font-size: var(--tadori-text-sm); margin: 0; }
+
+.analysis-languages { width: 100%; border-collapse: collapse; font-size: var(--tadori-text-xs); }
+.analysis-languages caption {
+  text-align: left;
+  color: var(--tadori-ink-muted);
+  padding-bottom: var(--tadori-space-2);
+}
+.analysis-languages th, .analysis-languages td {
+  text-align: left;
+  padding: var(--tadori-space-1) var(--tadori-space-2) var(--tadori-space-1) 0;
+  border-bottom: 1px solid var(--tadori-rule);
+  vertical-align: top;
+}
+
+.analysis-diagnostics { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--tadori-space-2); }
+.analysis-diagnostics > li {
+  border-left: 3px solid var(--tadori-rule);
+  padding-left: var(--tadori-space-2);
+}
+.analysis-diagnostics > li[data-severity="error"] { border-left-color: var(--tadori-danger); }
+.analysis-diagnostics > li[data-severity="warning"] { border-left-color: var(--tadori-change); }
+.analysis-diagnostics p { margin: 0; }
+.analysis-diagnostic-head { display: flex; gap: var(--tadori-space-2); align-items: baseline; }
+.analysis-severity {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--tadori-text-xs);
+  font-weight: 600;
+}
+.analysis-diagnostic-message { font-size: var(--tadori-text-sm); }
+.analysis-diagnostic-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tadori-space-2);
+  font-size: var(--tadori-text-xs);
+  color: var(--tadori-ink-muted);
+}
+
+@media (forced-colors: active) {
+  .analysis-diagnostics > li { border-left-color: CanvasText; }
+  .analysis-diagnostics > li[data-severity="error"],
+  .analysis-diagnostics > li[data-severity="warning"] { border-left-color: LinkText; }
+}
+
+/* Declared capability contract. Declared support and observed extraction are
+   separate claims, so they occupy separate columns and are never merged. */
+.capability-panel { display: grid; gap: var(--tadori-space-3); }
+.capability-claim {
+  margin: 0;
+  font-size: var(--tadori-text-sm);
+  border-left: 3px solid var(--tadori-copper);
+  padding-left: var(--tadori-space-2);
+}
+.capability-languages { width: 100%; border-collapse: collapse; font-size: var(--tadori-text-xs); }
+.capability-languages caption {
+  text-align: left;
+  color: var(--tadori-ink-muted);
+  padding-bottom: var(--tadori-space-2);
+}
+.capability-languages th, .capability-languages td {
+  text-align: left;
+  padding: var(--tadori-space-1) var(--tadori-space-2) var(--tadori-space-1) 0;
+  border-bottom: 1px solid var(--tadori-rule);
+  vertical-align: top;
+}
+.capability-languages tr[data-observation="not_in_snapshot"] td { color: var(--tadori-ink-muted); }
+
+/* Claim provenance. Basis is text plus a data hook, never colour alone, so it
+   survives forced-colors and greyscale. Inferred and unknown read weaker on
+   purpose: skimming must not mistake either for documented fact. */
+.claim-badge {
+  font: 600 var(--tadori-text-xs) / 1 var(--tadori-font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  white-space: nowrap;
+}
+.claim-badge[data-basis="observed"] { border-color: var(--tadori-verdigris-text); color: var(--tadori-verdigris-text); }
+.claim-badge[data-basis="documented"] { border-color: var(--tadori-copper-text); color: var(--tadori-copper-text); }
+.claim-badge[data-basis="inferred"] { border-style: dashed; color: var(--tadori-ink-muted); }
+.claim-badge[data-basis="unknown"] { border-style: dotted; color: var(--tadori-ink-muted); }
+
+/* Overview and Interview: reading surfaces, not dashboards. Measure is capped
+   so long-form explanation stays legible. */
+.overview-panel, .interview-panel {
+  overflow-y: auto;
+  padding: var(--tadori-space-6);
+  display: grid;
+  gap: var(--tadori-space-6);
+  align-content: start;
+}
+.overview-intro h2, .interview-intro h2 { margin: 0 0 var(--tadori-space-2); font-size: var(--tadori-text-xl); }
+.overview-intro p, .interview-intro p {
+  margin: 0; max-width: 68ch;
+  color: var(--tadori-ink-muted); font-size: var(--tadori-text-sm);
+}
+.overview-section h3, .interview-group h3 {
+  margin: 0 0 var(--tadori-space-1);
+  font: 600 var(--tadori-text-md) / 1.3 var(--tadori-font-label);
+  border-bottom: 1px solid var(--tadori-rule);
+  padding-bottom: var(--tadori-space-1);
+}
+.overview-question { margin: 0 0 var(--tadori-space-3); color: var(--tadori-ink-muted); font-size: var(--tadori-text-sm); }
+.overview-claims { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--tadori-space-3); }
+.overview-claim-head { display: flex; align-items: baseline; gap: var(--tadori-space-2); flex-wrap: wrap; }
+.overview-claim-link {
+  background: none; border: none; padding: 0;
+  font: 600 var(--tadori-text-sm) / 1.3 var(--tadori-font-ui);
+  color: var(--tadori-focus); text-decoration: underline; cursor: pointer;
+}
+.overview-claim-value { margin: var(--tadori-space-1) 0 0; max-width: 72ch; font-size: var(--tadori-text-sm); }
+.overview-claim-evidence, .interview-evidence {
+  margin: var(--tadori-space-1) 0 0;
+  font-size: var(--tadori-text-xs); color: var(--tadori-ink-muted);
+  display: flex; flex-wrap: wrap; gap: var(--tadori-space-2);
+}
+.overview-claim-evidence code { font-family: var(--tadori-font-mono); }
+
+.interview-questions { margin: 0; padding-left: var(--tadori-space-4); display: grid; gap: var(--tadori-space-4); }
+.interview-question-head { display: flex; align-items: baseline; gap: var(--tadori-space-2); flex-wrap: wrap; }
+.interview-question-text { margin: 0; max-width: 72ch; font-size: var(--tadori-text-sm); font-weight: 600; }
+.interview-difficulty {
+  font-size: var(--tadori-text-xs); text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--tadori-ink-muted);
+}
+.interview-answer { margin: var(--tadori-space-1) 0 0; padding-left: var(--tadori-space-4); font-size: var(--tadori-text-sm); }
+.interview-evidence-link {
+  background: none; border: none; padding: 0;
+  color: var(--tadori-focus); text-decoration: underline; cursor: pointer;
+  font-family: var(--tadori-font-mono); font-size: var(--tadori-text-xs);
+}
+
+/* Explains why a focus request could not move the map. Restrained on purpose:
+   the entity is fine and its details are already open, so this is information,
+   not an error. */
+.focus-unavailable-notice {
+  display: flex;
+  gap: var(--tadori-space-3);
+  align-items: baseline;
+  margin: 0;
+  padding: var(--tadori-space-2) var(--tadori-space-3);
+  border-left: 3px solid var(--tadori-bronze);
+  background: var(--tadori-panel-raised);
+  color: var(--tadori-ink);
+  font-size: var(--tadori-text-sm);
+}
+
+.focus-unavailable-notice button {
+  flex: none;
+  border: 1px solid var(--tadori-rule);
+  background: transparent;
+  color: var(--tadori-ink);
+  padding: 0 var(--tadori-space-2);
+  cursor: pointer;
+  font: inherit;
+}
+
+.focus-unavailable-notice button:hover { background: var(--tadori-panel); }
+
+@media (forced-colors: active) {
+  .claim-badge { border-color: CanvasText; color: CanvasText; }
+  .overview-claim-link, .interview-evidence-link { color: LinkText; }
+  .focus-unavailable-notice { border-left-color: CanvasText; }
+  .focus-unavailable-notice button { border-color: ButtonBorder; color: ButtonText; }
 }

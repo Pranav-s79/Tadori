@@ -73,6 +73,21 @@ describe("mixed-language repository scanning", () => {
     ]);
 
     const graph = indexRepository(root!, { kind: "working_tree" }).graph;
+    expect(graph.projects).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        root: ".",
+        manifest: "package.json",
+        kind: "manifest",
+        name: "compat",
+        languages: ["javascript", "json", "typescript"]
+      }),
+      expect.objectContaining({
+        root: "native",
+        manifest: "native/compile_commands.json",
+        kind: "manifest",
+        languages: ["c", "cpp", "json"]
+      })
+    ]));
     const fileNodes = graph.nodes.filter((node) => node.kind === "file");
     for (const [file, language] of [
       [".gitignore", "repository-config"],
@@ -103,6 +118,42 @@ describe("mixed-language repository scanning", () => {
       ["bin/conflict.py", "python"], ["bin/python-tool", "python"],
       ["bin/shell-tool", "shell"]
     ]);
+  });
+
+  it("materializes non-TS manifest roots as canonical package-level owners", () => {
+    repository();
+    write("services/api/pyproject.toml", "name = \"api\"\n");
+    write("services/api/main.py", "def main():\n    pass\n");
+    write("workers/events/go.mod", "module example.test/events\n");
+    write("workers/events/main.go", "package main\nfunc main() {}\n");
+
+    const graph = indexRepository(root!, { kind: "working_tree" }).graph;
+    const nodeByKey = new Map(graph.nodes.map((node) => [node.entityKey, node]));
+    const nestedOwnerKeys = new Set<string>();
+    const fileByPath = new Map(
+      graph.nodes.flatMap((node) => node.kind === "file" && node.file !== null ? [[node.file, node] as const] : [])
+    );
+    for (const [projectRoot, sourceFile] of [
+      ["services/api", "services/api/main.py"],
+      ["workers/events", "workers/events/main.go"]
+    ] as const) {
+      const source = fileByPath.get(sourceFile);
+      const containments = graph.edges.filter((edge) =>
+        edge.relation === "contains" && edge.dstEntityKey === source?.entityKey &&
+        nodeByKey.get(edge.srcEntityKey)?.kind === "package"
+      );
+      expect(containments).toHaveLength(1);
+      const containment = containments[0];
+      const owner = containment === undefined ? undefined : nodeByKey.get(containment.srcEntityKey);
+      expect(graph.projects).toContainEqual(expect.objectContaining({ root: projectRoot }));
+      expect(owner).toEqual(expect.objectContaining({
+        kind: "package",
+      }));
+      if (owner !== undefined) nestedOwnerKeys.add(owner.entityKey);
+      expect(containment).toEqual(expect.objectContaining({ relation: "contains" }));
+    }
+    expect(nestedOwnerKeys.size).toBe(2);
+    expect(graph.nodes.filter((node) => node.kind === "package").length).toBeGreaterThanOrEqual(3);
   });
 
   it("marks generated conventions without dropping authored or generated sources", () => {
