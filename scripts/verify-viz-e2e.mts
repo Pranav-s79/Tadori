@@ -212,47 +212,58 @@ try {
     "Number(/^Showing (\\d+)/.exec([...document.querySelectorAll('span')].find((node) => node.textContent?.startsWith('Showing '))?.textContent ?? '')?.[1] ?? 0)",
     (count) => count > initialNodeCount
   );
-  const plateExpression = `(() => {
-    const canvas = document.querySelector('.package-map-canvas canvas.sigma-nodes');
-    if (!(canvas instanceof HTMLCanvasElement)) return null;
-    const plate = document.querySelector('.package-plate-overlay text');
-    if (!(plate instanceof SVGTextElement)) return null;
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: Number(plate.getAttribute('x')),
-      y: Number(plate.getAttribute('y')),
-      width: rect.width,
-      height: rect.height
-    };
-  })()`;
   // Expanding a package starts camera animations (PackageMapCanvas
   // `camera.animate`: 350ms on expand, 180ms on focus), so the plate's projected
   // position is still in flight the moment the node count changes. Reading it
   // once sampled an arbitrary point on that arc, which is why the same assertion
   // produced y=553 (inside) and y=928 (past the 916px canvas bottom) on
-  // identical hosted-Linux runs while passing on every local run. Wait for the
-  // projection to hold still, then assert; the resting position is what the
-  // viewport claim is about, and a plate that settles outside still fails.
-  let previousPosition: string | null = null;
-  let stillSamples = 0;
-  const projectedPlate = await browser.waitFor<{ x: number; y: number; width: number; height: number } | null>(
-    plateExpression,
-    (plate) => {
-      if (plate === null) {
-        stillSamples = 0;
-        return false;
-      }
-      const position = `${String(plate.x)},${String(plate.y)}`;
-      stillSamples = position === previousPosition ? stillSamples + 1 : 0;
-      previousPosition = position;
-      // waitFor polls every 25ms, so 20 identical samples is 500ms of stillness
-      // — longer than both camera animations (350ms on expand, 180ms on focus).
-      // Two samples was not enough: it accepted the plateau between the two
-      // phases as a resting position, which is how CI read y=928 twice.
-      return stillSamples >= 20;
-    },
-    30_000
-  );
+  // identical hosted-Linux runs while passing on every local run. Assert on the
+  // resting position; a plate that settles outside the viewport still fails.
+  //
+  // Stillness is measured inside the page across one continuous 500ms window
+  // rather than by counting polls in the predicate. 500ms outlasts both
+  // animations and the plateau between them: two samples accepted that plateau
+  // as a resting position, which is how CI read y=928 twice.
+  //
+  // Keeping the state in the page also keeps the predicate pure, which the
+  // bounded timeout depends on. `browser.waitFor` evaluates its predicate once
+  // more after the loop (scripts/lib/serveBenchmark.mts), so a predicate that
+  // counted its own calls scored one extra still sample on the timeout path —
+  // enough to report "settled" and return an in-flight position instead of
+  // throwing.
+  const settledPlateExpression = `(async () => {
+    const read = () => {
+      const canvas = document.querySelector('.package-map-canvas canvas.sigma-nodes');
+      if (!(canvas instanceof HTMLCanvasElement)) return null;
+      const plate = document.querySelector('.package-plate-overlay text');
+      if (!(plate instanceof SVGTextElement)) return null;
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: Number(plate.getAttribute('x')),
+        y: Number(plate.getAttribute('y')),
+        width: rect.width,
+        height: rect.height
+      };
+    };
+    let last = read();
+    if (last === null) return null;
+    const deadline = performance.now() + 500;
+    while (performance.now() < deadline) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const next = read();
+      if (next === null) return null;
+      if (next.x !== last.x || next.y !== last.y) return { ...next, settled: false };
+      last = next;
+    }
+    return { ...last, settled: true };
+  })()`;
+  const projectedPlate = await browser.waitFor<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    settled: boolean;
+  } | null>(settledPlateExpression, (plate) => plate !== null && plate.settled, 30_000);
   assert.notEqual(projectedPlate, null, "Expanded package produced no projected repository boundary");
   assert.ok(projectedPlate.x >= 0 && projectedPlate.x <= projectedPlate.width && projectedPlate.y >= 0 && projectedPlate.y <= projectedPlate.height,
     `Expanded package boundary projected outside the map viewport: ${JSON.stringify(projectedPlate)}`);
