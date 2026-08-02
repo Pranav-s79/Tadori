@@ -369,9 +369,10 @@ marks on the map, and text-safe variants were added for badge labels
 CI classification (2026-07-31): all five red legs at `56c82f1` shared one cause
 — an unused binding failing `pnpm lint` — introduced when coupling moved off the
 rendered node set. Not KF-001, which never executed because lint precedes the
-smoke. `main` is red on a sixth, separate defect: a boundary badge projecting
-~15px below a 916-tall viewport in `verify:viz:e2e`. Full matrix on branch
-`fix/kf-001-ubuntu` in `CI-FAILURE-MATRIX.md`.
+smoke. `main` was then red on a sixth, separate defect: a boundary badge
+projecting ~15px below a 916-tall viewport in `verify:viz:e2e`. Full matrix on
+branch `fix/kf-001-ubuntu` in `CI-FAILURE-MATRIX.md`. That sixth defect is
+closed (see the CI stability entry below).
 
 Both browser gates additionally assumed Atlas was the landing mode and drove a
 canvas that Overview now leaves hidden; Playwright reported the canvas as hidden
@@ -406,11 +407,61 @@ module-mock registry interaction. Deliberately not investigated during the
 deep-link slice. Until diagnosed, treat `--no-file-parallelism` as the
 authoritative local run and do not read a green parallel run as proof.
 
-Isolated, not closed: the `apps/viz`-local `lint` script reports two
-`no-unused-vars` errors in `test/lod-budgets.test.ts` that the authoritative
-root `eslint .` does not, because the app-local config lacks the root's `^_`
-args-ignore pattern. CI runs the root command, which passes. The app-local
-script is unreferenced by any gate; either align its config or delete it.
+Not reproduced (2026-08-02): a deliberate matrix of ten consecutive parallel
+runs at `acb207e` — six at default file parallelism and four at
+`--maxWorkers=16` to force contention — passed 56 files / 434 tests every time,
+including all three unexplained suites. No test was changed on that evidence: a
+hypothesis without a reproduction is a guess, and the run-C caution above
+applies equally here. The instability remains open and unexplained rather than
+fixed; ten green runs are not proof of absence for an intermittent failure.
+
+CI stability (2026-08-02 UTC, merged `469ea8a`, PR #59): three reliability
+defects closed, one commit each, with `main` green 6/6 on the merge run
+`30763456272`.
+
+The macOS `verify` leg failed run `30737550419` at
+`packages/indexer/test/watcher.test.ts` with `native watcher did not report the
+save`. The watcher is not at fault; the test assumed `waitForIdle()` meant the
+OS watcher was armed. It does not — `flushNow()` clears the debounce timer and
+delivers synchronously, measured at 1.23ms, so the save was issued roughly 1ms
+after `fs.watch()` returned. Linux (`inotify_add_watch`) and Windows
+(`ReadDirectoryChangesW`) arm inside that call while macOS FSEvents arms
+asynchronously on libuv's own thread, which is the entire macOS-only,
+intermittent signature. The test now waits until the watcher actually reports a
+probe write, so it no longer depends on the window being short, and logs the
+measured arming delay on every run. `onError` is wired and asserted empty: it
+was unset, so an event dropped by path normalization would have been swallowed
+and been indistinguishable from one the OS never sent. Nothing was skipped,
+slept on, or retried. Honest limit: the first green run measured arming at 28ms
+on darwin, level with linux and win32 and at the probe's 25ms resolution floor,
+so it did not itself exhibit a slow window; two consecutive green macOS legs are
+not proof an intermittent failure is eliminated.
+
+`verify:viz:e2e` asserted the plate projection while the camera was still
+animating. The 500ms stillness requirement established in PR #56 is kept — two
+samples accepted the plateau between the 350ms expand and 180ms focus
+animations, which is how CI read y=928 twice — but the measurement moved inside
+the page. Counting still samples in the predicate was unsafe because
+`browser.waitFor` evaluates its predicate once more after the loop, and on the
+timeout path that extra call re-scores the final value as another still sample,
+which can carry the counter over the threshold and return an in-flight position
+instead of throwing. The predicate is now pure and the viewport assertion is
+unchanged.
+
+`apps/viz` carried a standalone ESLint config that no gate ran, and both configs
+scoped rules so as to exclude some of their own files: root matched `**/*.ts`,
+so `.tsx` silently lost the `^_` pattern, and the app-local config matched
+`src/**`, so its own `test/**` lost it. The frontend import boundary now lives
+in the root config scoped to `apps/viz/src/**`, so CI enforces it for the first
+time — `eslint --print-config apps/viz/src/App.tsx` previously reported
+`no-restricted-imports: undefined`. Two gaps stay open and unaddressed:
+`scripts/**` is absent from `tsconfig.json`'s `include`, so `verify-viz-e2e.mts`
+is never type-checked, and `apps/viz` runs vitest 4.1.10 while the root runs
+2.1.9.
+
+PR #59 also reproduced the silent-gate failure PR #56 was written to fix, by a
+different route: a conflicting PR gets no checks at all, because GitHub builds
+`pull_request` runs from a merge ref that cannot exist while conflicts do.
 
 Orientation slice (2026-07-31): Overview is now the landing workspace and
 Interview sits beside it in the tab order and URL state, so a reader meets the
