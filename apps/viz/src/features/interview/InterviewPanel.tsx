@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from "react";
+import { useEffect, useState, type ReactElement, type ReactNode } from "react";
 import { ClaimBadge } from "../../design/ClaimBadge.tsx";
 import { fetchNodeDetail, type NodeDetail } from "../inspect/inspectApi.ts";
 import { fetchLikelyTests } from "../explore/exploreApi.ts";
@@ -11,6 +11,20 @@ export interface InterviewPanelProps extends Omit<InterviewInput, "subject" | "t
   /** Entity to interview about; null runs a whole-repository interview. */
   subjectEntityKey: string | null;
   onSelectEntity(entityKey: string): void;
+}
+
+/**
+ * The generated questions mark identifiers with backticks, which rendered as
+ * literal backtick characters in the prose. An identifier a candidate has to
+ * say out loud should be visually distinct from the sentence around it, and
+ * the same shape in every question, so it is recalled as a token rather than
+ * as words. Splitting on the pairs keeps the model's strings portable to any
+ * other surface that wants them plain.
+ */
+function withCodeSpans(text: string): ReactNode[] {
+  return text.split("`").map((segment, index) => index % 2 === 0
+    ? segment
+    : <code key={`${String(index)}:${segment}`}>{segment}</code>);
 }
 
 /**
@@ -131,7 +145,7 @@ export function InterviewPanel({
             {questions.map((item, index) => (
               <li key={`${group}:${String(index)}`} data-difficulty={item.difficulty}>
                 <div className="interview-question-head">
-                  <p className="interview-question-text">{item.question}</p>
+                  <p className="interview-question-text">{withCodeSpans(item.question)}</p>
                   <span className="interview-difficulty">{item.difficulty}</span>
                   <ClaimBadge basis={item.basis} />
                 </div>

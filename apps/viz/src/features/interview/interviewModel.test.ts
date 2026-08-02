@@ -47,7 +47,9 @@ describe("buildInterviewQuestions", () => {
       subject: subjectNode([edge("caller:a", "fn:handle"), edge("caller:b", "fn:handle")])
     });
     const architecture = questions.find((item) => item.group === "Architecture");
-    expect(architecture?.question).toMatch(/2 thing\(s\) depend on `handle`/u);
+    // "N thing(s)" was placeholder-grade copy in the surface a candidate reads
+    // aloud. The count still leads, because the number is the memorable fact.
+    expect(architecture?.question).toMatch(/2 entities depend on `handle`/u);
     expect(architecture?.evidence.map((item) => item.label)).toEqual(["q.caller:a", "q.caller:b"]);
     expect(architecture?.basis).toBe("observed");
   });

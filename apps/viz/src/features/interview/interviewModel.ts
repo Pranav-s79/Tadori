@@ -158,8 +158,8 @@ export function buildInterviewQuestions(input: InterviewInput): InterviewQuestio
     if (dependents.length > 0) {
       questions.push({
         group: "Architecture",
-        question: `${String(dependents.length)} thing(s) depend on \`${subject.displayName}\`. `
-          + "What breaks if you change its contract?",
+        question: `${String(dependents.length)} ${dependents.length === 1 ? "entity depends" : "entities depend"}`
+          + ` on \`${subject.displayName}\`. What breaks if you change its contract?`,
         strongAnswer: [
           "Enumerate the dependents rather than guessing at blast radius",
           "Separate compile-time coupling from runtime coupling",
