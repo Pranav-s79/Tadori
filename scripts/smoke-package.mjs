@@ -87,17 +87,47 @@ async function verifyInstalledGui(url, engine) {
     await page.getByRole("tab", { name: "Atlas" }).click();
     const canvas = page.locator(".package-map-canvas");
     await canvas.waitFor({ state: "visible", timeout: 60_000 });
-    await page.waitForFunction(() => {
+    // Readiness is three separate conditions, so report them separately. The
+    // previous single `waitForFunction` ANDed them and, on timeout, printed
+    // only "Timeout 30000ms exceeded" with an empty `log: []` — a gate failing
+    // without saying why, for the third time on this leg. Each sample is
+    // recorded so a failure names the condition that never came true.
+    const readState = () => page.evaluate(() => {
       const surface = document.querySelector(".package-map-canvas");
       const canvases = [...(surface?.querySelectorAll("canvas") ?? [])];
-      return canvases.some((item) => item.width > 0 && item.height > 0)
+      return {
         // A painted canvas is not a populated graph. Until the Sigma graph has
         // nodes, an arrow key reaches the handler, finds nothing to focus, and
         // silently pans — which is exactly how this gate failed with keys
         // provably delivered and focusedNode still null.
-        && surface?.dataset.graphReady === "true"
-        && !(document.body.textContent?.includes("Loading repository graph") ?? false);
+        painted: canvases.filter((item) => item.width > 0 && item.height > 0).length,
+        canvasCount: canvases.length,
+        graphReady: surface?.dataset.graphReady ?? "(attribute absent)",
+        loadingText: document.body.textContent?.includes("Loading repository graph") ?? false,
+        readyState: document.readyState,
+        // The app switches to Table and hides the Atlas workspace when the
+        // renderer fails, which would leave the graph permanently unpopulated.
+        // If that is what happens here, this is where it shows.
+        alerts: [...document.querySelectorAll('[role="alert"]')].map((node) => node.textContent?.trim() ?? ""),
+        selectedTab: [...document.querySelectorAll('[role="tab"]')]
+          .filter((tab) => tab.getAttribute("aria-selected") === "true")
+          .map((tab) => tab.textContent?.trim() ?? "")
+      };
     });
+
+    const isNavigable = (state) =>
+      state.painted > 0 && state.graphReady === "true" && !state.loadingText;
+
+    let readiness = await readState();
+    const readinessDeadline = Date.now() + 30_000;
+    while (Date.now() < readinessDeadline && !isNavigable(readiness)) {
+      await page.waitForTimeout(250);
+      readiness = await readState();
+    }
+    assert.ok(
+      isNavigable(readiness),
+      `${engine} never reached a navigable graph.\nreadiness: ${JSON.stringify(readiness)}`
+    );
 
     assert.equal(await page.title(), "Tadori");
     const modeNames = await page.getByRole("tablist", { name: "Repository views" })
