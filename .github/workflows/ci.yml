@@ -2,8 +2,13 @@ name: ci
 on:
   push:
     branches: [main, "Sprint*"]
+  # No base filter, so a pull request stacked on another branch is still gated.
+  # With `branches: [main]` a stacked PR got no checks at all: its base is the
+  # branch below it in the stack rather than main, and its head is not in the
+  # push list either. That failure is silent - the PR reports "no checks
+  # reported" instead of failing - so work can reach the bottom of the stack
+  # having never run the gate. Every PR now runs it regardless of base.
   pull_request:
-    branches: [main]
 permissions:
   contents: read
 concurrency:
