@@ -14,3 +14,9 @@ coverage/
 # Outputs are sanctioned local artifacts, not stray files — do not treat as product state.
 graphify-out/
 .graphify_*
+# Screenshots the browser gate writes when TADORI_E2E_*_SCREENSHOT names a path.
+# Regenerable debug captures, never product state — same intent as .tmp/ above.
+.tmp-*
+# Local design export, read by eye rather than by the build. Nothing imports it
+# and eslint.config.js already ignores it; kept out of history for its weight.
+front_end_template/
