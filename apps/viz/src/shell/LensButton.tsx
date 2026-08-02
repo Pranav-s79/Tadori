@@ -23,7 +23,12 @@ export function LensButton(props: LensButtonProps): ReactElement {
         title={disabled ? props.disabledReason : `${props.label} lens`}
         onClick={props.onClick}
       >
-        <span aria-hidden="true">{props.symbol}</span>
+        {/* Four unlabelled letters — B, delta, A, P — asked the reader to
+            memorise a legend that was never shown anywhere. The word is the
+            control; the symbol is a secondary cue that survives the narrow
+            rail, where the word is hidden but stays in the accessible name. */}
+        <span aria-hidden="true" className="lens-button-symbol">{props.symbol}</span>
+        <span aria-hidden="true" className="lens-button-label">{props.label}</span>
       </button>
       {disabled && <span id={reasonId} className="tadori-visually-hidden">{props.disabledReason}</span>}
     </>

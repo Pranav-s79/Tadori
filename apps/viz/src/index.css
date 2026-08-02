@@ -148,7 +148,7 @@ button { min-height: 2rem; }
   position: relative;
   grid-row: 3;
   display: grid;
-  grid-template-columns: 3rem minmax(15rem, 19rem) minmax(0, 1fr);
+  grid-template-columns: 4.75rem minmax(15rem, 19rem) minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
 }
@@ -156,7 +156,7 @@ button { min-height: 2rem; }
 .stale-state { grid-row: 2; }
 
 .app-shell.has-inspector .atlas-workspace {
-  grid-template-columns: 3rem minmax(15rem, 19rem) minmax(0, 1fr) minmax(18rem, 23rem);
+  grid-template-columns: 4.75rem minmax(15rem, 19rem) minmax(0, 1fr) minmax(18rem, 23rem);
 }
 
 .lens-rail {
@@ -172,9 +172,10 @@ button { min-height: 2rem; }
 
 .lens-button {
   display: grid;
-  width: 2rem;
-  height: 2rem;
-  min-height: 2rem;
+  width: 100%;
+  min-height: 2.75rem;
+  gap: 0.1rem;
+  padding: var(--tadori-space-1) 0;
   place-items: center;
   border: 1px solid transparent;
   border-radius: var(--tadori-radius-sm);
@@ -187,6 +188,18 @@ button { min-height: 2rem; }
 }
 
 .lens-button:hover { border-color: var(--tadori-rule); background: var(--tadori-panel); }
+.lens-button-symbol { font-size: var(--tadori-text-sm); line-height: 1; }
+
+/* The word is the control. Below 1100px the rail is too narrow to carry it,
+   so it is hidden visually — the button's aria-label still names the lens, so
+   nothing is lost for assistive technology or for the tooltip. */
+.lens-button-label {
+  font-family: var(--tadori-font-ui);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
 
 .lens-button[aria-pressed="true"] {
   border-color: var(--tadori-copper);
@@ -1057,6 +1070,11 @@ button { min-height: 2rem; }
 @media (max-width: 1280px) {
   .atlas-brand > small,
   .atlas-snapshot > span:not(.freshness) { display: none; }
+
+  /* The rail narrows here, so the lens words go. The buttons keep their
+     aria-label and title, so the lens is still named — just not in ink. */
+  .lens-button-label { display: none; }
+  .lens-button { min-height: 2rem; }
 
   .atlas-workspace,
   .app-shell.has-inspector .atlas-workspace { grid-template-columns: 3rem minmax(14rem, 17rem) minmax(0, 1fr); }

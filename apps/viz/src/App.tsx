@@ -389,10 +389,19 @@ export function App(): ReactElement {
       <header className="atlas-header">
         <div className="atlas-brand">
           <h1>Tadori</h1>
-          <small>Archaeological circuit atlas</small>
+          <small>Codebase study workspace</small>
         </div>
+        {/* The repository identity was the full absolute path, which consumed
+            the header and then truncated mid-token — "C:/Users/…/c--SideProj…"
+            — so the one thing the reader needs to know first, which repository
+            is loaded, was the one thing they could not read. The name leads;
+            the full path stays available on hover. */}
         <div className="atlas-snapshot" role="group" aria-label="Served snapshot">
-          <strong>{snapshot?.repository ?? "Repository"}</strong>
+          <strong title={snapshot?.repository ?? undefined}>
+            {snapshot === null
+              ? "Repository"
+              : /[^/\\]+$/.exec(snapshot.repository)?.[0] ?? snapshot.repository}
+          </strong>
           <span>{snapshot === null ? "No active snapshot" : `#${snapshot.snapshotId} · ${snapshot.snapshotKind}`}</span>
           <span className={`freshness freshness-${snapshot?.freshness ?? "unknown"}`}>
             {snapshot?.freshness ?? "unknown"}
@@ -433,8 +442,8 @@ export function App(): ReactElement {
 
         <aside ref={navigationFocus.drawerRef} id="atlas-navigation" className="atlas-navigation" data-open={navigationOpen} aria-label="Repository navigation" aria-hidden={!navigationOpen} inert={!navigationOpen} tabIndex={-1} onKeyDown={navigationFocus.onDrawerKeyDown}>
           <div className="navigation-heading">
-            <p>Survey tools</p>
-            <span>{data === null ? "No graph" : `${data.nodes.length} sites · ${data.edges.length} paths`}</span>
+            <p>Explore</p>
+            <span>{data === null ? "No graph" : `${data.nodes.length} entities · ${data.edges.length} relations`}</span>
           </div>
           <details className="navigation-section" open>
             <summary>Search and filter</summary>
@@ -474,16 +483,24 @@ export function App(): ReactElement {
                 : mode === "changes" ? "Change review"
                 : "Structured graph"
             }</span>
-            {mode !== "table" && <SpatialProjectionToggle active={spatialProjection} onChange={setSpatialProjection} />}
-            <nav aria-label="Atlas location">
-              <ol>
-                {(renderedGraph?.breadcrumb ?? ["Repository"]).map((label, index, labels) => (
-                  <li key={`${index}:${label}`} aria-current={index === labels.length - 1 ? "location" : undefined}>{label}</li>
-                ))}
-              </ol>
-            </nav>
-            <span>{`${renderedGraph?.lodLevel ?? "repository"} level`}</span>
-            <span role="status" aria-live="polite" aria-atomic="true">{data === null ? "Graph unavailable" : `Showing ${visibleNodeCount} nodes and ${visibleEdgeCount} relations`}</span>
+            {/* Projection, breadcrumb, level and counts describe the map. In
+                Overview and Interview there is no map, so they described
+                nothing — and they were what truncated the bar to ellipses
+                ("REPOSITOR…", "FILE L…") the moment the inspector opened. */}
+            {mode !== "overview" && mode !== "interview" && (
+              <>
+                {mode !== "table" && <SpatialProjectionToggle active={spatialProjection} onChange={setSpatialProjection} />}
+                <nav aria-label="Atlas location">
+                  <ol>
+                    {(renderedGraph?.breadcrumb ?? ["Repository"]).map((label, index, labels) => (
+                      <li key={`${index}:${label}`} aria-current={index === labels.length - 1 ? "location" : undefined}>{label}</li>
+                    ))}
+                  </ol>
+                </nav>
+                <span>{`${renderedGraph?.lodLevel ?? "repository"} level`}</span>
+                <span role="status" aria-live="polite" aria-atomic="true">{data === null ? "Graph unavailable" : `Showing ${visibleNodeCount} nodes and ${visibleEdgeCount} relations`}</span>
+              </>
+            )}
           </div>
 
           {focusUnavailable !== null && (
