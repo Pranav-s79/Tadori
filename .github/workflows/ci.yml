@@ -136,7 +136,16 @@ jobs:
         if: always()
       - run: pnpm package:artifact
         if: always()
-      - run: pnpm package:smoke
+      # Under `xvfb-run`, because Playwright's Firefox cannot create a WebGL
+      # context in true headless mode on Linux — given an X display it gets Mesa
+      # llvmpipe, without one `getContext("webgl")` returns null no matter which
+      # prefs are set. That was KF-001: Sigma's constructor threw, the app took
+      # its correct renderer-error path to Table mode, and the hidden Atlas
+      # subtree left the canvas unfocusable, so no keydown was ever delivered.
+      # Chromium needs none of this (it bundles SwiftShader), which is why only
+      # this leg failed. Nothing is stubbed or skipped: the real Atlas renders
+      # and every assertion still runs and still fails the job.
+      - run: xvfb-run -a pnpm package:smoke
         if: always()
         env:
           TADORI_PACKAGE_AUDIT: "0"

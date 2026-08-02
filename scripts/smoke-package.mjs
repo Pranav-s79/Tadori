@@ -55,16 +55,21 @@ async function verifyInstalledGui(url, engine) {
   const playwright = await import("playwright-core");
   const browserType = playwright[engine];
   assert.notEqual(browserType, undefined, `Unsupported TADORI_PACKAGE_BROWSER: ${engine}`);
-  // Sigma renders through WebGL, and headless Firefox on Linux ships with it
-  // effectively unavailable. Without these prefs the app takes its (correct)
-  // renderer-error path and falls back to Table mode, which hides the canvas
-  // and makes the keyboard-descent check unreachable rather than failing
-  // honestly. Enabling WebGL exercises the real Atlas instead of asserting
-  // against a fallback. Chromium ignores unknown Firefox prefs.
+  // Sigma renders through WebGL. On Linux, Playwright's Firefox gets a WebGL
+  // context only when an X display is present: under `xvfb-run` it renders
+  // through Mesa llvmpipe, and without one `getContext("webgl")` returns null
+  // whatever prefs are set (measured both ways in the pinned Playwright image).
+  // So the display — supplied by the caller, see the `browser` job in
+  // .github/workflows/ci.yml and scripts/gate-firefox.mjs — is what makes this
+  // exercise the real Atlas rather than the renderer-error fallback.
+  //
+  // These prefs are only blocklist insurance: a hosted runner can blocklist the
+  // software renderer the container accepts. They were NOT what fixed KF-001
+  // and do not substitute for the display. Chromium ignores Firefox prefs.
   const browser = await browserType.launch({
     headless: true,
     firefoxUserPrefs: engine === "firefox"
-      ? { "webgl.disabled": false, "webgl.force-enabled": true, "gfx.webrender.all": true }
+      ? { "webgl.disabled": false, "webgl.force-enabled": true }
       : undefined
   });
   try {

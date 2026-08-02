@@ -30,7 +30,16 @@ const image = `mcr.microsoft.com/playwright:v${playwrightVersion.replace(/^[^0-9
 // A missing Docker must not look like a pass. `pnpm --filter` exiting 0 for an
 // absent script already cost this project a gate that reported PASS while
 // checking nothing; this exits non-zero and says exactly what is missing.
-const dockerCheck = spawnSync("docker", ["info"], { stdio: "ignore", shell: process.platform === "win32" });
+// `shell: true` must NOT be used here. On Windows it re-parses the argument
+// vector through cmd.exe, which strips the quoting around the `bash -lc`
+// script below: the container then ran a bare `set` — printing its environment
+// and exercising nothing — while the remainder leaked back to the host shell,
+// and the gate still reported "the KF-001 leg reproduced locally". A gate that
+// lies about what it ran is worse than no gate. Naming the executable with its
+// extension is what makes CreateProcess find it without a shell.
+const dockerBinary = process.platform === "win32" ? "docker.exe" : "docker";
+
+const dockerCheck = spawnSync(dockerBinary, ["info"], { stdio: "ignore" });
 if (dockerCheck.status !== 0) {
   process.stderr.write(
     "docker is required for the Firefox gate and is not available.\n"
@@ -47,22 +56,36 @@ process.stdout.write(`Running the Ubuntu/Firefox smoke in ${image}\n`);
 const script = [
   "set -e",
   "corepack enable",
+  // The repository is mounted read-only at /src and copied to /work, so the
+  // container cannot write to the developer's checkout. Mounting it read-write
+  // meant the in-container `pnpm install` announced "the modules directories
+  // will be removed and reinstalled from scratch" and rebuilt the host's
+  // node_modules with Linux binaries — breaking the Windows checkout that had
+  // just asked to reproduce a Linux failure. tar's exclusions are unanchored,
+  // so `node_modules` drops the host tree at every depth.
+  "mkdir -p /work",
+  "tar -C /src --exclude=node_modules --exclude=.git -cf - . | tar -C /work -xf -",
   "cd /work",
   "pnpm install --frozen-lockfile --prefer-offline",
   "pnpm package:artifact",
-  "TADORI_PACKAGE_AUDIT=0 TADORI_PACKAGE_BROWSER=firefox pnpm package:smoke"
+  // `xvfb-run` for the same reason CI uses it: Playwright's Firefox gets no
+  // WebGL context in true headless mode on Linux, so without an X display the
+  // Atlas renderer throws and the app falls back to Table mode. Keep this in
+  // step with the `browser` job in .github/workflows/ci.yml — a local gate that
+  // exercises a different environment than CI is worse than no local gate.
+  "TADORI_PACKAGE_AUDIT=0 TADORI_PACKAGE_BROWSER=firefox xvfb-run -a pnpm package:smoke"
 ].join(" && ");
 
-const run = spawnSync("docker", [
+const run = spawnSync(dockerBinary, [
   "run", "--rm",
-  "-v", `${repoRoot}:/work`,
+  "-v", `${repoRoot}:/src:ro`,
   "-v", "tadori-pnpm-store:/root/.local/share/pnpm/store",
-  "-w", "/work",
+  "-w", "/",
   // Headless browsers crash on the small default /dev/shm in containers.
   "--shm-size=1g",
   image,
   "bash", "-lc", script
-], { stdio: "inherit", shell: process.platform === "win32" });
+], { stdio: "inherit" });
 
 if (run.status !== 0) {
   process.stdout.write(`\nFirefox gate FAILED (exit ${String(run.status)}).\n`);
