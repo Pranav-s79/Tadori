@@ -6,8 +6,7 @@
   "scripts": {
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "lint": "eslint ."
+    "test": "vitest run"
   },
   "dependencies": {
     "graphology": "0.26.0",
