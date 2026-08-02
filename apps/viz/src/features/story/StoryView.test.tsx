@@ -3,17 +3,54 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { StoryView, storyStepLabelText, transitionForStoryStep } from "./StoryView.tsx";
 import type { BehaviorStory, StoryStepLabel } from "./storyApi.ts";
 
-function stubFetch(body: unknown, status = 200): void {
+/**
+ * The story endpoint carries no display name per step, so StoryView resolves
+ * names through `/nodes/:key`. The stub routes those separately; a story-only
+ * stub leaves every step name unresolved, which is itself a state under test.
+ */
+function stubFetch(body: unknown, status = 200, nodesByKey: Record<string, unknown> = {}): void {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () =>
-      Promise.resolve({
+    vi.fn(async (url: string) => {
+      const nodeMatch = /\/nodes\/([^/?]+)/.exec(url);
+      if (nodeMatch?.[1] !== undefined) {
+        const node = nodesByKey[decodeURIComponent(nodeMatch[1])];
+        return Promise.resolve({
+          ok: node !== undefined,
+          status: node === undefined ? 404 : 200,
+          json: async () => Promise.resolve(node ?? {})
+        } as Response);
+      }
+      return Promise.resolve({
         ok: status >= 200 && status < 300,
         status,
         json: async () => Promise.resolve(body)
-      } as Response)
-    )
+      } as Response);
+    })
   );
+}
+
+/** Minimal `/nodes/:key` body carrying the two fields StoryView reads. */
+function nodeDetail(displayName: string, qualifiedName: string): unknown {
+  return {
+    entityKey: "k-handler",
+    kind: "function",
+    displayName,
+    qualifiedName,
+    file: null,
+    lineStart: null,
+    lineEnd: null,
+    signature: null,
+    exported: true,
+    fanIn: 0,
+    evidence: [],
+    evidenceOmittedCount: 0,
+    freshness: "fresh",
+    stale: false,
+    staleReason: null,
+    outEdges: [],
+    inEdges: []
+  };
 }
 
 function story(overrides: Partial<BehaviorStory> = {}): BehaviorStory {
@@ -100,17 +137,54 @@ describe("StoryView", () => {
             }]
           }
         ]
-      })
+      }),
+      200,
+      { "k-handler": nodeDetail("handleGetUser", "src/handler.ts.handleGetUser") }
     );
     render(<StoryView entityKey="k-route" repoRoot="/repo" />);
     await waitFor(() =>
       expect(screen.getByText("Statically resolved (compiler-verified reference)")).toBeTruthy()
     );
-    expect(screen.getByRole("button", { name: "function: k-handler" })).toBeTruthy();
+    // The step is named, not digested. This used to read "function: k-handler"
+    // — in the live product a 64-character hex entity key, unreadable and
+    // impossible to recall.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "handleGetUser" })).toBeTruthy()
+    );
+    expect(screen.getByText("src/handler.ts.handleGetUser")).toBeTruthy();
     expect(screen.getByRole("link", { name: /src\/handler\.ts/ })).toHaveAttribute(
       "href",
       "vscode://file//repo/src/handler.ts:12"
     );
+  });
+
+  /**
+   * The story endpoint genuinely carries no name. When the entity endpoint
+   * cannot supply one either, the row has to say so rather than fall back to
+   * printing the digest as though it were a name.
+   */
+  it("says the name is unavailable rather than showing the entity digest", async () => {
+    stubFetch(
+      story({
+        steps: [{
+          id: "step:0:k-handler",
+          entityKey: "k-handler",
+          kind: "function",
+          resolved: true,
+          label: "statically-resolved",
+          origin: "compiler",
+          confidence: "certain",
+          resolution: "resolved",
+          evidence: []
+        }]
+      })
+    );
+    render(<StoryView entityKey="k-route" repoRoot="/repo" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Name unavailable in this snapshot" })).toBeTruthy()
+    );
+    expect(screen.queryByText(/k-handler/)).toBeNull();
   });
 
   it("renders an unresolved wall explicitly, never a destination", async () => {

@@ -778,6 +778,39 @@ button { min-height: 2rem; }
 .story-view h2, .story-view h3, .mode-empty-state h2, .a11y-graph h2 { font-family: var(--tadori-font-label); }
 .story-steps, .story-tests ul { padding-left: var(--tadori-space-4); }
 .story-step { padding: var(--tadori-space-2) 0; border-bottom: 1px solid var(--tadori-rule); }
+.story-step-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--tadori-space-2); }
+
+.story-step-kind {
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  color: var(--tadori-ink-muted);
+  font-size: var(--tadori-text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.story-step-head button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tadori-link);
+  cursor: pointer;
+  font-weight: 650;
+  text-align: left;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
+.story-step-qualified {
+  margin: var(--tadori-space-1) 0 0;
+  overflow-wrap: anywhere;
+  color: var(--tadori-ink-muted);
+  font-family: var(--tadori-font-mono);
+  font-size: var(--tadori-text-xs);
+}
+
+.story-step-label, .story-step-provenance { color: var(--tadori-ink-muted); font-size: var(--tadori-text-xs); }
 .story-step-active {
   border-left: 3px solid var(--tadori-copper);
   background: color-mix(in srgb, var(--tadori-copper) 8%, transparent);
