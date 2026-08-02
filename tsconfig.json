@@ -18,7 +18,14 @@
     "packages/bench/src/**/*.ts",
     "packages/bench/test/**/*.ts",
     "vitest.config.ts",
-    "eslint.config.js"
+    "eslint.config.js",
+    "scripts/**/*.mts"
   ],
-  "exclude": ["node_modules", "packages/fixtures"]
+  "exclude": [
+    "node_modules",
+    "packages/fixtures"
+  ],
+  "compilerOptions": {
+    "allowImportingTsExtensions": true
+  }
 }

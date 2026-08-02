@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawn, type ChildProcess } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
-import { chromium } from "playwright-core";
+import { chromium, type CDPSession } from "playwright-core";
 import { createSyntheticCorpus, type SyntheticCorpus } from "./syntheticCorpus.mts";
 
 const START_TIMEOUT_MS = 120_000;
@@ -93,7 +93,10 @@ export async function startServe(repositoryRoot: string): Promise<RunningServe> 
 }
 
 export interface BrowserPageSession {
-  command(method: string, params?: Record<string, unknown>): Promise<Record<string, unknown>>;
+  // Playwright's own signature rather than `(method: string, params?: object)`:
+  // CDP rejects an unknown method at runtime, and the loose version also erased
+  // the response shape, so every caller had to cast the result back.
+  command: CDPSession["send"];
   evaluate<T>(expression: string, awaitPromise?: boolean): Promise<T>;
   waitFor<T>(expression: string, accept: (value: T) => boolean, timeoutMs?: number): Promise<T>;
   consoleErrors: readonly string[];
@@ -138,22 +141,30 @@ export async function openBrowserPage(url: string): Promise<BrowserPageSession> 
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
     browserDebug("Page loaded");
 
+    // Bound once and called directly rather than through `this`: inside an
+    // object literal returned as `Promise<BrowserPageSession>`, `this` widens to
+    // include the PromiseLike side of that union, so `this.evaluate` was not
+    // callable under a type check.
+    // The trailing comma in `<T,>` is required: a bare `<T>` on an arrow is
+    // reserved syntax in .mts files.
+    const evaluate = async <T,>(expression: string, _awaitPromise = false): Promise<T> => {
+      void _awaitPromise;
+      return page.evaluate((source) => (0, eval)(source) as T, expression);
+    };
+
     return {
-      command: (method, params = {}) => cdp.send(method, params),
-      async evaluate<T>(expression: string, _awaitPromise = false): Promise<T> {
-        void _awaitPromise;
-        return page.evaluate((source) => (0, eval)(source) as T, expression);
-      },
+      command: cdp.send.bind(cdp),
+      evaluate,
       async waitFor<T>(
         expression: string,
         accept: (value: T) => boolean,
         timeoutMs = 60_000
       ): Promise<T> {
         const waitDeadline = Date.now() + timeoutMs;
-        let value = await this.evaluate<T>(expression);
+        let value = await evaluate<T>(expression);
         while (!accept(value) && Date.now() < waitDeadline) {
           await delay(25);
-          value = await this.evaluate<T>(expression);
+          value = await evaluate<T>(expression);
         }
         if (!accept(value)) {
           let renderedValue: string;

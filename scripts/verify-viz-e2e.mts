@@ -264,7 +264,9 @@ try {
     height: number;
     settled: boolean;
   } | null>(settledPlateExpression, (plate) => plate !== null && plate.settled, 30_000);
-  assert.notEqual(projectedPlate, null, "Expanded package produced no projected repository boundary");
+  // `assert.ok` narrows (it is declared `asserts value`) where `assert.notEqual`
+  // does not, so the viewport checks below read a non-null value.
+  assert.ok(projectedPlate !== null, "Expanded package produced no projected repository boundary");
   assert.ok(projectedPlate.x >= 0 && projectedPlate.x <= projectedPlate.width && projectedPlate.y >= 0 && projectedPlate.y <= projectedPlate.height,
     `Expanded package boundary projected outside the map viewport: ${JSON.stringify(projectedPlate)}`);
   if (process.env.TADORI_E2E_DESKTOP_SCREENSHOT !== undefined) {

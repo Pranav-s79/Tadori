@@ -204,6 +204,13 @@ try {
     baseCommitSha: null,
     workspaceHash: sha256Hex("layout-benchmark-workspace"),
     analyzerVersion: "layout-benchmark/1",
+    // Required membership, empty for this benchmark. Omitting them is what took
+    // CI red on 2026-07-29 (run 30514433954): the payload validated because the
+    // schema defaults both to `[]`, but the store then iterated the original
+    // input rather than the parsed result. Stating them keeps the benchmark a
+    // complete snapshot instead of one that depends on defaulting.
+    projects: [],
+    diagnostics: [],
     files: [],
     nodes: packageCorpus.nodes,
     edges: packageCorpus.edges
