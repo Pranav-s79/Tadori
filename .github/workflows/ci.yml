@@ -16,12 +16,11 @@ concurrency:
 # developer machine, across the full matrix. It is the merge gate. If it is red,
 # something is genuinely broken and it can be reproduced locally.
 #
-# `browser` drives a real browser through the built Atlas. Its gate has an open,
-# documented, environment-specific defect that reproduces only on hosted Linux
-# and passes locally (see docs/KNOWN_FAILURES.md). While that is true it reports
-# rather than blocks, so one Linux rendering quirk cannot hide the state of the
-# 400+ checks in `verify`. Nothing is skipped or weakened: every assertion still
-# runs and still fails its job. It returns to required once green twice running.
+# `browser` drives a real browser through the built Atlas. It reported rather
+# than blocked while KF-001 was open; that defect is now fixed (headless Firefox
+# on Linux gets no WebGL context without an X display — see the step below and
+# docs/KNOWN_FAILURES.md), and the job has been green twice running, which is the
+# criterion this comment set for restoring it. It blocks again as of 2026-08-02.
 jobs:
   verify:
     strategy:
@@ -110,12 +109,6 @@ jobs:
           git diff --cached --exit-code
 
   browser:
-    # Reporting, not blocking — see the comment above the jobs block. main has
-    # no required-status-checks rule, so this red X never withholds a merge
-    # button; the display name says so directly rather than relying on that
-    # being known.
-    name: "browser (tracking KF-001, non-blocking)"
-    continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -136,7 +129,16 @@ jobs:
         if: always()
       - run: pnpm package:artifact
         if: always()
-      - run: pnpm package:smoke
+      # Under `xvfb-run`, because Playwright's Firefox cannot create a WebGL
+      # context in true headless mode on Linux — given an X display it gets Mesa
+      # llvmpipe, without one `getContext("webgl")` returns null no matter which
+      # prefs are set. That was KF-001: Sigma's constructor threw, the app took
+      # its correct renderer-error path to Table mode, and the hidden Atlas
+      # subtree left the canvas unfocusable, so no keydown was ever delivered.
+      # Chromium needs none of this (it bundles SwiftShader), which is why only
+      # this leg failed. Nothing is stubbed or skipped: the real Atlas renders
+      # and every assertion still runs and still fails the job.
+      - run: xvfb-run -a pnpm package:smoke
         if: always()
         env:
           TADORI_PACKAGE_AUDIT: "0"
