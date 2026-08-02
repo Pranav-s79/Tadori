@@ -454,6 +454,15 @@ hypothesis without a reproduction is a guess, and the run-C caution above
 applies equally here. The instability remains open and unexplained rather than
 fixed; ten green runs are not proof of absence for an intermittent failure.
 
+Extended to eighteen runs across two trees (2026-08-02): eight further parallel
+runs after the frontend product pass merged (`6ef8eeb`) passed 58 files / 468
+tests each — a materially different tree from the 56 / 434 the first ten ran
+against. That is the evidence base a future reader inherits. It still is not
+proof of absence and the instability stays open, but it does justify two things:
+`--no-file-parallelism` is not required for a green local run, and any
+recurrence deserves captured failure identities rather than a repeat of this
+matrix.
+
 CI stability (2026-08-02 UTC, merged `469ea8a`, PR #59): three reliability
 defects closed, one commit each, with `main` green 6/6 on the merge run
 `30763456272`.
@@ -497,6 +506,16 @@ time — `eslint --print-config apps/viz/src/App.tsx` previously reported
 4.1.10 while the root runs 2.1.9. The other — `scripts/**` sitting outside
 `tsconfig.json`'s `include`, so the gate scripts were never type-checked — is
 closed below.
+
+Assessed and deliberately deferred (2026-08-02): the vitest divergence is a
+maintenance smell, not a live reliability defect. The two runners never interact
+— the root `vitest.config.ts` includes only `packages/*/test/**`, `apps/viz`
+carries its own config, and pnpm isolates the versions. Closing it means
+migrating the root two majors across roughly ninety test files, including the
+SQLite and CLI-lifecycle suites, and one breakage is already known: the root
+test command passes `--minWorkers=1`, which v4 removed and rejects with a
+`CACError`. Taking that churn while chasing intermittent failures would work
+against stability, so it is recorded rather than attempted.
 
 Scripts type-checked (2026-08-02 UTC, merged `1110ce2`, PR #62): `scripts/**`
 now participates in `pnpm typecheck`, which required `allowImportingTsExtensions`
