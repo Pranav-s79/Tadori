@@ -239,6 +239,45 @@ legacy adapter parity, deterministic fixtures, store endpoint/foreign-key
 integrity, and supported-platform link cases. The complete repository gate is
 still required before publication.
 
+Frontend product design pass (2026-08-02 UTC): executed on explicit instruction
+ahead of the pinned external-repository invariant runner named above as the last
+item before frontend handoff. No backend, indexer, extraction, MCP, CI or
+packaging surface was touched; the diff is confined to `apps/viz/**` plus one
+`scripts/verify-viz-e2e.mts` assertion that pinned product copy this work
+changes.
+
+A live audit of `tadori serve` against the Express fixture at 1440/1280/1100
+found the markup and accessibility semantics already sound (Lighthouse 97) and
+the defects concentrated in CSS and information hierarchy. Two of six modes were
+unreachable past the fold: `.mode-panel` clipped with `overflow: hidden` while
+Overview and Interview sized to their content, hiding 1381px of a 2063px
+Overview. Search results, the whole inspector column, evidence, source and the
+routes table carried no CSS rule at all, so a search hit rendered as one
+concatenated string and nine inspector facts consumed ~500px as a default
+definition list. Story steps displayed 64-character entity digests because
+`/story/route/:key` carries no display name; they are now resolved through the
+`/nodes/:key` endpoint the inspector already uses, with no API contract change.
+Filters moved behind a counted disclosure, moving the first search result from
+y=905 to y=251 in a 900px panel. Table mode dropped its two decorative columns,
+which had pushed capability, derivation and provenance behind a horizontal
+scrollbar in the accessibility peer view.
+
+Epistemic and honesty rules are unchanged: observed stays observed, inferred
+stays labelled inferred, unresolved evidence never becomes a working link,
+`runtimeObserved: false` persists, and `/api/v1/overview` remains stated as
+unavailable. The `observed` claim badge loses only its border, so the rare
+bases stay visible while skimming.
+
+Validation: `pnpm skills:check`, root strict typecheck, root ESLint under the
+newly enforced `apps/viz/src/**` import boundary, `git diff --check`, the full
+repository test command (79 files / 479 tests with 4 skips; 13 CLI files / 67
+tests; 58 viz files / 468 tests), the production viz build, and
+`pnpm verify:viz:e2e` in real Chrome with zero axe violations across atlas,
+table, inspector, path, routes, tests, docs, story, changes and mobile, zero
+external resources and zero browser errors. Lighthouse accessibility is 100, up
+from 97: the `color-contrast` failure on the Overview entity links and the
+`label-content-name-mismatch` failure on search rows are both closed.
+
 Opus backend review result (2026-07-30 UTC): queue items 1-3 executed against
 the working tree. Item 1 passes — `assertCapture` is a real trust boundary
 consumed by the external validation runner, `manifestHashes` carries omission
