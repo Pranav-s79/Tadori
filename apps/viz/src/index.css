@@ -1220,7 +1220,17 @@ button { min-height: 2rem; }
   border-radius: var(--tadori-radius-sm);
   white-space: nowrap;
 }
-.claim-badge[data-basis="observed"] { border-color: var(--tadori-verdigris-text); color: var(--tadori-verdigris-text); }
+/* Observed is the common case — in a healthy snapshot nearly every claim
+   carries it — so a bordered chip on all of them made the rare and important
+   ones (documented, inferred, unknown) impossible to spot while skimming. The
+   label text and the data-basis hook are unchanged; only the emphasis moves to
+   where it carries information. */
+.claim-badge[data-basis="observed"] {
+  padding-left: 0;
+  border-color: transparent;
+  color: var(--tadori-verdigris-text);
+  font-weight: 500;
+}
 .claim-badge[data-basis="documented"] { border-color: var(--tadori-copper-text); color: var(--tadori-copper-text); }
 .claim-badge[data-basis="inferred"] { border-style: dashed; color: var(--tadori-ink-muted); }
 .claim-badge[data-basis="unknown"] { border-style: dotted; color: var(--tadori-ink-muted); }
