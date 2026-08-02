@@ -50,7 +50,12 @@ export function RouteTable({ onInspect, onShowStory }: RouteTableProps): ReactEl
     return <p role="status">No routes in this snapshot.</p>;
   }
 
+  // The wrapper is a container-query context, not decoration. This table is
+  // the only route into Story mode, and at the navigation panel's real width
+  // its five columns overflowed horizontally and carried the Story action
+  // off-screen. The stacked layout below 26rem keeps that action reachable.
   return (
+    <div className="explore-routes-wrap">
     <table className="explore-routes" aria-label="Routes">
       <thead>
         <tr>
@@ -91,5 +96,6 @@ export function RouteTable({ onInspect, onShowStory }: RouteTableProps): ReactEl
         ))}
       </tbody>
     </table>
+    </div>
   );
 }

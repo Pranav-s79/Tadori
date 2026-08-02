@@ -795,6 +795,178 @@ button { min-height: 2rem; }
 .a11y-graph thead { position: sticky; z-index: 1; top: 0; background: var(--tadori-panel); }
 .inspection-panel { min-height: 100%; outline: none; }
 
+/* Inspector reading column. None of these classes previously carried a rule,
+   so the nine-fact header rendered as a browser-default definition list —
+   label on one line, value indented beneath — spending roughly 500px on nine
+   short facts, and the connection pivots rendered as default grey buttons
+   inside bullets. A fixed label column puts every value in the same place on
+   every entity, so a reader who studies several of them is reading the same
+   shape each time and can recall it by position. */
+.inspect-node, .inspect-edge { display: grid; gap: var(--tadori-space-4); }
+
+.inspect-entity-header > h3 {
+  margin: 0 0 var(--tadori-space-2);
+  overflow-wrap: anywhere;
+  font: 700 var(--tadori-text-lg) / 1.25 var(--tadori-font-label);
+}
+
+.inspect-meta {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, auto) minmax(0, 1fr);
+  gap: var(--tadori-space-1) var(--tadori-space-3);
+  margin: 0;
+  font-size: var(--tadori-text-xs);
+}
+
+.inspect-meta > div { display: contents; }
+
+.inspect-meta dt {
+  color: var(--tadori-ink-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.inspect-meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--tadori-ink);
+  font-family: var(--tadori-font-mono);
+}
+
+.inspect-interpretation > h4,
+.inspect-connections > h4,
+.inspect-rationale > h4,
+.inspect-evidence > h4,
+.inspect-source > h4 {
+  margin: 0 0 var(--tadori-space-2);
+  padding-bottom: var(--tadori-space-1);
+  border-bottom: 1px solid var(--tadori-rule);
+  font: 700 var(--tadori-text-sm) / 1.3 var(--tadori-font-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.inspect-interpretation p { margin: 0 0 var(--tadori-space-2); font-size: var(--tadori-text-sm); }
+.inspect-readings { display: grid; gap: var(--tadori-space-2); margin: 0; padding: 0; list-style: none; }
+.inspect-readings > li { font-size: var(--tadori-text-sm); }
+
+.inspect-connections p, .inspect-evidence p { margin: 0; color: var(--tadori-ink-muted); font-size: var(--tadori-text-xs); }
+
+.inspect-connections ul,
+.inspect-evidence ul { display: grid; gap: var(--tadori-space-1); margin: var(--tadori-space-2) 0 0; padding: 0; list-style: none; }
+
+.inspect-connections button {
+  width: 100%;
+  padding: var(--tadori-space-1) var(--tadori-space-2);
+  overflow-wrap: anywhere;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-panel);
+  color: var(--tadori-ink);
+  cursor: pointer;
+  font-family: var(--tadori-font-mono);
+  font-size: var(--tadori-text-xs);
+  text-align: left;
+}
+
+.inspect-connections button:hover { border-color: var(--tadori-copper); }
+
+.inspect-evidence a, .inspect-rationale a { color: var(--tadori-link); overflow-wrap: anywhere; }
+.inspect-evidence-empty, .inspect-evidence-omitted, .inspect-source-notice {
+  margin: 0;
+  color: var(--tadori-ink-muted);
+  font-size: var(--tadori-text-xs);
+}
+
+.inspect-source-body {
+  margin: 0;
+  padding: var(--tadori-space-2);
+  overflow-x: auto;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-panel);
+  font-family: var(--tadori-font-mono);
+  font-size: var(--tadori-text-xs);
+  tab-size: 2;
+}
+
+.inspect-rationale article { margin: 0; font-size: var(--tadori-text-sm); }
+
+.inspector-continuations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tadori-space-2);
+  padding: var(--tadori-space-3);
+  border-top: 1px solid var(--tadori-rule);
+  background: var(--tadori-panel);
+}
+
+.inspector-continuations button {
+  padding: 0 var(--tadori-space-3);
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-panel-raised);
+  color: var(--tadori-ink);
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.inspector-continuations button:hover { border-color: var(--tadori-copper); }
+
+/* Routes feed Story mode, and Story mode is only reachable through this
+   table's action column. At the navigation panel's real width the five-column
+   table overflowed horizontally and pushed that column off-screen, so the
+   entry point could not be reached at all. Below 26rem the rows stack. */
+.explore-routes-wrap { container-type: inline-size; }
+.explore-routes { width: 100%; border-collapse: collapse; font-size: var(--tadori-text-xs); }
+
+.explore-routes th,
+.explore-routes td {
+  padding: var(--tadori-space-1) var(--tadori-space-2) var(--tadori-space-1) 0;
+  border-bottom: 1px solid var(--tadori-rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.explore-routes th { color: var(--tadori-ink-muted); letter-spacing: 0.04em; text-transform: uppercase; }
+
+.explore-routes button {
+  padding: 0 var(--tadori-space-1);
+  overflow-wrap: anywhere;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-panel);
+  color: var(--tadori-ink);
+  cursor: pointer;
+  font-family: var(--tadori-font-mono);
+  font-size: var(--tadori-text-xs);
+  text-align: left;
+}
+
+.explore-routes button:hover { border-color: var(--tadori-copper); }
+.explore-routes-story { font-family: var(--tadori-font-ui); font-weight: 650; white-space: nowrap; }
+.explore-routes-source-none { color: var(--tadori-ink-muted); }
+
+@container (max-width: 26rem) {
+  .explore-routes thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .explore-routes tr {
+    display: grid;
+    gap: var(--tadori-space-1);
+    padding: var(--tadori-space-2) 0;
+    border-bottom: 1px solid var(--tadori-rule);
+  }
+
+  .explore-routes td { padding: 0; border: 0; }
+  .explore-routes-story { justify-self: start; }
+}
+
 .inspection-panel-toolbar {
   position: sticky;
   z-index: 2;

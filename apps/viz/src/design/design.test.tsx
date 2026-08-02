@@ -69,4 +69,27 @@ describe("reading surfaces", () => {
     expect(readStylesheet("../index.css"))
       .toMatch(/\.mode-panel-overview,\s*\n\.mode-panel-interview\s*\{[^}]*overflow-y:\s*auto/);
   });
+
+  /**
+   * Every one of these carried no rule at all, so the inspector rendered as
+   * unstyled browser defaults: an indented definition list, bulleted default
+   * buttons, and a bare source slice. Each is load-bearing for scanability, so
+   * losing one again should fail rather than quietly regress.
+   */
+  it.each([
+    ".inspect-meta",
+    ".inspect-connections button",
+    ".inspect-source-body",
+    ".search-result-row",
+    ".explore-routes"
+  ])("styles %s rather than leaving it at browser defaults", (selector) => {
+    const escaped = selector.replaceAll(".", "\\.").replaceAll(" ", "\\s+");
+    expect(readStylesheet("../index.css")).toMatch(new RegExp(`${escaped}\\s*[,{]`));
+  });
+
+  it("lays the inspector metadata out as a grid with flush values", () => {
+    const css = readStylesheet("../index.css");
+    expect(css).toMatch(/\.inspect-meta\s*\{[^}]*display:\s*grid/);
+    expect(css).toMatch(/\.inspect-meta\s+dd\s*\{[^}]*margin:\s*0/);
+  });
 });
