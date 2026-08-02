@@ -538,6 +538,38 @@ button { min-height: 2rem; }
 
 .package-map-canvas { position: absolute; z-index: 1; inset: 0; }
 
+/* The landing map is a single node in an otherwise empty field. The keyboard
+   contract for zoom and reset has always existed and is announced in the
+   canvas's accessible name, but nothing on screen said the map could be moved
+   at all. */
+.atlas-controls {
+  position: absolute;
+  z-index: 6;
+  top: var(--tadori-space-3);
+  left: var(--tadori-space-3);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-panel-raised);
+}
+
+.atlas-controls button {
+  width: 2rem;
+  height: 2rem;
+  min-height: 2rem;
+  border: 0;
+  border-bottom: 1px solid var(--tadori-rule);
+  background: transparent;
+  color: var(--tadori-ink);
+  cursor: pointer;
+  font-size: var(--tadori-text-md);
+  line-height: 1;
+}
+
+.atlas-controls button:last-child { border-bottom: 0; }
+.atlas-controls button:hover { background: var(--tadori-panel); }
+
 .atlas-plan-layer { position: absolute; inset: 0; }
 
 .relief-stage {
