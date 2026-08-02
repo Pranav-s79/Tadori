@@ -22,11 +22,11 @@ describe("ModeTabs", () => {
     const onChange = vi.fn();
     render(<ModeTabs active="atlas" onChange={onChange} />);
     fireEvent.keyDown(screen.getByRole("tab", { name: "Atlas" }), { key: "ArrowRight" });
-    expect(onChange).toHaveBeenLastCalledWith("story");
-    expect(screen.getByRole("tab", { name: "Story" })).toHaveFocus();
-    fireEvent.keyDown(screen.getByRole("tab", { name: "Story" }), { key: "End" });
+    expect(onChange).toHaveBeenLastCalledWith("interview");
+    expect(screen.getByRole("tab", { name: "Interview" })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Interview" }), { key: "End" });
     expect(onChange).toHaveBeenLastCalledWith("table");
     fireEvent.keyDown(screen.getByRole("tab", { name: "Table" }), { key: "Home" });
-    expect(onChange).toHaveBeenLastCalledWith("atlas");
+    expect(onChange).toHaveBeenLastCalledWith("overview");
   });
 });

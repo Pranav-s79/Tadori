@@ -2,9 +2,11 @@
 
 # Current State (always overwritten)
 
-Current node: 08-10 — bounded stable 2D Atlas release hardening.
-Status: browser-verified visual hardening is green locally; the candidate still
-requires an exact-SHA GitHub matrix before release work proceeds.
+Current node: backend completion audit against the active multi-language
+transition contract.
+Status: backend-first implementation is in progress. Publication and remote CI
+are intentionally held until a meaningful backend boundary; frontend work is
+blocked until the backend completion gate below is satisfied.
 
 Active contract: `docs/Specs/Tadori-Multilanguage-Transition.md`. Superseded
 v2.1 documents are not product, schema, or language-scope authorities. Legacy
@@ -39,6 +41,422 @@ zero ambiguous owners. Registered repository configuration and non-TypeScript
 project manifests produce repository-derived file nodes, while legacy
 TypeScript/JavaScript configuration remains support-only for exact fixture
 compatibility. Registry IDs are test-locked to the active capability matrix.
+
+Project-region substrate update (2026-07-29): extractor-discovered projects are
+now a first-class, language-neutral snapshot membership rather than transient
+indexer output. `GraphProject` validation confines normalized roots/manifests,
+requires deterministic IDs and sorted unique languages, and defaults legacy
+serialized snapshots to an empty project set. Additive migration 008 persists
+immutable project memberships; load, repeated-insert verification, incremental
+composition, regional merge, and project diff paths all carry them without
+changing legacy node/edge identities. Existing snapshots remain readable, while
+an unchanged pre-project snapshot is never silently rewritten and instead
+requires an explicit purge/re-index. Non-TypeScript manifest roots materialize
+canonical package ownership with nearest-root containment, and package-family
+LOD preserves repository-package expansion across nested project packages.
+
+`GET /api/v1/regions` now exposes a deterministic projection over discovered
+project roots and canonical package containment. Every region includes bounded
+evidence, member package keys, entity/kind and cross-region relation counts,
+languages, capabilities, derivations, and explicit ambiguous/unowned accounting.
+Project and package names are factual labels only: the API keeps role text null
+and `derived_from_graph` until documentation supplies an evidenced
+responsibility, and `/api/v1/overview` intentionally remains unavailable. The
+Atlas consumes the same projection for a bounded relief layer and accessible
+region summaries; loading, error, and no-region states remain explicit.
+
+Project-region validation evidence (2026-07-29): `pnpm skills:check`, strict
+typecheck, ESLint, and `git diff --check` pass. The root test command passes 71
+non-CLI files / 430 tests, 13 serialized CLI files / 64 passed with 3
+platform-specific skips, and 46 Atlas files / 371 tests. Python and TypeScript
+fixture validation pass; exact indexing matches all five legacy graphs and both
+diff/boundary oracles with zero dangling endpoints and zero
+`PRAGMA foreign_key_check` rows; all five fixture repositories typecheck. The
+mixed-language oracle, capability registry, repeated indexing, regional/full
+parity, and byte-stable TS/JS adapter tests pass. The generated package contains
+11 audited files, installs and serves successfully on Windows Node 24, and its
+API/layout/purge smoke passes. Real Chrome E2E passes Atlas expansion, live
+derived endpoints, Story, Changes, Table, inspection, mobile/media states, zero
+axe violations, zero browser errors, and zero external resources. CI is wired
+to repeat the installed GUI smoke in Firefox on the canonical Ubuntu/Node 22
+leg; that exact-SHA remote result is not yet claimed.
+
+Project-region CI correction (2026-07-29): initial PR #53 run `30514433954`
+passed typecheck, lint, the full test suite, fixtures, artifact creation, and
+installed-package smoke before Ubuntu Node 24/26 reached the layout benchmark.
+That benchmark supplied a valid legacy snapshot payload without `projects`;
+`insertSnapshotGraph` validated it with a schema that defaults the field to
+`[]`, but then discarded the normalized result and iterated the original input.
+The store boundary now accepts `SnapshotGraphInput` and operates exclusively on
+the parsed `SnapshotGraph`. A regression covers both first insert and immutable
+reuse with omitted project memberships. Focused store tests pass 18/18 and the
+complete Node 24 layout benchmark passes every timing and byte-identical reuse
+budget locally. Replacement run `30515370717` confirmed that correction across
+the test, fixture, package, and Node 24/26 layout gates before exposing the
+separate clean-checkout evidence defect below.
+
+Project-region clean-checkout correction (2026-07-30 UTC): project discovery
+correctly retains legacy TypeScript/JavaScript `package.json` manifests as
+support-only inputs, but project-root containment had used those non-member
+manifest paths as edge evidence. Fresh CI checkouts therefore failed closed at
+`tadori diff .` when the store enforced evidence membership; a reused local
+snapshot had masked the defect. Project-root nodes and containment now prefer a
+manifest only when it is a snapshot member, otherwise choose the
+lexicographically first indexed file owned by that project root, and emit no
+fabricated evidence when a manifest-only project has no snapshot member. A
+monorepo regression persists a nested support-only package manifest through the
+real indexer/store boundary and asserts every node/edge evidence path belongs to
+the snapshot. The focused indexer suite passes, and `tadori diff .` succeeds
+against a fresh isolated database. The next exact-SHA matrix is the merge gate.
+
+Backend completion audit (2026-07-30 UTC): the canonical registry and capability
+matrix contain every language family required by the active contract. The
+bundled structural baseline is Python, C, C++, Go, Rust, and Java; interface and
+repository coverage includes Protocol Buffers, JSON, YAML, Markdown,
+Dockerfile, Terraform/HCL, TOML, Make/CMake, and shell; TypeScript/JavaScript
+semantic extraction remains regression-compatible. Unsupported semantic facts
+remain absent or explicitly unresolved, and safe unbundled text remains visible
+at repository level. The audit found three backend completion gaps: extraction
+diagnostics are not persisted or served; the capability matrix is not exposed
+through a typed backend contract with full registry-drift checks; and the pinned
+external-repository manifest has no executable invariant runner. Diagnostic
+persistence and the runtime capability contract are closed below; the pinned
+external invariant runner remains before frontend handoff.
+
+Extractor-coalescing correction (2026-07-30 UTC): Stage A and Stage B rename/
+move matching now require extractor ID and extractor version in addition to the
+snapshot analyzer version. Legacy nodes can match only other legacy nodes;
+attributed nodes from a different extractor or extractor version remain honest
+raw additions/removals. This prevents an extractor upgrade from masquerading as
+a source rename or move, as required by the active contract. The complete local
+gate passes: skill check, strict typecheck, lint, 71 non-CLI files / 433 tests,
+13 CLI files / 64 passed with 3 platform skips, 46 Atlas files / 371 tests,
+Python and TypeScript fixture validation, five exact fixture indexes with zero
+dangling endpoints and zero foreign-key-check rows, exact diff/boundary oracles,
+and all five fixture typechecks.
+
+Snapshot-diagnostic backend (2026-07-30 UTC): extraction diagnostics are now
+validated, deterministic, immutable snapshot membership rather than transient
+console-only output. Additive migration 009 persists diagnostic code, severity,
+message, optional snapshot-member file and line range, language, and exact
+extractor identity/version. Legacy snapshots read as an empty diagnostic set;
+immutable reuse rejects mismatched diagnostic membership and requires explicit
+re-indexing. Full indexing carries diagnostics into `SnapshotGraph`; regional
+refresh replaces invalidated-file diagnostics while retaining unaffected and
+stable repository diagnostics. Extraction-run-only call-resolution metrics stay
+transient so a regional run cannot be mislabeled as a whole-snapshot result.
+
+`GET /api/v1/analysis` exposes observed per-snapshot languages, file counts,
+generated-file counts, contributing extractors/capabilities, severity totals,
+and bounded cursor-addressable diagnostics. The existing MCP `repo_overview`
+adds the same observed language/extractor inventory plus a bounded 20-diagnostic
+sample with explicit omission accounting; no seventh tool or universal semantic
+claim was introduced. Parser failures therefore remain scoped while becoming
+available to users, agents, and the future frontend after reload. Focused core,
+store, incremental/full parity, API, and MCP tests pass. The complete local gate
+passes: skill check, strict typecheck, lint, 72 non-CLI files / 438 tests, 13 CLI
+files / 64 passed with 3 platform skips, 46 Atlas files / 371 tests, Python and
+TypeScript fixture validation, five exact fixture indexes with zero dangling
+endpoints and zero foreign-key-check rows, exact diff/boundary oracles, and all
+five fixture typechecks. The generated package builds and its installed-package
+API/layout/purge smoke passes on Windows Node 24. The first package-smoke attempt
+was blocked only by sandbox access to the user npm cache; the identical approved
+rerun passed.
+
+Runtime capability contract (2026-07-30 UTC): the checked-in
+`docs/MULTILANGUAGE_CAPABILITIES.json` is now parsed at process startup by a
+strict shared schema that requires the exact ordered support vocabulary, every
+declared feature key, unique language IDs, stable extractor identities, and no
+unknown fields. Runtime initialization fails loudly if any language ID,
+extractor ID/version, or primary semantic/structural/repository capability
+drifts from the canonical registry. This retains the documentation JSON as the
+single product-claim source while making it a typed backend contract bundled in
+the installed CLI.
+
+`GET /api/v1/capabilities` serves the validated matrix verbatim, and
+`GET /api/v1/multilanguage-capabilities.schema.json` serves the referenced
+JSON Schema at the matrix's relative `$schema` location. MCP `repo_overview`
+now reports declared support independently from extractors actually observed in
+the active snapshot. The contract lists all required semantic, structural,
+interface/repository, configuration, and safe unknown-text language classes;
+unsupported and experimental features remain explicit. Focused schema,
+registry, MCP, and server route tests pass. The complete local gate passes:
+skill check, strict typecheck, lint, 73 non-CLI files / 440 tests, 13 CLI files /
+64 passed with 3 platform skips, 46 Atlas files / 371 tests, both fixture-schema
+validators, five exact fixture indexes with zero dangling endpoints and zero
+foreign-key-check rows, exact diff/boundary oracles, and all five fixture
+typechecks. The installed Windows Node 24 package smoke confirms the bundled
+matrix, its served schema, observed analysis, structural Python provenance,
+layout, shutdown, and confined purge paths.
+
+Repository-boundary and lifecycle hardening (2026-07-30 UTC): repository
+scanning now uses link-aware metadata and never reads or traverses symbolic
+links, Windows junctions, linked ignore files, or linked package manifests.
+Skipped-link evidence participates in the deterministic workspace manifest, so
+adding or removing an omitted link invalidates incremental and MCP freshness
+without reading its target. This keeps source, support inputs, package identity,
+and refresh state confined to the selected repository. Cross-platform
+regressions cover external file links, linked metadata, external directory
+links, link cycles, deterministic repeat scans, persistence, and refresh;
+platform-denied link creation is reported as an explicit skip.
+
+Additive migration 010 gives every snapshot an analyzer version in storage and
+keys immutable reuse by `(repository, kind, workspace hash, analyzer version)`.
+Migration preserves readable legacy rows, infers a version only when legacy
+membership is unambiguous, and leaves mixed legacy attribution detectable.
+Unchanged source therefore publishes a distinct snapshot after an analyzer
+upgrade, including an empty or entirely ignored repository; an analyzer change
+can no longer remain indefinitely hidden behind a no-op refresh. The current
+analyzer identity is `tadori-indexer/0.2.1` plus the exact TypeScript version.
+
+The legacy TypeScript adapter's root package-to-file containment is now
+attributed to the repository layer with `repository-derived` provenance and the
+contained file's actual language. It no longer converts Java, Python, Protocol
+Buffer, or other mixed-language membership into a compiler claim. Snapshot
+extractor inventory is rebuilt from retained nodes, edges, diagnostics, files,
+and projects; declarations provide capability metadata but cannot keep a stale
+extractor alive. Capability aggregation retains the strongest actual
+contribution independently of iteration order.
+
+Documentation and refresh boundaries are now language-honest. Markdown links
+to non-TS/JS paths or declarations remain explicitly unresolved with
+`markdown-link-is-documentation-not-integration-evidence`; unresolved identities
+are Markdown-namespaced and use canonical `tadori-interface-files@1`
+repository/convention attribution. Structural and interface declarations such
+as Go functions and Protocol Buffer messages participate in ambiguity checks,
+while Markdown headings do not. Names alone never create a cross-language edge.
+In mixed-language repositories, relevant TS/JS edits force complete boundary
+reconciliation, including creation of the first boundary.
+
+Live git co-change evidence is no longer lost during either complete or regional
+refresh. `changed_with` edges are deterministically recomputed from the final
+file-node set and carry source-language plus `tadori-git-co-change@1`
+repository-derived provenance; the canonical inventory records that producer.
+Real-Git regressions cover both full mixed-language refresh and a regional edit
+to the deterministic source/evidence endpoint. Focused acceptance is green:
+strict typecheck and lint, `git diff --check`, 44/44 final indexer regressions,
+legacy adapter parity, deterministic fixtures, store endpoint/foreign-key
+integrity, and supported-platform link cases. The complete repository gate is
+still required before publication.
+
+Opus backend review result (2026-07-30 UTC): queue items 1-3 executed against
+the working tree. Item 1 passes — `assertCapture` is a real trust boundary
+consumed by the external validation runner, `manifestHashes` carries omission
+evidence into refresh identity with a captured/omitted collision guard, and no
+store invariant was weakened. Item 3 passes — `/api/v1/analysis` validates its
+cursor and limit, fails closed with `bad_diagnostic_page`, and reports honest
+`total`, `omittedCount`, `nextCursor`, and whole-set severity totals;
+`/api/v1/capabilities` and its served schema are the validated constants
+verbatim.
+
+Item 2 found and closed one blocker-class defect. The coalescing legacy sentinel
+was the literal pair `("legacy", "legacy")`, but `extractorId` is only
+`z.string().min(1)`, so an extractor registered as `legacy` was a schema-valid
+forgery of the sentinel and would have Stage-A and Stage-B matched genuinely
+pre-provenance nodes — silently reopening exactly the attribution boundary the
+guard exists to close. The sentinel is now the empty pair, which the canonical
+schema forbids for any real extractor, making the collision unrepresentable
+rather than merely unlikely. Two regressions cover the Stage A and Stage B
+forgery paths and were verified to fail against the previous sentinel. The
+complete local gate is green at this tree: strict typecheck, lint, the root test
+command, 37 store/server files / 211 tests, 13 CLI files / 67 tests, and 46
+Atlas files / 371 tests. Frontend handoff is therefore unblocked.
+
+Frontend handoff begun (2026-07-30 UTC): PR #53 was retargeted from the dead
+`agent/archaeological-atlas` base to `main` and rebased, dropping the ten
+commits already squashed into `main` as `b641c1c`. CI had not run on the branch
+at all while its base pointed at that branch, so every earlier local-gate claim
+was remotely unverified.
+
+Two environment-dependent defects then surfaced that no local gate could see.
+First, the external validation runner audited its own repository for
+command-bearing Git configuration; hosted CI writes `includeIf.gitdir:*.path`
+into every checkout, so it failed on all five runners and the throw escaped the
+suite instead of recording a failed invariant. The validator is now baselined
+before the run and only newly introduced keys are a violation, while external
+checkouts keep the strict absolute rule under a new regression. Second, the
+installed-GUI smoke pressed one ArrowRight and required the node count to grow,
+which assumed `graph.nodes().sort()[0]` is descendable; the frozen contract is
+"Enter descends OR inspects", so the gate depended on path ordering and rode on
+the mixed oracle's single expandable node. It now walks the nodes, requires that
+some node descends, and names the observed counts on failure. Both were verified
+by reproducing the exact condition locally before pushing.
+
+Two frontend slices are delivered. `GET /api/v1/analysis` now has a UI: observed
+languages and bounded extraction diagnostics render in a navigation section with
+a top-bar severity status, where unavailable, still-loading, and genuinely-zero
+are three distinct sentences so an absent response never reads as clean.
+Workspace mode, spatial projection, active lenses, open story, and inspected
+entity are now carried in the query string, so a reload reopens the same reading
+and a link carries it; unknown values degrade to defaults because a shared link
+is untrusted input, and a `select=` key is re-resolved against the served graph
+rather than fabricating a selection. A dead `mode === "story"` comparison inside
+the Table branch was removed; it had silently starved the keyboard and
+assistive-technology peer of story emphasis.
+
+Closed (2026-07-31), previously recorded here as open: `apps/viz` had no
+`typecheck` script and CI never type-checked it, which is how eleven errors
+accumulated there. Commit `148db8a` cleared them, added the script, and wired
+`pnpm --filter @tadori/viz typecheck` into `.github/workflows/ci.yml`. Verified
+at this tree: 101 files are checked under `strict` with
+`noUncheckedIndexedAccess`, covering `src`, `test`, and `vite.config.ts`, and it
+passes. The frontend is type-checked in CI.
+
+Frontend journey coherent (2026-07-31): one defect class accounted for every
+broken step in the reading journey — the UI derived entity facts from the
+*rendered* graph rather than the snapshot. The rendered graph is level-of-detail
+bounded to a single repository node at the landing view, so anything asked of it
+answered "none". Six instances, all closed and each verified live against
+`packages/fixtures/02-express-routes/repo`:
+
+1. Overview entry points said "No route node was extracted from this
+   repository" for a repository registering two routes.
+2. The inspector withheld "Trace execution flow" from every route.
+3. Interview produced a "this repository" interview with an entity selected,
+   and claimed no tests existed beside two test files.
+4. `select=` deep links dropped silently, so a shared link degraded to a
+   generic interview.
+5. `focusEntity` returned silently, so clicking an Overview entry point or a
+   search result moved nothing and explained nothing.
+6. Overview coupling answered UNKNOWN to "what is technically important or
+   fragile?".
+
+The shared correction is to ask the snapshot — `/api/v1/routes`,
+`/api/v1/nodes/:key`, `/api/v1/tests`, `/api/v1/nodes?level=symbol` — and to
+keep loading and unavailable distinct from a genuine zero at every one. Where
+the snapshot genuinely cannot answer, the UI now says so: an unresolvable
+`select=` key renders an explicit unavailable state, and a focus request the map
+cannot honour explains that the entity is not shown at this level rather than
+doing nothing.
+
+Verified journey: launch `pnpm tadori serve <repo> --port <p> --no-open` →
+Overview (purpose UNKNOWN, languages, entry points, regions, coupling, analysis
+limits, snapshot) → click an entry point → Inspector (kind, language,
+capability, derivation, location, evidence with editor deep link, source,
+design rationale, connections) → Trace execution flow → Story across
+`user-controller.ts` → `infra/db.ts` → `user-service.ts` with per-step
+provenance → Interview on that entity, 7 questions across 6 groups → search
+`UserController`, 3 results, click restores Atlas + inspector without losing
+context. Atlas suite 55 files / 425 tests serial, strict typecheck, root lint,
+and production build all pass.
+
+Inspector interpretation layer (2026-07-31): the Inspector showed extracted
+facts and left the reader to interpret them — "Fan-in: 0" tells a newcomer
+nothing, which is the gap between holding the data and understanding the
+codebase. It now renders at most one deterministic sentence per structural
+metric, derived only from counts and relations shown beside it.
+
+The honesty rules are enforced in code and locked by tests. Fan-in zero reads as
+"no incoming relation was extracted in this snapshot", never as a runtime claim,
+because dynamic dispatch is not extracted. Responsibility is `Observed` only
+where structure states it mechanically — a route's registered path — and
+`Unknown` for a class, with a test asserting the entity name never leaks into
+the claim. Risks name the signal ("5 extracted dependents increase the potential
+change surface") and a test rejects the words fragile, unsafe, poorly and slow.
+Tradeoffs and original rationale remain `Documented` when an ADR resolves and
+`Unknown` otherwise; graph shape never manufactures rationale. Where the graph
+supports no reading the layer stays silent rather than restating a legible
+number.
+
+Accessibility correction (2026-07-31): axe reported a serious color-contrast
+violation across the Overview questions and every claim badge. Measured on
+`--tadori-ground`, muted ink was 3.75:1 and verdigris 4.13:1, both under AA's
+4.5:1 — failing on the product's core reading surfaces. `--tadori-ink-muted` is
+now #4f4d47 (5.46:1); the material hues keep their values because they colour
+marks on the map, and text-safe variants were added for badge labels
+(verdigris-text #2f5142 at 5.72:1, copper-text #7a4820 at 4.89:1).
+
+CI classification (2026-07-31): all five red legs at `56c82f1` shared one cause
+— an unused binding failing `pnpm lint` — introduced when coupling moved off the
+rendered node set. Not KF-001, which never executed because lint precedes the
+smoke. `main` is red on a sixth, separate defect: a boundary badge projecting
+~15px below a 916-tall viewport in `verify:viz:e2e`. Full matrix on branch
+`fix/kf-001-ubuntu` in `CI-FAILURE-MATRIX.md`.
+
+Both browser gates additionally assumed Atlas was the landing mode and drove a
+canvas that Overview now leaves hidden; Playwright reported the canvas as hidden
+outright. They enter Atlas first, and their stale four-tab assertions match the
+six-tab contract. `verify:viz:e2e` exits 0 locally and `package:smoke` passes
+under chromium and firefox (4 -> 5 nodes).
+
+Open, not investigated (2026-07-31) — Atlas suite is not parallel-stable:
+`pnpm vitest run` (default file parallelism) produced different results across
+runs at the same tree, while `--no-file-parallelism` and per-file isolation
+passed every time.
+
+- Parallel run A: 3 files / 4 tests failed; identities not captured.
+- Parallel run B: failures reported in `test/App.accessibility.test.tsx` (3),
+  `test/InspectorContinuations.test.tsx` (2),
+  `src/features/a11y/AccessibleGraphTable.test.tsx` (1),
+  `src/features/analysis/AnalysisPanel.test.tsx` (1),
+  `src/features/explore/explore.test.tsx` (1),
+  `src/features/interview/InterviewPanel.test.tsx` (1).
+- The `InspectorContinuations` and `InterviewPanel` failures in run B were
+  genuine stale-mock defects and are fixed. The `AccessibleGraphTable`,
+  `AnalysisPanel`, and `explore` failures are the unexplained ones: they passed
+  in isolation and serially with no code change between runs.
+- Parallel run C, after those fixes: 54 files / 420 tests passed. The
+  instability is therefore intermittent, not deterministic, and a single green
+  parallel run is not evidence it is resolved.
+
+No shared port or server is involved — these are jsdom component suites. The
+untested hypotheses are shared global DOM state, `matchMedia`/`history` stubs
+leaking across files, timer or `waitFor` sensitivity under CPU contention, and
+module-mock registry interaction. Deliberately not investigated during the
+deep-link slice. Until diagnosed, treat `--no-file-parallelism` as the
+authoritative local run and do not read a green parallel run as proof.
+
+Isolated, not closed: the `apps/viz`-local `lint` script reports two
+`no-unused-vars` errors in `test/lod-budgets.test.ts` that the authoritative
+root `eslint .` does not, because the app-local config lacks the root's `^_`
+args-ignore pattern. CI runs the root command, which passes. The app-local
+script is unreferenced by any gate; either align its config or delete it.
+
+Orientation slice (2026-07-31): Overview is now the landing workspace and
+Interview sits beside it in the tab order and URL state, so a reader meets the
+repository before the graph. `GET /api/v1/overview` still reports
+`available: false`, so Overview is assembled from `analysis`, `regions`,
+`capabilities` and the served graph rather than served whole. Every statement
+carries an explicit basis — observed, documented, inferred or unknown — rendered
+as text and a `data-basis` attribute, never colour alone. Repository purpose
+reads `unknown` because nothing served establishes it, and an absent route set
+states that no registered entry point was found rather than that none exists.
+Interview generates questions only from entities, counts, languages and
+diagnostics this snapshot actually contains, marks interpretive questions
+`inferred`, and offers an inspection button only for evidence the served graph
+can resolve; file paths and language ids render as text instead of a selection
+that resolves to nothing. Atlas suite passes 52 files / 405 tests; repository
+lint, strict typecheck, and `git diff --check` pass.
+
+KF-001 (parked, `docs/KNOWN_FAILURES.md`): installed-GUI keyboard descent fails
+only on the `ubuntu-latest / Node 22.14.0` Firefox leg and blocks PR #53. No
+keydown reaches the canvas although the document has focus, the canvas is
+visible with `tabIndex 0`, and the renderer is healthy with zero browser errors.
+The assertion is unweakened. An instrumentation-only probe is now pushed and
+reports focusability, the ancestor chain, and synthetic-dispatch delivery beside
+the existing evidence; run `30635704089` at `7418b9a` is the decisive output.
+
+Claude Opus backend review queue and frontend handoff contract:
+
+1. Review the project-evidence correction in
+   `packages/indexer/src/indexRepository.ts` and its nested-workspace regression.
+   Confirm every evidence path is a snapshot member and no store invariant was
+   weakened.
+2. Review the extractor-version coalescing guard in
+   `packages/store/src/coalescing.ts`. Attempt Stage A and Stage B collisions
+   across extractor IDs, extractor versions, and legacy/attributed nodes; require
+   raw add/remove output for every cross-boundary case.
+3. After the remaining tranches land, review persisted diagnostic immutability,
+   invalidated-file replacement behavior, bounded API/MCP pagination and
+   omission accounting, capability-schema drift locks, and the pinned
+   external-repository invariant runner. Confirm the capability endpoint and its
+   served schema remain byte-equivalent to the checked-in contract, then confirm
+   parser failures remain visible after store reload and reject any semantic
+   claim not backed by evidence or an explicit unresolved diagnostic.
+4. Do not begin frontend implementation until this file records a passing full
+   local backend gate and the Opus review has no blocker/high finding. At handoff,
+   consume only the documented capability/analysis endpoints; do not infer
+   language parity, runtime behavior, ownership, or responsibility in the UI.
 
 Release-hardening update (2026-07-26): the fresh and stale shells now place the
 workspace in an explicit flexible grid row; responsive navigation starts closed,

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ApiEdge, ApiNode } from "../../api/types.ts";
-import { AccessibleGraphTable } from "./AccessibleGraphTable.tsx";
+import { AccessibleGraphTable, tableStoryState } from "./AccessibleGraphTable.tsx";
 import { defaultFilters } from "../search/filterState.ts";
 
 function node(entityKey: string, over: Partial<ApiNode> = {}): ApiNode {
@@ -41,6 +41,9 @@ describe("AccessibleGraphTable", () => {
     expect(screen.getByRole("table")).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Name" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Capability" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Archaeological form" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Material" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Story state" })).toBeTruthy();
     expect(screen.getByRole("rowheader")).toBeTruthy();
     const table = screen.getByRole("table");
     expect(within(table).getByText("package")).toBeTruthy();
@@ -109,6 +112,29 @@ describe("AccessibleGraphTable", () => {
     expect(screen.getByText("python")).toBeInTheDocument();
     expect(screen.getByText("structural")).toBeInTheDocument();
     expect(screen.getByText("parser-derived")).toBeInTheDocument();
+    expect(screen.getByText("package foundation")).toBeInTheDocument();
+    expect(screen.getByText("open-course green-grey stone; structural")).toBeInTheDocument();
+  });
+
+  it("names every evidence-backed Story state without relying on copper emphasis", () => {
+    const storyEmphasis = {
+      pathEntityKeys: ["source", "active", "wall"],
+      transitions: [{ fromEntityKey: "source", toEntityKey: "active", relation: "calls" }],
+      activeEntityKey: "active",
+      unresolvedFromEntityKey: "wall"
+    } as const;
+    render(
+      <AccessibleGraphTable
+        nodes={[node("source"), node("active"), node("wall"), node("other")]}
+        edges={[]}
+        storyEmphasis={storyEmphasis}
+      />
+    );
+    expect(screen.getByText("on active story path")).toBeInTheDocument();
+    expect(screen.getByText("active story step")).toBeInTheDocument();
+    expect(screen.getByText("active unresolved termination source")).toBeInTheDocument();
+    expect(screen.getByText("outside active story path")).toBeInTheDocument();
+    expect(tableStoryState("source", null)).toBe("no active story");
   });
 
   it("renders 'none' for a node with no outgoing edges", () => {

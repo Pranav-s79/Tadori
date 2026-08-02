@@ -36,6 +36,7 @@ export function buildGraphologyGraph(
       aggregateDerivations: node.aggregateDerivations ?? [],
       x: position.x,
       y: position.y,
+      z: position.z,
       pinned: position.pinned
     });
   }

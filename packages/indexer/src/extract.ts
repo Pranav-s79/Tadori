@@ -6,6 +6,7 @@ import type {
   GraphEdge,
   GraphFile,
   GraphNode,
+  GraphProject,
   NodeKind,
   Relation,
   SnapshotGraph
@@ -30,6 +31,8 @@ import {
   HTTP_VERB_NAMES,
   isExpressReceiver,
   isPathTerm,
+  MARKDOWN_NON_INTEGRATION_NODE_PREFIX,
+  MARKDOWN_NON_INTEGRATION_REASON,
   metadataScore,
   nextRouteRole,
   unwrapExpression,
@@ -43,6 +46,7 @@ export interface IndexDiagnostic {
   severity?: "info" | "warning" | "error";
   language?: string | null;
   extractorId?: string;
+  extractorVersion?: string;
   lineStart?: number;
   lineEnd?: number;
 }
@@ -52,6 +56,7 @@ export interface ExtractedGraph {
   files: GraphFile[];
   nodes: GraphNode[];
   edges: GraphEdge[];
+  projects: GraphProject[];
   diagnostics: IndexDiagnostic[];
 }
 
@@ -65,6 +70,12 @@ export interface ExtractGraphOptions {
   seedGraph?: SnapshotGraph;
   /** Immutable bytes captured for this repository generation. */
   fileContents?: ReadonlyMap<string, Buffer>;
+  /**
+   * Already-attributed non-TS/JS declarations used only to recognize that a
+   * Markdown code term names another language. They can produce an explicit
+   * unresolved documentation relation, never a resolved cross-language edge.
+   */
+  documentationCandidates?: readonly GraphNode[];
 }
 
 export class UnsafeRegionExtractionError extends Error {
@@ -353,8 +364,10 @@ export function extractGraph(
     file: null,
     exported: false
   });
-  const seededPackage = options.seedGraph?.nodes.find((node) => node.kind === "package");
-  if (seededPackage && seededPackage.entityKey !== packageNode.entityKey) {
+  const seededPackage = options.seedGraph?.nodes.find(
+    (node) => node.kind === "package" && node.entityKey === packageNode.entityKey
+  );
+  if (options.seedGraph !== undefined && seededPackage === undefined) {
     throw new UnsafeRegionExtractionError(
       "The repository package identity changed; use full extraction"
     );
@@ -375,6 +388,10 @@ export function extractGraph(
 
   const registryKeyForSeedNode = (node: GraphNode): string | null => {
     if (node.file === null) {
+      return null;
+    }
+    const seedLanguage = indexedByPath.get(node.file)?.language;
+    if (seedLanguage !== "typescript" && seedLanguage !== "javascript") {
       return null;
     }
     if (
@@ -944,12 +961,37 @@ export function extractGraph(
   };
 
   const symbolsByDisplayName = new Map<string, GraphNode[]>();
-  for (const { node } of registry.values()) {
+  const documentationDeclarationKinds: ReadonlySet<NodeKind> = new Set([
+    "function",
+    "method",
+    "class",
+    "interface",
+    "type"
+  ]);
+  const addDocumentationCandidate = (node: GraphNode): void => {
     const list = symbolsByDisplayName.get(node.displayName) ?? [];
     if (!list.some((candidate) => candidate.entityKey === node.entityKey)) {
       list.push(node);
     }
     symbolsByDisplayName.set(node.displayName, list);
+  };
+  for (const { node } of registry.values()) {
+    addDocumentationCandidate(node);
+  }
+  for (const node of options.documentationCandidates ?? []) {
+    if (node.file === null || !documentationDeclarationKinds.has(node.kind)) {
+      continue;
+    }
+    const language = indexedByPath.get(node.file)?.language;
+    if (
+      language === undefined ||
+      language === "typescript" ||
+      language === "javascript" ||
+      language === "markdown"
+    ) {
+      continue;
+    }
+    addDocumentationCandidate(node);
   }
 
   const lineEvidence = (sf: ts.SourceFile, node: ts.Node, p: string): Evidence => ({
@@ -993,6 +1035,54 @@ export function extractGraph(
 
   // ---- pass 4: ADR nodes and documents links ------------------------------------
   const adrNodes: GraphNode[] = [];
+  const adrUnresolvedNodes = new Map<string, GraphNode>();
+  const isLegacyDocumentTarget = (target: GraphNode): boolean => {
+    if (target.file === null) {
+      return false;
+    }
+    const targetLanguage = indexedByPath.get(target.file)?.language;
+    return targetLanguage === "typescript" ||
+      targetLanguage === "javascript" ||
+      targetLanguage === "markdown";
+  };
+  const addUnresolvedDocumentationLink = (
+    adrNode: GraphNode,
+    sourceFile: string,
+    term: string,
+    line: number,
+    evidence: Evidence[]
+  ): void => {
+    const qualifiedName =
+      `markdown:${sourceFile}::${MARKDOWN_NON_INTEGRATION_NODE_PREFIX}${JSON.stringify(term)}@${line}>`;
+    let unresolvedNode = adrUnresolvedNodes.get(qualifiedName);
+    if (unresolvedNode === undefined) {
+      unresolvedNode = buildNode({
+        kind: "unresolved",
+        qualifiedName,
+        displayName: term,
+        file: sourceFile,
+        exported: false,
+        lineStart: line,
+        lineEnd: line,
+        evidence
+      });
+      adrUnresolvedNodes.set(qualifiedName, unresolvedNode);
+    }
+    edges.add(adrNode, "documents", unresolvedNode, evidence, {
+      origin: "doc",
+      confidence: "inferred",
+      resolution: "unresolved"
+    });
+    diagnostics.push({
+      file: sourceFile,
+      code: MARKDOWN_NON_INTEGRATION_REASON,
+      severity: "info",
+      language: "markdown",
+      message:
+        `Doc link ${JSON.stringify(term)} may name non-TS/JS source, but documentation alone ` +
+        "does not prove a cross-language integration boundary; link remains unresolved."
+    });
+  };
   for (const scanned of activeFiles) {
     if (scanned.language !== "markdown") {
       continue;
@@ -1045,11 +1135,15 @@ export function extractGraph(
         if (isPathTerm(term)) {
           const target = fileNodes.get(term);
           if (target) {
-            edges.add(adrNode, "documents", target, evidence, {
-              origin: "doc",
-              confidence: "certain",
-              resolution: "resolved"
-            });
+            if (isLegacyDocumentTarget(target)) {
+              edges.add(adrNode, "documents", target, evidence, {
+                origin: "doc",
+                confidence: "certain",
+                resolution: "resolved"
+              });
+            } else {
+              addUnresolvedDocumentationLink(adrNode, p, term, i + 1, evidence);
+            }
             lineLinked = true;
           } else {
             diagnostics.push({
@@ -1068,17 +1162,26 @@ export function extractGraph(
         }
         const matches = symbolsByDisplayName.get(term) ?? [];
         if (matches.length === 1 && matches[0] !== undefined) {
-          edges.add(adrNode, "documents", matches[0], evidence, {
-            origin: "doc",
-            confidence: "likely",
-            resolution: "resolved"
-          });
+          if (isLegacyDocumentTarget(matches[0])) {
+            edges.add(adrNode, "documents", matches[0], evidence, {
+              origin: "doc",
+              confidence: "likely",
+              resolution: "resolved"
+            });
+          } else {
+            addUnresolvedDocumentationLink(adrNode, p, term, i + 1, evidence);
+          }
           lineLinked = true;
         } else if (matches.length > 1) {
-          diagnostics.push({
-            file: p,
-            message: `Doc symbol link ${JSON.stringify(term)} is ambiguous (${matches.length} candidates); no documents edge.`
-          });
+          if (matches.some((candidate) => !isLegacyDocumentTarget(candidate))) {
+            addUnresolvedDocumentationLink(adrNode, p, term, i + 1, evidence);
+            lineLinked = true;
+          } else {
+            diagnostics.push({
+              file: p,
+              message: `Doc symbol link ${JSON.stringify(term)} is ambiguous (${matches.length} candidates); no documents edge.`
+            });
+          }
         }
       }
     }
@@ -1582,6 +1685,10 @@ export function extractGraph(
 
   diagnostics.push({
     file: null,
+    code: "typescript-call-resolution-summary",
+    severity: "info",
+    language: null,
+    extractorId: "tadori-typescript",
     message:
       `Call resolution: ${resolvedCallCount} compiler-resolved, ` +
       `${heuristicCallCount} heuristic name-matched, ` +
@@ -1595,6 +1702,7 @@ export function extractGraph(
     ...symbolNodes,
     ...externalNodes.values(),
     ...adrNodes,
+    ...adrUnresolvedNodes.values(),
     ...testNodes,
     ...routeNodes,
     ...unresolvedNodes.values()
@@ -1607,6 +1715,7 @@ export function extractGraph(
     files: files.sort((a, b) => a.normalizedPath.localeCompare(b.normalizedPath)),
     nodes,
     edges: edges.all(),
+    projects: [],
     diagnostics
   };
 }

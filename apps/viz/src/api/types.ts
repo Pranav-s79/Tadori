@@ -112,9 +112,173 @@ export interface AggregatedEdge {
   provenance: AggregatedProvenance[];
 }
 
+/**
+ * One provenance bucket inside an aggregated edge. The fields mirror `ApiEdge`,
+ * where they are optional: an edge the server did not attribute must stay
+ * visibly unattributed here rather than being bucketed as though it carried a
+ * provenance the snapshot never supplied.
+ */
 export interface AggregatedProvenance {
+  origin: Origin | null;
+  confidence: Confidence | null;
+  resolution: Resolution | null;
+  count: number;
+}
+
+/** An aggregated bucket the snapshot actually attributed on all three axes. */
+export interface AttributedProvenance extends AggregatedProvenance {
   origin: Origin;
   confidence: Confidence;
   resolution: Resolution;
-  count: number;
+}
+
+/**
+ * Keep only buckets carrying a complete provenance. Callers that style or
+ * filter by provenance must not treat a partially attributed bucket as though
+ * it were attributed; an empty result is the honest "not attributed" state.
+ */
+export function attributedProvenance(
+  buckets: readonly AggregatedProvenance[]
+): AttributedProvenance[] {
+  return buckets.filter((bucket): bucket is AttributedProvenance =>
+    bucket.origin !== null && bucket.confidence !== null && bucket.resolution !== null);
+}
+
+export type RegionRoleStatus = "documented" | "configured" | "derived_from_graph";
+
+export interface RegionEvidence {
+  file: string;
+  kind: "source" | "documentation" | "git" | "human_annotation" | "tool_event";
+  lineStart: number;
+  lineEnd: number;
+  columnStart?: number;
+  columnEnd?: number;
+  commitSha?: string;
+  excerptHash?: string;
+}
+
+export interface RegionDto {
+  regionKey: string;
+  label: string;
+  /** Compatibility root for the first package-containment projection. */
+  packageEntityKey?: string;
+  /** Additive multi-package/project membership when supplied by newer servers. */
+  memberPackageKeys: string[];
+  role: {
+    text: string | null;
+    status: RegionRoleStatus;
+    evidence: RegionEvidence[];
+    evidenceOmittedCount: number;
+  };
+  basis: {
+    kind: "package_containment";
+    packageEntityKey: string;
+    sourceEdgeCount: number;
+    evidence: RegionEvidence[];
+    evidenceOmittedCount: number;
+  } | {
+    kind: "project_root";
+    projectId: string;
+    root: string;
+    manifest: string | null;
+    evidence: RegionEvidence[];
+    evidenceOmittedCount: number;
+  };
+  counts: {
+    entities: number;
+    byKind: Record<NodeKind, number>;
+    incomingCrossRegionRelations: number;
+    outgoingCrossRegionRelations: number;
+  };
+  languages: string[];
+  capabilities: ExtractionCapability[];
+  derivations: ExtractionDerivation[];
+}
+
+export interface RegionProjectionDto {
+  regions: RegionDto[];
+  accounting: {
+    packageCount: number;
+    projectCount: number;
+    regionCount: number;
+    assignedEntityCount: number;
+    ambiguousEntityCount: number;
+    unownedEntityCount: number;
+  };
+}
+
+/**
+ * One extraction diagnostic persisted as immutable snapshot membership.
+ * Mirrors `snapshotDiagnosticSchema`; `lineStart`/`lineEnd` are both null or
+ * both present, and `file` is null when the diagnostic is repository-scoped.
+ */
+export interface SnapshotDiagnostic {
+  code: string;
+  severity: "info" | "warning" | "error";
+  message: string;
+  file: string | null;
+  language: string | null;
+  extractorId: string;
+  extractorVersion: string;
+  lineStart: number | null;
+  lineEnd: number | null;
+}
+
+/** Observed extraction capability for one language in the active snapshot. */
+export interface SnapshotLanguageAnalysisDto {
+  id: string;
+  fileCount: number;
+  generatedFileCount: number;
+  capabilities: ExtractionCapability[];
+  extractors: Array<{ id: string; version: string; capability: ExtractionCapability }>;
+}
+
+/**
+ * Bounded analysis facts for the active snapshot. `languages` is what the
+ * snapshot actually observed — never what the product declares it supports.
+ */
+export interface SnapshotAnalysisDto {
+  snapshotId: number;
+  analyzerVersion: string;
+  languages: SnapshotLanguageAnalysisDto[];
+  extractors: Array<{
+    id: string;
+    version: string;
+    capability: ExtractionCapability;
+    languages: string[];
+  }>;
+  diagnostics: {
+    items: SnapshotDiagnostic[];
+    total: number;
+    omittedCount: number;
+    nextCursor: string | null;
+    bySeverity: Record<"info" | "warning" | "error", number>;
+  };
+}
+
+/** The declared support vocabulary, ordered strongest to weakest. */
+export type CapabilityState =
+  | "semantic"
+  | "structural"
+  | "repository-only"
+  | "unsupported"
+  | "experimental";
+
+export interface CapabilityLanguageDto {
+  id: string;
+  extractorId: string;
+  extractorVersion: string;
+  features: Record<string, CapabilityState>;
+}
+
+/**
+ * The checked-in product capability contract, served verbatim. This is what
+ * Tadori DECLARES it supports and is never evidence that a given snapshot
+ * observed anything — `SnapshotAnalysisDto` is the observed side.
+ */
+export interface CapabilityMatrixDto {
+  version: number;
+  claim: string;
+  states: CapabilityState[];
+  languages: CapabilityLanguageDto[];
 }

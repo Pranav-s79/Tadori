@@ -1,5 +1,37 @@
-import type { Confidence, Origin, Relation, Resolution } from "@tadori/core";
+import type { Confidence, GraphProject, Origin, Relation, Resolution } from "@tadori/core";
 import type { Database } from "./database.js";
+import { loadSnapshotGraph } from "./snapshots.js";
+
+export interface ProjectDiffRow {
+  change_kind: "added" | "removed" | "metadata_changed";
+  project_id: string;
+  before: GraphProject | null;
+  after: GraphProject | null;
+}
+
+/** Exact additive project-membership diff; legacy snapshots participate as empty sets. */
+export function diffSnapshotProjects(
+  db: Database,
+  baseSnapshotId: number,
+  headSnapshotId: number
+): ProjectDiffRow[] {
+  const base = new Map(
+    loadSnapshotGraph(db, baseSnapshotId).projects.map((project) => [project.projectId, project])
+  );
+  const head = new Map(
+    loadSnapshotGraph(db, headSnapshotId).projects.map((project) => [project.projectId, project])
+  );
+  const projectIds = [...new Set([...base.keys(), ...head.keys()])].sort();
+  return projectIds.flatMap((projectId): ProjectDiffRow[] => {
+    const before = base.get(projectId) ?? null;
+    const after = head.get(projectId) ?? null;
+    if (before === null) return [{ change_kind: "added", project_id: projectId, before, after }];
+    if (after === null) return [{ change_kind: "removed", project_id: projectId, before, after }];
+    return JSON.stringify(before) === JSON.stringify(after)
+      ? []
+      : [{ change_kind: "metadata_changed", project_id: projectId, before, after }];
+  });
+}
 
 export interface EdgeDiffRow {
   change_kind: "added" | "removed" | "resolution_or_provenance_changed";

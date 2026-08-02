@@ -7,7 +7,9 @@
   --tadori-panel: #f4efe4;
   --tadori-panel-raised: #fbf8f1;
   --tadori-ink: #292a28;
-  --tadori-ink-muted: #66645d;
+  /* 5.46:1 on --tadori-ground. The previous #66645d measured 3.75:1 and axe
+     failed it as a serious color-contrast violation on the reading surfaces. */
+  --tadori-ink-muted: #4f4d47;
   --tadori-rule: #aaa18f;
 
   /* Relationship materials. Their text labels remain mandatory. */
@@ -15,6 +17,13 @@
   --tadori-bronze: #7c6239;
   --tadori-verdigris: #3f6958;
   --tadori-clay: #9b917d;
+
+  /* Text-safe variants of the material hues, for labels rendered as words on
+     --tadori-ground. The material values above stay as they are: they colour
+     marks on the map, where the contrast requirement does not apply the same
+     way, and changing them would shift the map's semantics. */
+  --tadori-verdigris-text: #2f5142; /* 5.72:1 */
+  --tadori-copper-text: #7a4820;    /* 4.89:1 */
 
   /* Interaction and state. These are not capability colors. */
   --tadori-focus: #315f8c;

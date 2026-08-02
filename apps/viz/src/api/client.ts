@@ -1,4 +1,12 @@
-import type { ApiContext, ApiEdge, ApiNode, LayoutPositionDto } from "./types.ts";
+import type {
+  ApiContext,
+  ApiEdge,
+  ApiNode,
+  LayoutPositionDto,
+  CapabilityMatrixDto,
+  RegionProjectionDto,
+  SnapshotAnalysisDto
+} from "./types.ts";
 import {
   assertLodResponseWithinBudget,
   clampLodRequestLimit,
@@ -141,6 +149,37 @@ export async function fetchSnapshot(): Promise<ApiContext> {
     return (body as { context: ApiContext }).context;
   }
   return body as ApiContext;
+}
+
+export async function fetchRegions(): Promise<RegionProjectionDto> {
+  return await getJson("/regions") as RegionProjectionDto;
+}
+
+/**
+ * The declared product capability contract, served verbatim from the
+ * checked-in matrix. Declared support is not evidence that this snapshot
+ * observed anything — pair it with `fetchAnalysis` for the observed side.
+ */
+export async function fetchCapabilities(): Promise<CapabilityMatrixDto> {
+  return await getJson("/capabilities") as CapabilityMatrixDto;
+}
+
+/**
+ * Bounded extraction diagnostics and observed language facts for the active
+ * snapshot. The server owns the page bound; `diagnosticLimit` is only a request
+ * and the response's own `total`/`omittedCount` stay authoritative.
+ */
+export async function fetchAnalysis(params?: {
+  diagnosticCursor?: string;
+  diagnosticLimit?: number;
+}): Promise<SnapshotAnalysisDto> {
+  const query = new URLSearchParams();
+  if (params?.diagnosticCursor !== undefined) query.set("diagnosticCursor", params.diagnosticCursor);
+  if (params?.diagnosticLimit !== undefined) {
+    query.set("diagnosticLimit", String(params.diagnosticLimit));
+  }
+  const suffix = query.size === 0 ? "" : `?${query.toString()}`;
+  return await getJson(`/analysis${suffix}`) as SnapshotAnalysisDto;
 }
 
 export async function fetchNodes(params?: {

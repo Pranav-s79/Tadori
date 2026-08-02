@@ -7,6 +7,7 @@ import type {
   Resolution
 } from "../../api/types.ts";
 import type { ExtractionCapability, ExtractionDerivation } from "../../api/types.ts";
+import { attributedProvenance } from "../../api/types.ts";
 
 /**
  * Frozen filter vocabularies (mirror @tadori/core enums.ts — apps/viz may not
@@ -151,10 +152,17 @@ export function edgeMatchesFilters(edge: ApiEdge, filters: SearchFilters): boole
     && edge.confidence !== undefined && edge.resolution !== undefined
     ? [{ origin: edge.origin, confidence: edge.confidence, resolution: edge.resolution, count: 1 }]
     : []);
-  const provenanceMatches = provenanceBuckets.some((bucket) =>
-    (filters.origins.length === 0 || filters.origins.includes(bucket.origin))
-    && (filters.confidences.length === 0 || filters.confidences.includes(bucket.confidence))
-    && (filters.resolutions.length === 0 || filters.resolutions.includes(bucket.resolution)));
+  // An unattributed edge has no origin/confidence/resolution, so it cannot
+  // satisfy one of those filters -- but with none of them active it must stay
+  // visible rather than being hidden for lacking a value nobody asked about.
+  const provenanceFilterActive = filters.origins.length > 0
+    || filters.confidences.length > 0
+    || filters.resolutions.length > 0;
+  const provenanceMatches = !provenanceFilterActive
+    || attributedProvenance(provenanceBuckets).some((bucket) =>
+      (filters.origins.length === 0 || filters.origins.includes(bucket.origin))
+      && (filters.confidences.length === 0 || filters.confidences.includes(bucket.confidence))
+      && (filters.resolutions.length === 0 || filters.resolutions.includes(bucket.resolution)));
   const languages = edge.aggregateLanguages !== undefined && edge.aggregateLanguages.length > 0
     ? edge.aggregateLanguages : edge.language ? [edge.language] : [];
   const capabilities = edge.aggregateCapabilities !== undefined && edge.aggregateCapabilities.length > 0

@@ -1,4 +1,11 @@
-import { RELATIONS, type GraphEdge, type GraphNode, type Relation } from "@tadori/core";
+import {
+  RELATIONS,
+  type ExtractionCapability,
+  type GraphEdge,
+  type GraphNode,
+  type Relation
+} from "@tadori/core";
+import { CAPABILITY_BY_LANGUAGE, declaredPrimaryCapability } from "@tadori/indexer";
 import type { EventLog, RetrievalCallLog } from "./events.js";
 import {
   findSymbolInputSchema,
@@ -49,6 +56,8 @@ const CONTEXT_PAGE_SIZE = 100;
 const EDGE_RESULT_LIMIT = 200;
 const EVIDENCE_RESULT_LIMIT = 20;
 const PACKAGE_DEPENDENCY_LIMIT = 50;
+const DIAGNOSTIC_SAMPLE_LIMIT = 20;
+const CAPABILITY_ORDER: readonly ExtractionCapability[] = ["semantic", "structural", "repository"];
 
 function uniqueNodes(nodes: readonly GraphNode[]): GraphNode[] {
   return [...new Map(nodes.map((node) => [node.entityKey, node])).values()].sort((a, b) =>
@@ -603,6 +612,36 @@ export class TadoriTools {
         criticalContextPreserved: false
       });
     }
+    const languages = [...new Set(
+      this.service.graph.files.flatMap((file) => file.language === null ? [] : [file.language])
+    )].sort((left, right) => left.localeCompare(right)).map((id) => {
+      const files = this.service.graph.files.filter((file) => file.language === id);
+      const declaration = CAPABILITY_BY_LANGUAGE.get(id);
+      const capabilities = [...new Set(
+        this.service.graph.extractors
+          .filter((extractor) => extractor.languages.includes(id))
+          .map((extractor) => extractor.capability)
+      )].sort((left, right) => CAPABILITY_ORDER.indexOf(left) - CAPABILITY_ORDER.indexOf(right));
+      return {
+        id,
+        fileCount: files.length,
+        generatedFileCount: files.filter((file) => file.isGenerated).length,
+        declaredSupport: declaration === undefined
+          ? "repository-only" as const
+          : declaredPrimaryCapability(declaration),
+        capabilities
+      };
+    });
+    const diagnostics = this.service.graph.diagnostics;
+    if (diagnostics.length > DIAGNOSTIC_SAMPLE_LIMIT) {
+      aggregateOmissions.push({
+        category: "snapshot_diagnostics",
+        count: diagnostics.length - DIAGNOSTIC_SAMPLE_LIMIT,
+        reason: "overview_diagnostic_sample_limit",
+        continuation: "use GET /api/v1/analysis with diagnosticCursor",
+        criticalContextPreserved: false
+      });
+    }
     const output = repoOverviewOutputSchema.parse({
       context: this.context(),
       truncated: omissions.length > 0 || aggregateOmissions.length > 0,
@@ -617,6 +656,18 @@ export class TadoriTools {
         reason: "entry-point classification is not stored in the frozen snapshot schema"
       },
       directoryRoles: allDirectoryRoles.slice(0, OVERVIEW_RESULT_LIMIT),
+      languages,
+      extractors: this.service.graph.extractors,
+      diagnostics: {
+        total: diagnostics.length,
+        sample: diagnostics.slice(0, DIAGNOSTIC_SAMPLE_LIMIT),
+        omittedCount: Math.max(0, diagnostics.length - DIAGNOSTIC_SAMPLE_LIMIT),
+        bySeverity: {
+          info: diagnostics.filter((diagnostic) => diagnostic.severity === "info").length,
+          warning: diagnostics.filter((diagnostic) => diagnostic.severity === "warning").length,
+          error: diagnostics.filter((diagnostic) => diagnostic.severity === "error").length
+        }
+      },
       counts: {
         files: this.service.graph.files.length,
         nodes: this.service.graph.nodes.length,

@@ -38,6 +38,9 @@ export interface ServerPackageProjection {
   nodes: GraphNode[];
   edges: ProjectedPackageEdge[];
   representativeByEntityKey: ReadonlyMap<string, string>;
+  descendantPackageKeysByPackageKey: ReadonlyMap<string, ReadonlySet<string>>;
+  ambiguousEntityKeys: ReadonlySet<string>;
+  unownedEntityKeys: ReadonlySet<string>;
   aggregatesByPackageKey: ReadonlyMap<string, PackageNodeAggregates>;
   accounting: PackageProjectionAccounting;
 }
@@ -52,6 +55,21 @@ function readonlyMap<K, V>(source: Map<K, V>): ReadonlyMap<K, V> {
     forEach: (callback: (value: V, key: K, map: ReadonlyMap<K, V>) => void, thisArg?: unknown) => {
       const view = readonlyMap(source);
       source.forEach((value, key) => callback.call(thisArg, value, key, view));
+    },
+    entries: () => source.entries(),
+    keys: () => source.keys(),
+    values: () => source.values(),
+    [Symbol.iterator]: () => source[Symbol.iterator]()
+  });
+}
+
+function readonlySet<T>(source: Set<T>): ReadonlySet<T> {
+  return Object.freeze({
+    get size() { return source.size; },
+    has: (value: T) => source.has(value),
+    forEach: (callback: (value: T, value2: T, set: ReadonlySet<T>) => void, thisArg?: unknown) => {
+      const view = readonlySet(source);
+      source.forEach((value) => callback.call(thisArg, value, value, view));
     },
     entries: () => source.entries(),
     keys: () => source.keys(),
@@ -144,8 +162,21 @@ export function projectSnapshotPackages(graph: ProjectionGraph): ServerPackagePr
     ownedNodesByPackage.set(owner, bucket);
   }
   const aggregates = new Map<string, PackageNodeAggregates>();
+  const descendantPackageKeysByPackageKey = new Map<string, ReadonlySet<string>>();
   for (const packageNode of packages) {
-    const ownedNodes = ownedNodesByPackage.get(packageNode.entityKey) ?? [];
+    const includedPackages = new Set([packageNode.entityKey]);
+    const pendingPackages = [packageNode.entityKey];
+    for (let index = 0; index < pendingPackages.length; index += 1) {
+      const current = pendingPackages[index];
+      if (current === undefined) continue;
+      for (const child of children.get(current) ?? []) {
+        if (nodeByKey.get(child)?.kind !== "package" || includedPackages.has(child)) continue;
+        includedPackages.add(child);
+        pendingPackages.push(child);
+      }
+    }
+    descendantPackageKeysByPackageKey.set(packageNode.entityKey, readonlySet(includedPackages));
+    const ownedNodes = [...includedPackages].flatMap((key) => ownedNodesByPackage.get(key) ?? []);
     aggregates.set(packageNode.entityKey, {
       aggregateLanguages: [...new Set(ownedNodes.flatMap((node) => node.language ? [node.language] : []))].sort(),
       aggregateCapabilities: [...new Set(ownedNodes.flatMap((node) =>
@@ -190,6 +221,11 @@ export function projectSnapshotPackages(graph: ProjectionGraph): ServerPackagePr
   edges.sort((left, right) => left.entityKey.localeCompare(right.entityKey));
 
   const ownedOrAmbiguous = new Set([...owners.keys(), ...ambiguous]);
+  const unowned = new Set(
+    graph.nodes
+      .filter((node) => !ownedOrAmbiguous.has(node.entityKey))
+      .map((node) => node.entityKey)
+  );
   const unownedEntityCount = graph.nodes.reduce(
     (count, node) => count + (ownedOrAmbiguous.has(node.entityKey) ? 0 : 1),
     0
@@ -198,6 +234,9 @@ export function projectSnapshotPackages(graph: ProjectionGraph): ServerPackagePr
     nodes: Object.freeze(packages) as unknown as GraphNode[],
     edges: Object.freeze(edges) as unknown as ProjectedPackageEdge[],
     representativeByEntityKey: readonlyMap(owners),
+    descendantPackageKeysByPackageKey: readonlyMap(descendantPackageKeysByPackageKey),
+    ambiguousEntityKeys: readonlySet(ambiguous),
+    unownedEntityKeys: readonlySet(unowned),
     aggregatesByPackageKey: readonlyMap(aggregates),
     accounting: {
       candidateEdgeCount: graph.edges.length,

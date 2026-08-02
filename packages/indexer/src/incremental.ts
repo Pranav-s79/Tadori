@@ -20,6 +20,9 @@ import { mergeSnapshotRegion, UnsafeIncrementalMergeError } from "./merge.js";
 import { IncrementalProjectServices, type ProjectServices } from "./project.js";
 import type { ScannedFile } from "./scan.js";
 import { ANALYZER_VERSION } from "./version.js";
+import { snapshotDiagnostics } from "./diagnostics.js";
+import { buildSnapshotExtractorInventory } from "./extractorInventory.js";
+import { computeCoChangeEdges } from "./coChange.js";
 import {
   BatchedRepositoryWatcher,
   type RepositoryChange,
@@ -132,7 +135,9 @@ function graphFromStored(head: SnapshotHead, root: string, stored: ReturnType<ty
     files: stored.files,
     nodes: stored.nodes,
     edges: stored.edges,
-    extractors: stored.extractors
+    projects: stored.projects,
+    extractors: stored.extractors,
+    diagnostics: stored.diagnostics
   };
 }
 
@@ -151,13 +156,53 @@ function capturedTexts(root: string, capture: RepositoryCapture): Map<string, st
   );
 }
 
+function reconciledCoChangeEdges(
+  root: string,
+  nodes: SnapshotGraph["nodes"],
+  edges: SnapshotGraph["edges"]
+): SnapshotGraph["edges"] {
+  return [
+    ...edges.filter((edge) => edge.relation !== "changed_with"),
+    ...computeCoChangeEdges(
+      root,
+      nodes.filter((node) => node.kind === "file")
+    )
+  ].sort((left, right) => left.canonicalIdentity.localeCompare(right.canonicalIdentity));
+}
+
+function reconcileSnapshotCoChange(root: string, graph: SnapshotGraph): SnapshotGraph {
+  const edges = reconciledCoChangeEdges(root, graph.nodes, graph.edges);
+  const extractors = buildSnapshotExtractorInventory({
+    inventories: [graph.extractors],
+    nodes: graph.nodes,
+    edges,
+    files: graph.files,
+    projects: graph.projects,
+    diagnostics: graph.diagnostics
+  });
+  return { ...graph, edges, extractors };
+}
+
 function composeGraph(
   root: string,
   capture: RepositoryCapture,
   extracted: ExtractedGraph & { extractors?: SnapshotGraph["extractors"] },
   kind: RepoStateKind,
-  label: string | null
+  label: string | null,
+  includeCoChange = false
 ): SnapshotGraph {
+  const edges = includeCoChange
+    ? reconciledCoChangeEdges(root, extracted.nodes, extracted.edges)
+    : extracted.edges;
+  const diagnostics = snapshotDiagnostics(extracted.diagnostics, extracted.files, extracted.extractors);
+  const extractors = buildSnapshotExtractorInventory({
+    inventories: [extracted.extractors],
+    nodes: extracted.nodes,
+    edges,
+    files: extracted.files,
+    projects: extracted.projects,
+    diagnostics
+  });
   return {
     repoRootPath: path.resolve(root).split(path.sep).join("/"),
     kind,
@@ -167,8 +212,10 @@ function composeGraph(
     analyzerVersion: ANALYZER_VERSION,
     files: extracted.files,
     nodes: extracted.nodes,
-    edges: extracted.edges,
-    extractors: extracted.extractors
+    edges,
+    projects: extracted.projects,
+    extractors,
+    diagnostics
   };
 }
 
@@ -179,6 +226,24 @@ function manifestChanges(
   return sorted(
     new Set([...previous.keys(), ...current.keys()]).values()
   ).filter((file) => previous.get(file) !== current.get(file));
+}
+
+function mayChangeCrossLanguageBoundaries(
+  changedPaths: readonly string[],
+  before: RepositoryCapture,
+  after: RepositoryCapture
+): boolean {
+  const beforeFiles = filesByPath(before);
+  const afterFiles = filesByPath(after);
+  const indexedLanguages = new Set([
+    ...before.scan.indexedFiles.map((file) => file.language),
+    ...after.scan.indexedFiles.map((file) => file.language)
+  ]);
+  if (indexedLanguages.size <= 1) return false;
+  return changedPaths.some((file) => {
+    const language = afterFiles.get(file)?.language ?? beforeFiles.get(file)?.language;
+    return language === "typescript" || language === "javascript";
+  });
 }
 
 function filesByPath(capture: RepositoryCapture): Map<string, ScannedFile> {
@@ -263,9 +328,8 @@ export class IncrementalRepositoryIndexer {
       const initial = indexRepositoryIntoStore(this.db, this.root, {
         kind: this.kind,
         label: this.label,
-        // Co-change reflects committed history (stable between working-tree
-        // edits), so it is derived once at the initial full index; incremental
-        // re-extraction on file changes does not recompute it.
+        // Co-change reflects committed history. Regional refreshes retain it;
+        // complete refreshes recompute it against the current file-node set.
         extractCoChange: true
       });
       if (initial.activationId === null) {
@@ -549,11 +613,11 @@ export class IncrementalRepositoryIndexer {
     const capture = captureRepository(this.root);
     const changedPaths = this.baselineDoesNotMatchHead
       ? sorted([
-          ...capture.fileHashes.keys(),
+          ...capture.manifestHashes.keys(),
           ...this.graph.files.map((file) => file.normalizedPath)
         ])
-      : manifestChanges(this.baselineCapture.fileHashes, capture.fileHashes);
-    if (changedPaths.length === 0) {
+      : manifestChanges(this.baselineCapture.manifestHashes, capture.manifestHashes);
+    if (changedPaths.length === 0 && !this.baselineDoesNotMatchHead) {
       this.dirty.clear();
       this.affected.clear();
       this.phase = "idle";
@@ -604,11 +668,19 @@ export class IncrementalRepositoryIndexer {
     const regionalCandidates = changedPaths.filter(
       (file) => beforeFiles.get(file)?.indexed === true && afterFiles.get(file)?.indexed === true
     );
+    const changedSet = new Set(changedPaths);
+    const crossLanguageBoundaryChanged =
+      this.graph.edges.some((edge) =>
+        edge.provenance?.extractorId === "tadori-cross-language-boundaries" &&
+        edge.evidence.some((evidence) => changedSet.has(evidence.file))
+      ) ||
+      mayChangeCrossLanguageBoundaries(changedPaths, this.baselineCapture, capture);
     const fullRequired =
       this.baselineDoesNotMatchHead ||
       structuralHint ||
       rootsChanged ||
       configChanged ||
+      crossLanguageBoundaryChanged ||
       regionalCandidates.length !== changedPaths.length ||
       changedPaths.some((file) => {
         const language = afterFiles.get(file)?.language ?? beforeFiles.get(file)?.language;
@@ -633,9 +705,11 @@ export class IncrementalRepositoryIndexer {
             baseCommitSha: target.baseCommitSha,
             workspaceHash: target.workspaceHash,
             analyzerVersion: target.analyzerVersion,
-            extractors: target.extractors
+            extractors: target.extractors,
+            diagnostics: target.diagnostics
           }
         });
+        graph = reconcileSnapshotCoChange(this.root, graph);
         const region = new Set(affectedPaths);
         if (
           JSON.stringify(structuralSurface(this.graph, region)) !==
@@ -653,25 +727,29 @@ export class IncrementalRepositoryIndexer {
         // Every regional extraction/merge failure is intentionally converted
         // into a deterministic complete extraction.
         extracted = extractRepositoryGraph(this.root, capture, services);
-        graph = composeGraph(this.root, capture, extracted, this.kind, this.label);
+        graph = composeGraph(this.root, capture, extracted, this.kind, this.label, true);
         mode = "full";
         reason = `regional proof failed: ${error instanceof Error ? error.message : String(error)}`;
         affectedPaths = capture.scan.indexedFiles.map((file) => file.normalizedPath);
       }
     } else {
       extracted = extractRepositoryGraph(this.root, capture, services);
-      graph = composeGraph(this.root, capture, extracted, this.kind, this.label);
+      graph = composeGraph(this.root, capture, extracted, this.kind, this.label, true);
       mode = "full";
       affectedPaths = capture.scan.indexedFiles.map((file) => file.normalizedPath);
-      reason = rootsChanged
-        ? "file addition, deletion, or move requires full extraction"
-        : this.baselineDoesNotMatchHead
-          ? (this.baselineMismatchReason ?? "served head requires full reconciliation")
-        : configChanged
-          ? "configuration or support-file change requires full extraction"
-          : structuralHint
-            ? "rename/rescan hint requires full extraction"
-            : "dependency region could not be proven complete";
+      if (rootsChanged) {
+        reason = "file addition, deletion, or move requires full extraction";
+      } else if (this.baselineDoesNotMatchHead) {
+        reason = this.baselineMismatchReason ?? "served head requires full reconciliation";
+      } else if (configChanged) {
+        reason = "configuration or support-file change requires full extraction";
+      } else if (crossLanguageBoundaryChanged) {
+        reason = "cross-language boundary evidence change requires full extraction";
+      } else if (structuralHint) {
+        reason = "rename/rescan hint requires full extraction";
+      } else {
+        reason = "dependency region could not be proven complete";
+      }
     }
     return {
       graph,

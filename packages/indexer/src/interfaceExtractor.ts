@@ -39,6 +39,7 @@ interface ExtractionState {
   edges: Map<string, AttributedGraphEdge>;
   fileNodes: Map<string, AttributedGraphNode>;
   capturedPaths: Set<string>;
+  languageByPath: Map<string, LanguageId>;
   diagnostics: ExtractorResult["diagnostics"];
 }
 
@@ -248,6 +249,21 @@ function addExplicitReference(
   }
   const normalized = normalizeExplicitPath(file, raw);
   if (normalized !== null && state.capturedPaths.has(normalized)) {
+    const targetLanguage = state.languageByPath.get(normalized);
+    if (language === "markdown" && targetLanguage !== undefined && targetLanguage !== language) {
+      const crossLanguageReason = "markdown-link-is-documentation-not-integration-evidence";
+      const target = unresolvedNode(state, language, file, raw, line, crossLanguageReason);
+      addEdge(state, makeEdge(
+        language,
+        source.entityKey,
+        relation,
+        target.entityKey,
+        evidence,
+        "unresolved",
+        crossLanguageReason
+      ));
+      return;
+    }
     const targetKey = entityKey(nodeCanonicalIdentity("file", normalized));
     addEdge(state, makeEdge(language, source.entityKey, relation, targetKey, evidence));
     return;
@@ -512,6 +528,9 @@ export const interfaceExtractor: RepositoryExtractor = {
       // available to project discovery, but references to them must stay
       // unresolved instead of fabricating an endpoint absent from the graph.
       capturedPaths: new Set(context.capture.scan.indexedFiles.map((file) => file.normalizedPath)),
+      languageByPath: new Map(
+        context.capture.scan.indexedFiles.map((file) => [file.normalizedPath, file.language])
+      ),
       diagnostics: []
     };
     const extractableFiles = [

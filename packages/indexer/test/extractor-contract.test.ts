@@ -119,4 +119,27 @@ describe("extractor result assertions", () => {
       })]
     }))).toThrow(/unresolved reason/);
   });
+
+  it("validates diagnostic provenance, language, code, and line ranges", () => {
+    const diagnostic = {
+      code: "structural-parse-failed",
+      severity: "error" as const,
+      message: "Parser failed",
+      file: "src/main.py",
+      language: "python" as const,
+      extractorId: "tree-sitter",
+      lineStart: 1,
+      lineEnd: 1
+    };
+    expect(() => assertExtractorResult(result({ diagnostics: [diagnostic] }))).not.toThrow();
+    expect(() => assertExtractorResult(result({
+      diagnostics: [{ ...diagnostic, extractorId: "other" }]
+    }))).toThrow(/mismatched extractor provenance/);
+    expect(() => assertExtractorResult(result({
+      diagnostics: [{ ...diagnostic, code: "Bad code" }]
+    }))).toThrow(/invalid diagnostic code/);
+    expect(() => assertExtractorResult(result({
+      diagnostics: [{ ...diagnostic, lineEnd: undefined }]
+    }))).toThrow(/incomplete line range/);
+  });
 });

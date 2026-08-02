@@ -11,6 +11,7 @@ export * from "./diffWorkingTree.js";
 export * from "./captureStagedTree.js";
 export * from "./extractorContract.js";
 export * from "./languageRegistry.js";
+export * from "./capabilities.js";
 export * from "./typescriptExtractor.js";
 export * from "./treeSitterRuntime.js";
 export * from "./structuralExtractor.js";

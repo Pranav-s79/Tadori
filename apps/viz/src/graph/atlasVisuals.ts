@@ -7,6 +7,7 @@ import type {
   Resolution
 } from "../api/types.ts";
 import type { AggregatedProvenance } from "../api/types.ts";
+import { attributedProvenance } from "../api/types.ts";
 import { edgeVisualStyle } from "../legend.ts";
 
 export type AtlasNodeShape =
@@ -34,6 +35,7 @@ export interface AtlasNodeVisual {
   size: number;
   formLabel: string;
   capabilityLabel: string;
+  materialLabel: string;
 }
 
 export interface AtlasEdgeVisual {
@@ -72,6 +74,14 @@ const CAPABILITY_LABELS: Readonly<Record<AtlasCapability, string>> = {
   repository: "repository only",
   mixed: "mixed capability",
   unknown: "capability not attributed"
+};
+
+const MATERIAL_LABELS: Readonly<Record<AtlasCapability, string>> = {
+  semantic: "restored ochre stone",
+  structural: "open-course green-grey stone",
+  repository: "foundation-course gold stone",
+  mixed: "mixed-capability violet-grey stone",
+  unknown: "partially buried neutral stone"
 };
 
 export function atlasShapeForKind(kind: NodeKind): AtlasNodeShape {
@@ -123,7 +133,8 @@ export function atlasNodeVisual(
     color: selected ? "#315f8c" : CAPABILITY_COLORS[capability],
     size: atlasNodeSize(node.kind, node.fanIn, selected),
     formLabel: SHAPE_LABELS[shape],
-    capabilityLabel: CAPABILITY_LABELS[capability]
+    capabilityLabel: CAPABILITY_LABELS[capability],
+    materialLabel: MATERIAL_LABELS[capability]
   };
 }
 
@@ -135,11 +146,14 @@ export function atlasEdgeVisual(
     aggregateProvenance?: readonly AggregatedProvenance[];
   }
 ): AtlasEdgeVisual {
-  const buckets = edge.aggregateProvenance !== undefined && edge.aggregateProvenance.length > 0
-    ? edge.aggregateProvenance : (edge.origin !== undefined
-    && edge.confidence !== undefined && edge.resolution !== undefined
-    ? [{ origin: edge.origin, confidence: edge.confidence, resolution: edge.resolution, count: 1 }]
-    : []);
+  const buckets = attributedProvenance(
+    edge.aggregateProvenance !== undefined && edge.aggregateProvenance.length > 0
+      ? edge.aggregateProvenance
+      : (edge.origin !== undefined
+        && edge.confidence !== undefined && edge.resolution !== undefined
+        ? [{ origin: edge.origin, confidence: edge.confidence, resolution: edge.resolution, count: 1 }]
+        : [])
+  );
   if (buckets.length === 0) {
     return { type: "dotted", color: "#9a968c", size: 1.25, provenanceLabel: "provenance not attributed" };
   }

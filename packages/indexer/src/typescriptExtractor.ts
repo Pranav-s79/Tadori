@@ -8,9 +8,36 @@ import type {
 import type { ExtractedGraph } from "./extract.js";
 import type { ScanResult } from "./scan.js";
 import { provenance } from "./extractorContract.js";
+import { LANGUAGE_BY_ID } from "./languageRegistry.js";
+import {
+  MARKDOWN_NON_INTEGRATION_NODE_PREFIX,
+  MARKDOWN_NON_INTEGRATION_REASON
+} from "./semantics.js";
 
 export const TYPESCRIPT_EXTRACTOR_ID = "tadori-typescript";
 export const TYPESCRIPT_EXTRACTOR_VERSION = "1";
+const REPOSITORY_EXTRACTOR_ID = "tadori-repository";
+const REPOSITORY_EXTRACTOR_VERSION = "1";
+function requireMarkdownRegistration(): NonNullable<ReturnType<typeof LANGUAGE_BY_ID.get>> {
+  const registration = LANGUAGE_BY_ID.get("markdown");
+  if (registration === undefined) {
+    throw new Error("The canonical language registry is missing Markdown");
+  }
+  return registration;
+}
+const MARKDOWN_REGISTRATION = requireMarkdownRegistration();
+
+function strongerCapability(
+  left: ExtractionCapability | undefined,
+  right: ExtractionCapability
+): ExtractionCapability {
+  const rank: Record<ExtractionCapability, number> = {
+    repository: 0,
+    structural: 1,
+    semantic: 2
+  };
+  return left === undefined || rank[right] > rank[left] ? right : left;
+}
 
 function nodeLanguage(node: GraphNode, languageByFile: ReadonlyMap<string, string>): string | null {
   if (node.file !== null) return languageByFile.get(node.file) ?? null;
@@ -24,20 +51,22 @@ function nodeAttribution(node: GraphNode, language: string | null): {
   capability: ExtractionCapability;
   derivation: ExtractionDerivation;
 } {
-  if (language === "markdown") {
-    return {
-      extractorId: "tadori-markdown",
-      extractorVersion: "1",
-      capability: "repository",
-      derivation: node.kind === "adr" || node.kind === "doc_section" ? "convention-derived" : "repository-derived"
-    };
-  }
   if (node.kind === "package" || node.kind === "file" || node.kind === "external_dep") {
     return {
-      extractorId: "tadori-repository",
-      extractorVersion: "1",
+      extractorId: REPOSITORY_EXTRACTOR_ID,
+      extractorVersion: REPOSITORY_EXTRACTOR_VERSION,
       capability: "repository",
       derivation: "repository-derived"
+    };
+  }
+  if (language === "markdown") {
+    return {
+      extractorId: MARKDOWN_REGISTRATION.extractorId,
+      extractorVersion: MARKDOWN_REGISTRATION.extractorVersion,
+      capability: MARKDOWN_REGISTRATION.capability,
+      derivation: node.kind === "adr" || node.kind === "doc_section" || node.kind === "unresolved"
+        ? "convention-derived"
+        : "repository-derived"
     };
   }
   if (node.kind === "route" || node.kind === "test") {
@@ -82,9 +111,11 @@ export function attributeTypeScriptExtraction(
     languageByNodeKey.set(node.entityKey, language);
     const attribution = nodeAttribution(node, language);
     const unresolvedReason = node.kind === "unresolved"
-      ? node.displayName.includes("[")
-        ? "dynamic-property-call"
-        : "TypeScript could not prove a unique target"
+      ? node.qualifiedName.includes(`::${MARKDOWN_NON_INTEGRATION_NODE_PREFIX}`)
+        ? MARKDOWN_NON_INTEGRATION_REASON
+        : node.displayName.includes("[")
+          ? "dynamic-property-call"
+          : "TypeScript could not prove a unique target"
       : null;
     if (unresolvedReason !== null) unresolvedReasonByNodeKey.set(node.entityKey, unresolvedReason);
     return {
@@ -99,16 +130,51 @@ export function attributeTypeScriptExtraction(
       )
     };
   });
+  const nodeByKey = new Map(nodes.map((node) => [node.entityKey, node]));
   const edges = extracted.edges.map((edge): GraphEdge => {
-    const language = languageByNodeKey.get(edge.srcEntityKey) ?? null;
-    const derivation = edgeDerivation(edge);
+    const source = nodeByKey.get(edge.srcEntityKey);
+    const target = nodeByKey.get(edge.dstEntityKey);
+    // The legacy extractor creates the repository package and its file
+    // membership before semantic analysis. Its frozen edge origin remains
+    // byte-compatible, but the additive attribution must describe the actual
+    // repository-level producer instead of converting that origin into a
+    // TypeScript compiler claim. Package nodes are language-neutral, so the
+    // containment edge inherits the contained file's language.
+    const isRepositoryFileContainment =
+      edge.relation === "contains" && source?.kind === "package" && target?.kind === "file";
+    const language = isRepositoryFileContainment
+      ? target.language ?? null
+      : languageByNodeKey.get(edge.srcEntityKey) ?? null;
+    const isMarkdownConvention = !isRepositoryFileContainment && language === "markdown";
+    const derivation = isRepositoryFileContainment
+      ? "repository-derived"
+      : isMarkdownConvention
+        ? "convention-derived"
+        : edgeDerivation(edge);
+    const extractorId = isRepositoryFileContainment || derivation === "repository-derived"
+      ? REPOSITORY_EXTRACTOR_ID
+      : isMarkdownConvention
+        ? MARKDOWN_REGISTRATION.extractorId
+        : TYPESCRIPT_EXTRACTOR_ID;
+    const extractorVersion = extractorId === REPOSITORY_EXTRACTOR_ID
+      ? REPOSITORY_EXTRACTOR_VERSION
+      : isMarkdownConvention
+        ? MARKDOWN_REGISTRATION.extractorVersion
+        : TYPESCRIPT_EXTRACTOR_VERSION;
+    const capability = isMarkdownConvention
+      ? MARKDOWN_REGISTRATION.capability
+      : derivation === "compiler-resolved"
+        ? "semantic"
+        : derivation === "repository-derived"
+          ? "repository"
+          : "structural";
     return {
       ...edge,
       language,
       provenance: provenance(
-        derivation === "repository-derived" ? "tadori-repository" : TYPESCRIPT_EXTRACTOR_ID,
-        "1",
-        derivation === "compiler-resolved" ? "semantic" : derivation === "repository-derived" ? "repository" : "structural",
+        extractorId,
+        extractorVersion,
+        capability,
         derivation,
         edge.resolution === "unresolved"
           ? unresolvedReasonByNodeKey.get(edge.dstEntityKey) ?? "TypeScript could not prove a unique target"
@@ -117,16 +183,19 @@ export function attributeTypeScriptExtraction(
     };
   });
   const inventory = new Map<string, SnapshotExtractor>();
-  for (const node of nodes) {
-    if (!node.provenance) continue;
-    const key = `${node.provenance.extractorId}\0${node.provenance.extractorVersion}`;
+  // Inventory covers every attributed item. Some repository languages (for
+  // example Markdown) have nodes owned by a specialized adapter while their
+  // package membership is correctly owned by the repository layer.
+  for (const item of [...nodes, ...edges]) {
+    if (!item.provenance) continue;
+    const key = `${item.provenance.extractorId}\0${item.provenance.extractorVersion}`;
     const existing = inventory.get(key);
     const languages = new Set(existing?.languages ?? []);
-    if (node.language) languages.add(node.language);
+    if (item.language) languages.add(item.language);
     inventory.set(key, {
-      id: node.provenance.extractorId,
-      version: node.provenance.extractorVersion,
-      capability: node.provenance.capability,
+      id: item.provenance.extractorId,
+      version: item.provenance.extractorVersion,
+      capability: strongerCapability(existing?.capability, item.provenance.capability),
       languages: [...languages].sort()
     });
   }

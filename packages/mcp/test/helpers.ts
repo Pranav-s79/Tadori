@@ -97,6 +97,8 @@ export function makeGraph(
     analyzerVersion: ANALYZER_VERSION,
     files,
     nodes,
-    edges
+    edges,
+    projects: [],
+    diagnostics: []
   };
 }

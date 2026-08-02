@@ -74,7 +74,9 @@ describe("server package projection", () => {
       analyzerVersion: "test",
       files: [],
       nodes: [packageA, packageB, fileA, fileB, shared, external],
-      edges: [containsA, containsB, sharedA, sharedB, cross, unowned]
+      edges: [containsA, containsB, sharedA, sharedB, cross, unowned],
+      projects: [],
+      diagnostics: []
     };
 
     const server = projectSnapshotPackages(graph);
@@ -144,7 +146,9 @@ describe("server package projection", () => {
         edge(repositoryPackage, "contains", protoFile),
         edge(protoFile, "contains", protoPackage),
         edge(protoPackage, "contains", message)
-      ]
+      ],
+      projects: [],
+      diagnostics: []
     };
 
     const projection = projectSnapshotPackages(graph);

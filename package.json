@@ -18,6 +18,8 @@
   "scripts": {
     "skills:sync": "node scripts/sync-skills.mjs",
     "skills:check": "node scripts/check-skills.mjs",
+    "gate": "node scripts/gate.mjs",
+    "gate:fast": "node scripts/gate.mjs --fast",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "pnpm --filter @tadori/viz build && vitest run --exclude=packages/cli/test/**/*.test.ts && vitest run packages/cli/test --pool=forks --minWorkers=1 --maxWorkers=1 --no-file-parallelism && pnpm --filter @tadori/viz test",
@@ -32,6 +34,7 @@
     "benchmark:serve:coldstart": "tsx scripts/benchmark-serve-coldstart.mts",
     "benchmark:serve:positions": "tsx scripts/benchmark-serve-positions-identity.mts",
     "benchmark:serve:memory": "tsx scripts/benchmark-serve-memory.mts",
+    "external:validate": "tsx packages/bench/src/cli-external.ts",
     "verify:viz:e2e": "pnpm --filter @tadori/viz build && tsx scripts/verify-viz-e2e.mts",
     "tadori": "tsx scripts/tadori.mts"
   },

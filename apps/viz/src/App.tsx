@@ -1,4 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
+import { AnalysisPanel, diagnosticSeveritySummary } from "./features/analysis/AnalysisPanel.tsx";
+import { useAnalysis } from "./hooks/useAnalysis.ts";
+import { CapabilityPanel } from "./features/analysis/CapabilityPanel.tsx";
+import { useCapabilities } from "./hooks/useCapabilities.ts";
+import { OverviewPanel } from "./features/overview/OverviewPanel.tsx";
+import { InterviewPanel } from "./features/interview/InterviewPanel.tsx";
 import { BoundaryBadgeOverlay } from "./features/boundaries/BoundaryBadgeOverlay.tsx";
 import { useBoundaries } from "./features/boundaries/useBoundaries.ts";
 import { InspectionPanel } from "./features/inspect/InspectionPanel.tsx";
@@ -15,13 +21,19 @@ import { fetchSearch } from "./features/search/searchApi.ts";
 import { defaultFilters, type SearchFilters } from "./features/search/filterState.ts";
 import { PackageMapCanvas, type RenderedGraphSnapshot, type StoryMapEmphasis, type ViewportPosition } from "./graph/PackageMapCanvas.tsx";
 import { usePackageGraph } from "./hooks/usePackageGraph.ts";
+import { useRegions } from "./hooks/useRegions.ts";
+import { useRoutes } from "./hooks/useRoutes.ts";
+import { useCoupling } from "./hooks/useCoupling.ts";
 import { useRefreshStatus } from "./hooks/useRefreshStatus.ts";
 import { useSnapshot } from "./hooks/useSnapshot.ts";
 import { ProvenanceLegend } from "./legend/ProvenanceLegend.tsx";
 import { ModeTabs, type WorkspaceMode } from "./shell/ModeTabs.tsx";
+import { SpatialProjectionToggle, type SpatialProjection } from "./shell/SpatialProjectionToggle.tsx";
 import { LensButton } from "./shell/LensButton.tsx";
 import { useNavigationFocus } from "./shell/useNavigationFocus.ts";
+import { readUrlState, writeUrlState, type UrlState } from "./shell/urlState.ts";
 import { LoadingState, RefreshingBanner, StaleState } from "./states/EmptyLoadingStale.tsx";
+import { ReliefStage } from "./graph/relief/ReliefStage.tsx";
 
 interface LensState {
   boundaries: boolean;
@@ -38,6 +50,7 @@ const DEFAULT_LENSES: LensState = {
 };
 
 const NAVIGATION_DRAWER_QUERY = "(max-width: 860px)";
+const FORCED_COLORS_QUERY = "(forced-colors: active)";
 const EMPTY_VIEWPORT_POSITIONS: ReadonlyMap<string, ViewportPosition> = new Map();
 
 function currentNavigationDrawerMode(): boolean {
@@ -55,6 +68,19 @@ function useNavigationDrawerMode(): boolean {
     return () => query.removeEventListener("change", onChange);
   }, []);
   return drawerMode;
+}
+
+function useForcedColors(): boolean {
+  const [active, setActive] = useState(() => window.matchMedia?.(FORCED_COLORS_QUERY).matches ?? false);
+  useEffect(() => {
+    const query = window.matchMedia?.(FORCED_COLORS_QUERY);
+    if (query === undefined) return;
+    const onChange = (event: MediaQueryListEvent): void => setActive(event.matches);
+    setActive(query.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  return active;
 }
 
 function wsUrl(): string {
@@ -110,18 +136,43 @@ export function mapStoryPlaybackToGraph(
 export function App(): ReactElement {
   const { snapshot, loading: snapshotLoading } = useSnapshot();
   const { data, loading: graphLoading, error: graphError, refetch: refetchGraph } = usePackageGraph();
+  const regions = useRegions();
+  const routes = useRoutes();
+  const coupling = useCoupling();
+  /** Entity the reader asked to focus that the current map view cannot show. */
+  const [focusUnavailable, setFocusUnavailable] = useState<string | null>(null);
   const inspection = useInspectionStore();
   const reviewStore = useReviewDiffStore();
   const boundaries = useBoundaries();
+  const analysis = useAnalysis();
+  const capabilities = useCapabilities();
   const navigationDrawerMode = useNavigationDrawerMode();
-  const [mode, setMode] = useState<WorkspaceMode>("atlas");
-  const [rendererError, setRendererError] = useState(false);
-  const [lenses, setLenses] = useState<LensState>(() => ({
-    ...DEFAULT_LENSES,
-    boundaries: !currentNavigationDrawerMode()
+  const forcedColorsActive = useForcedColors();
+  // The address bar is the session's memory: a reload or a shared link reopens
+  // the same reading. Defaults are captured once so the writer can omit them and
+  // an untouched session keeps a clean URL.
+  const [defaultUrlState] = useState<UrlState>(() => ({
+    // Overview is the landing mode: a reader meeting an unfamiliar repository
+    // should get oriented before being handed a graph.
+    mode: "overview",
+    projection: "plan",
+    lenses: { ...DEFAULT_LENSES, boundaries: !currentNavigationDrawerMode() },
+    storyEntityKey: null,
+    selectedEntityKey: null
   }));
+  const [initialUrlState] = useState<UrlState>(
+    () => readUrlState(window.location.search, defaultUrlState)
+  );
+  const [mode, setMode] = useState<WorkspaceMode>(initialUrlState.mode);
+  const [spatialProjection, setSpatialProjection] = useState<SpatialProjection>(
+    initialUrlState.projection
+  );
+  const [rendererError, setRendererError] = useState(false);
+  const [lenses, setLenses] = useState<LensState>(initialUrlState.lenses);
   const [navigationOpen, setNavigationOpen] = useState(() => !currentNavigationDrawerMode());
-  const [storyEntityKey, setStoryEntityKey] = useState<string | null>(null);
+  const [storyEntityKey, setStoryEntityKey] = useState<string | null>(
+    initialUrlState.storyEntityKey
+  );
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(defaultFilters);
   const [focusRequest, setFocusRequest] = useState<{ entityKey: string; requestId: number } | null>(null);
   const [renderedGraph, setRenderedGraph] = useState<RenderedGraphSnapshot | null>(null);
@@ -133,6 +184,46 @@ export function App(): ReactElement {
   useEffect(() => {
     setNavigationOpen(!navigationDrawerMode);
   }, [navigationDrawerMode]);
+
+  useEffect(() => {
+    if (forcedColorsActive) setMode("table");
+  }, [forcedColorsActive]);
+
+  const inspectionOpenEntity = inspection.openEntity;
+  // A `select=` link names an entity; the entity endpoint decides whether it
+  // still exists, not the rendered graph. The rendered graph is level-of-detail
+  // bounded — the landing view holds a single repository node — so gating the
+  // restore on it silently dropped every link to a route, file or symbol. The
+  // consumers resolve the key and say plainly when it cannot be found.
+  useEffect(() => {
+    const linked = initialUrlState.selectedEntityKey;
+    if (linked === null) return;
+    inspectionOpenEntity({ entityKey: linked, entityType: "node" });
+  }, [initialUrlState.selectedEntityKey, inspectionOpenEntity]);
+
+  const inspectedEntityKey = inspection.current?.entityKey ?? null;
+  // Asked of the snapshot, not the rendered graph: the landing view holds one
+  // repository node, so testing the rendered set would deny a behavior trace to
+  // every route until the reader happened to descend to it.
+  const inspectedIsRoute = useMemo(
+    () => routes.status === "ready" && inspectedEntityKey !== null
+      && routes.routes.some(({ node }) => node.entityKey === inspectedEntityKey),
+    [routes, inspectedEntityKey]
+  );
+  useEffect(() => {
+    const query = writeUrlState({
+      mode,
+      projection: spatialProjection,
+      lenses,
+      storyEntityKey,
+      selectedEntityKey: inspectedEntityKey
+    }, defaultUrlState);
+    const { pathname, search, hash } = window.location;
+    if (query === search) return;
+    // replaceState, not pushState: these are view adjustments within one page,
+    // so Back should leave the app rather than rewind lens toggles one by one.
+    window.history.replaceState(null, "", `${pathname}${query}${hash}`);
+  }, [mode, spatialProjection, lenses, storyEntityKey, inspectedEntityKey, defaultUrlState]);
 
   const openInspectionPanel = useCallback(
     (entityKey: string) => inspection.openEntity({ entityKey, entityType: "node" }),
@@ -148,9 +239,19 @@ export function App(): ReactElement {
     return true;
   }, [inspection]);
 
+  // The camera can only reach what the map is drawing, and the map is
+  // level-of-detail bounded. A search hit or an Overview entry point usually
+  // names something deeper than the current view, so this used to return
+  // silently and the reader watched nothing happen. The entity is real and its
+  // details are open in the inspector; only the camera move is impossible, and
+  // that is what we say.
   const focusEntity = useCallback((entityKey: string) => {
     const representative = data?.representativeByEntityKey.get(entityKey);
-    if (representative === undefined) return;
+    if (representative === undefined) {
+      setFocusUnavailable(entityKey);
+      return;
+    }
+    setFocusUnavailable(null);
     setFocusRequest((current) => ({ entityKey: representative, requestId: (current?.requestId ?? 0) + 1 }));
     setMode("atlas");
   }, [data?.representativeByEntityKey]);
@@ -168,14 +269,28 @@ export function App(): ReactElement {
   }, []);
 
   const refetchBoundaries = boundaries.refetch;
+  const refetchRegions = regions.refetch;
+  const refetchAnalysis = analysis.refetch;
+  // Absent data is never a clean bill of health: unavailable, still loading and
+  // "genuinely zero diagnostics" are three distinct states and must read as
+  // three distinct sentences.
+  const diagnosticsSummary = analysis.error !== null
+    ? "Extraction diagnostics unavailable"
+    : analysis.data === null
+      ? "Loading extraction diagnostics…"
+      : diagnosticSeveritySummary(analysis.data.diagnostics.bySeverity) === null
+        ? "No extraction diagnostics"
+        : `Extraction diagnostics: ${String(diagnosticSeveritySummary(analysis.data.diagnostics.bySeverity))}`;
   const storyMapEmphasis = useMemo(
-    () => mapStoryPlaybackToGraph(mode === "story" ? storyPlayback : null, data?.representativeByEntityKey ?? new Map()),
-    [data?.representativeByEntityKey, mode, storyPlayback]
+    () => mapStoryPlaybackToGraph(storyPlayback, data?.representativeByEntityKey ?? new Map()),
+    [data?.representativeByEntityKey, storyPlayback]
   );
   const onReconnected = useCallback(() => {
     refetchGraph();
     refetchBoundaries();
-  }, [refetchGraph, refetchBoundaries]);
+    refetchRegions();
+    refetchAnalysis();
+  }, [refetchGraph, refetchBoundaries, refetchRegions, refetchAnalysis]);
   const refreshStatus = useRefreshStatus(wsUrl(), onReconnected);
 
   if ((snapshotLoading && snapshot === null) || (graphLoading && data === null)) {
@@ -189,7 +304,8 @@ export function App(): ReactElement {
       positions={data.positions}
       filters={searchFilters}
       focusRequest={focusRequest}
-      active={mode !== "table"}
+      active={mode !== "table" && mode !== "overview" && mode !== "interview"
+        && spatialProjection === "plan"}
       onRendererError={() => {
         setRendererError(true);
         setMode("table");
@@ -197,7 +313,7 @@ export function App(): ReactElement {
       onInspect={openInspectionPanel}
       onRenderedGraphChange={setRenderedGraph}
       onViewportPositionsChange={setViewportPositions}
-      storyEmphasis={storyMapEmphasis}
+      storyEmphasis={mode === "story" ? storyMapEmphasis : null}
     />
   );
   const isRefreshing = refreshStatus?.phase === "refreshing";
@@ -220,10 +336,27 @@ export function App(): ReactElement {
           <p>{graphError.message}</p>
           <button type="button" onClick={refetchGraph}>Retry graph</button>
         </div>
-      ) : isRefreshing ? (
-        <RefreshingBanner>{graphView}</RefreshingBanner>
       ) : (
-        graphView
+        <>
+          <div className="atlas-plan-layer" hidden={spatialProjection !== "plan"}>
+            {isRefreshing ? <RefreshingBanner>{graphView}</RefreshingBanner> : graphView}
+          </div>
+          {spatialProjection === "relief" && renderedGraph !== null && (
+            <ReliefStage
+              graph={renderedGraph}
+              regions={regions.data}
+              regionsLoading={regions.loading}
+              regionsError={regions.error}
+              filters={searchFilters}
+              storyEmphasis={mode === "story" ? storyMapEmphasis : null}
+              onInspect={openInspectionPanel}
+              onViewportPositionsChange={setViewportPositions}
+            />
+          )}
+          {spatialProjection === "relief" && renderedGraph === null && (
+            <p className="bounded-notice" role="status">Preparing the graph-backed relief…</p>
+          )}
+        </>
       )}
       {showChanges && (
         <DiffBadgeOverlay page={reviewStore.page} positions={viewportPositions} onInspect={openInspectionPanel} />
@@ -261,6 +394,9 @@ export function App(): ReactElement {
           <span className={`freshness freshness-${snapshot?.freshness ?? "unknown"}`}>
             {snapshot?.freshness ?? "unknown"}
           </span>
+          <span className="atlas-diagnostics-summary" role="status" aria-live="polite">
+            {diagnosticsSummary}
+          </span>
         </div>
         <button
           ref={navigationFocus.toggleRef}
@@ -275,6 +411,7 @@ export function App(): ReactElement {
         <ModeTabs
           active={mode}
           onChange={(nextMode) => {
+            if (forcedColorsActive && nextMode !== "table") return;
             if (nextMode !== "table") setRendererError(false);
             setMode(nextMode);
           }}
@@ -310,14 +447,52 @@ export function App(): ReactElement {
             <summary>Explore evidence</summary>
             <ExploreTabs onInspect={openInspectionPanel} onShowStory={openStory} />
           </details>
+          <details className="navigation-section">
+            <summary>Analysis and diagnostics</summary>
+            <AnalysisPanel analysis={analysis} />
+          </details>
+          <details className="navigation-section">
+            <summary>Declared language support</summary>
+            <CapabilityPanel
+              capabilities={capabilities}
+              observedLanguageIds={(analysis.data?.languages ?? []).map((language) => language.id)}
+            />
+          </details>
           {lenses.observations && <ObservationOverlayBadges onInspectFile={inspectObservationFile} />}
         </aside>
 
         <main id="workspace-stage" className="atlas-main" tabIndex={-1}>
-          <div className="atlas-context-bar" role="status" aria-live="polite" aria-atomic="true">
-            <span>{mode === "atlas" ? "Repository map" : mode === "story" ? "Static behavior" : mode === "changes" ? "Change review" : "Structured graph"}</span>
-            <span>{data === null ? "Graph unavailable" : `Showing ${visibleNodeCount} nodes and ${visibleEdgeCount} relations`}</span>
+          <div className="atlas-context-bar">
+            <span>{
+              mode === "overview" ? "Repository overview"
+                : mode === "interview" ? "Interview preparation"
+                : mode === "atlas" ? (spatialProjection === "relief" ? "Repository relief" : "Repository map")
+                : mode === "story" ? "Static behavior"
+                : mode === "changes" ? "Change review"
+                : "Structured graph"
+            }</span>
+            {mode !== "table" && <SpatialProjectionToggle active={spatialProjection} onChange={setSpatialProjection} />}
+            <nav aria-label="Atlas location">
+              <ol>
+                {(renderedGraph?.breadcrumb ?? ["Repository"]).map((label, index, labels) => (
+                  <li key={`${index}:${label}`} aria-current={index === labels.length - 1 ? "location" : undefined}>{label}</li>
+                ))}
+              </ol>
+            </nav>
+            <span>{`${renderedGraph?.lodLevel ?? "repository"} level`}</span>
+            <span role="status" aria-live="polite" aria-atomic="true">{data === null ? "Graph unavailable" : `Showing ${visibleNodeCount} nodes and ${visibleEdgeCount} relations`}</span>
           </div>
+
+          {focusUnavailable !== null && (
+            <p className="focus-unavailable-notice" role="status" aria-live="polite">
+              That entity is not shown at this level, so the map cannot move to
+              it. Its details are open in the inspector. Expand a package to
+              descend toward it.
+              <button type="button" onClick={() => { setFocusUnavailable(null); }}>
+                Dismiss
+              </button>
+            </p>
+          )}
 
           <section
             id="workspace-mode-panel"
@@ -325,9 +500,33 @@ export function App(): ReactElement {
             role="tabpanel"
             aria-labelledby={`mode-tab-${mode}`}
           >
+            {mode === "overview" && (
+              <OverviewPanel
+                context={snapshot}
+                analysis={analysis.data}
+                regions={regions.data}
+                capabilities={capabilities.data}
+                routes={routes}
+                coupling={coupling}
+                loading={analysis.loading}
+                error={graphError}
+                onSelectEntity={(entityKey) => {
+                  openInspectionPanel(entityKey);
+                  focusEntity(entityKey);
+                }}
+              />
+            )}
+            {mode === "interview" && (
+              <InterviewPanel
+                subjectEntityKey={inspectedEntityKey}
+                routes={routes}
+                analysis={analysis.data}
+                onSelectEntity={openInspectionPanel}
+              />
+            )}
             <div
               className={`spatial-workspace spatial-workspace-${mode}`}
-              hidden={mode === "table"}
+              hidden={mode === "table" || mode === "overview" || mode === "interview"}
             >
               {mapSurface}
               {mode === "story" && (
@@ -336,7 +535,9 @@ export function App(): ReactElement {
                   entityKey={storyEntityKey}
                   repoRoot={snapshot?.repository ?? null}
                   onInspect={openInspectionPanel}
-                  onPlaybackChange={setStoryPlayback}
+                  onPlaybackChange={(playback) => {
+                    if (playback !== null) setStoryPlayback(playback);
+                  }}
                   onClose={() => {
                     setStoryPlayback(null);
                     setStoryEntityKey(null);
@@ -360,6 +561,11 @@ export function App(): ReactElement {
             </div>
             {mode === "table" && data !== null && (
               <>
+                {forcedColorsActive && (
+                  <p className="bounded-notice" role="alert">
+                    Forced-colors mode is active. Showing the structured graph because every visual state is named in text.
+                  </p>
+                )}
                 {rendererError && (
                   <p className="bounded-notice" role="alert">
                     The repository map renderer is unavailable. Showing the structured graph instead.
@@ -370,6 +576,11 @@ export function App(): ReactElement {
                   edges={renderedGraph?.edges ?? data.edges}
                   filters={searchFilters}
                   onInspect={openInspectionPanel}
+                  // Table is a peer, not a fallback: it receives the same story
+                  // emphasis the spatial modes get. Re-testing `mode === "story"`
+                  // here is dead — this branch only renders when mode is "table"
+                  // — and silently starved the keyboard/AT surface of story state.
+                  storyEmphasis={storyMapEmphasis}
                 />
               </>
             )}
@@ -381,6 +592,21 @@ export function App(): ReactElement {
 
         <div className="atlas-inspector" hidden={inspection.current === null}>
           <InspectionPanel store={inspection} repoRoot={snapshot?.repository ?? null} />
+          {inspectedEntityKey !== null && (
+            <nav className="inspector-continuations" aria-label="Continue from this entity">
+              {/* A story starts at a route. Offering the action on entities that
+                  can only be refused would teach the reader to distrust it, so
+                  it appears when the graph says it will resolve. */}
+              {inspectedIsRoute && (
+                <button type="button" onClick={() => { openStory(inspectedEntityKey); }}>
+                  Trace execution flow
+                </button>
+              )}
+              <button type="button" onClick={() => { setMode("interview"); }}>
+                Prepare interview questions
+              </button>
+            </nav>
+          )}
         </div>
       </div>
     </div>

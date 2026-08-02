@@ -33,7 +33,7 @@ function commit(dir: string, files: Record<string, string>, message: string): vo
 }
 
 /** A minimal file node with a real entityKey for the given normalized path. */
-function fileNode(normalizedPath: string): GraphNode {
+function fileNode(normalizedPath: string, language = "typescript"): GraphNode {
   return {
     kind: "file",
     qualifiedName: normalizedPath,
@@ -48,7 +48,8 @@ function fileNode(normalizedPath: string): GraphNode {
     lineEnd: null,
     signature: null,
     bodyHash: null,
-    evidence: []
+    evidence: [],
+    language
   };
 }
 
@@ -74,6 +75,16 @@ describe("computeCoChangeEdges", () => {
     expect(edge?.relation).toBe("changed_with");
     expect(edge?.origin).toBe("git");
     expect(edge?.confidence).toBe("inferred");
+    expect(edge?.language).toBe(
+      nodes.find((node) => node.entityKey === edge?.srcEntityKey)?.language
+    );
+    expect(edge?.provenance).toEqual({
+      extractorId: "tadori-git-co-change",
+      extractorVersion: "1",
+      capability: "repository",
+      derivation: "repository-derived",
+      unresolvedReason: null
+    });
     // Endpoints are a.ts and b.ts (order is deterministic by entityKey).
     const endpoints = new Set([edge?.srcEntityKey, edge?.dstEntityKey]);
     expect(endpoints).toEqual(new Set([fileNode("a.ts").entityKey, fileNode("b.ts").entityKey]));
@@ -104,7 +115,7 @@ describe("computeCoChangeEdges", () => {
     repo = initRepo();
     commit(repo, { "a.ts": "1", "b.ts": "1" }, "c1");
     commit(repo, { "a.ts": "2", "b.ts": "2" }, "c2");
-    const nodes = [fileNode("a.ts"), fileNode("b.ts")];
+    const nodes = [fileNode("a.ts", "typescript"), fileNode("b.ts", "python")];
 
     const edge = computeCoChangeEdges(repo, nodes, { minSharedCommits: 2 })[0];
     const keyA = fileNode("a.ts").entityKey;
@@ -112,6 +123,7 @@ describe("computeCoChangeEdges", () => {
     const [expectedSrc, expectedDst] = keyA <= keyB ? [keyA, keyB] : [keyB, keyA];
     expect(edge?.srcEntityKey).toBe(expectedSrc);
     expect(edge?.dstEntityKey).toBe(expectedDst);
+    expect(edge?.language).toBe(keyA <= keyB ? "typescript" : "python");
   });
 
   it("fails closed without leaking Git's fatal stderr on a non-repository", () => {

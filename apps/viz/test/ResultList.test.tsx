@@ -6,9 +6,9 @@ import type { SearchResultRow } from "../src/features/search/searchApi.ts";
 afterEach(cleanup);
 
 const rows: SearchResultRow[] = [
-  { entityKey: "fn:a", kind: "function", displayName: "a", qualifiedName: "mod.a", file: "src/a.ts", lineStart: 3, lineEnd: 5, exported: true, exactMatch: true },
-  { entityKey: "cls:b", kind: "class", displayName: "B", qualifiedName: "mod.B", file: "src/b.ts", lineStart: 10, lineEnd: 40, exported: true, exactMatch: false },
-  { entityKey: "route:c", kind: "route", displayName: "GET /c", qualifiedName: "GET /c", file: null, lineStart: null, lineEnd: null, exported: false, exactMatch: false }
+  { entityKey: "fn:a", kind: "function", displayName: "a", qualifiedName: "mod.a", file: "src/a.ts", lineStart: 3, lineEnd: 5, exported: true, exactMatch: true, representativePackageKey: "pkg:mod" },
+  { entityKey: "cls:b", kind: "class", displayName: "B", qualifiedName: "mod.B", file: "src/b.ts", lineStart: 10, lineEnd: 40, exported: true, exactMatch: false, representativePackageKey: "pkg:mod" },
+  { entityKey: "route:c", kind: "route", displayName: "GET /c", qualifiedName: "GET /c", file: null, lineStart: null, lineEnd: null, exported: false, exactMatch: false, representativePackageKey: null }
 ];
 
 describe("ResultList keyboard navigation", () => {
