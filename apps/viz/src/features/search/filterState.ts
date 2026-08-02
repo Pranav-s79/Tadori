@@ -109,17 +109,29 @@ export function defaultFilters(): SearchFilters {
   return { kinds: [], relations: [], origins: [], confidences: [], resolutions: [], languages: [], capabilities: [], derivations: [] };
 }
 
-export function filtersActive(filters: SearchFilters): boolean {
+/**
+ * How many individual filter values are selected across every group.
+ *
+ * The filter groups now live behind a collapsed disclosure, so this is what the
+ * summary shows: a collapsed filter set must never be able to constrain the
+ * results silently. The reader has to be able to see that a filter is on
+ * without opening the panel.
+ */
+export function activeFilterCount(filters: SearchFilters): number {
   return (
-    filters.kinds.length > 0 ||
-    filters.relations.length > 0 ||
-    filters.origins.length > 0 ||
-    filters.confidences.length > 0 ||
-    filters.resolutions.length > 0 ||
-    filters.languages.length > 0 ||
-    filters.capabilities.length > 0 ||
-    filters.derivations.length > 0
+    filters.kinds.length +
+    filters.relations.length +
+    filters.origins.length +
+    filters.confidences.length +
+    filters.resolutions.length +
+    filters.languages.length +
+    filters.capabilities.length +
+    filters.derivations.length
   );
+}
+
+export function filtersActive(filters: SearchFilters): boolean {
+  return activeFilterCount(filters) > 0;
 }
 
 /**

@@ -272,6 +272,40 @@ button { min-height: 2rem; }
   padding: 0 var(--tadori-space-2);
 }
 
+/* The eight filter groups previously sat between the search input and its
+   results, pushing the first result roughly 900px down a 900px-tall panel: the
+   reader typed and saw nothing change. Collapsed by default, with the active
+   count always visible so a constrained result set can never read as
+   unconstrained. */
+.search-filters-disclosure { margin-top: var(--tadori-space-2); }
+
+.search-filters-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--tadori-space-2);
+  padding: var(--tadori-space-1) 0;
+  cursor: pointer;
+  font-size: var(--tadori-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.search-filters-count {
+  min-width: 1.25rem;
+  padding: 0 0.3rem;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  color: var(--tadori-ink-muted);
+  font-family: var(--tadori-font-mono);
+  text-align: center;
+}
+
+/* The navigation panel overflowed horizontally at every width because the
+   filter rows could not wrap below their intrinsic width. */
+.atlas-navigation { overflow-x: hidden; }
+.search-filter-group, .search-filter-option { min-width: 0; overflow-wrap: anywhere; }
+
 .search-filters { display: grid; gap: var(--tadori-space-2); margin-top: var(--tadori-space-3); }
 .search-filter-group { display: flex; flex-wrap: wrap; gap: var(--tadori-space-1); }
 
