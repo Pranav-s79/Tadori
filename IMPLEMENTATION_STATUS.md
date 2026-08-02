@@ -493,10 +493,31 @@ so `.tsx` silently lost the `^_` pattern, and the app-local config matched
 `src/**`, so its own `test/**` lost it. The frontend import boundary now lives
 in the root config scoped to `apps/viz/src/**`, so CI enforces it for the first
 time — `eslint --print-config apps/viz/src/App.tsx` previously reported
-`no-restricted-imports: undefined`. Two gaps stay open and unaddressed:
-`scripts/**` is absent from `tsconfig.json`'s `include`, so `verify-viz-e2e.mts`
-is never type-checked, and `apps/viz` runs vitest 4.1.10 while the root runs
-2.1.9.
+`no-restricted-imports: undefined`. One gap stays open: `apps/viz` runs vitest
+4.1.10 while the root runs 2.1.9. The other — `scripts/**` sitting outside
+`tsconfig.json`'s `include`, so the gate scripts were never type-checked — is
+closed below.
+
+Scripts type-checked (2026-08-02 UTC, merged `1110ce2`, PR #62): `scripts/**`
+now participates in `pnpm typecheck`, which required `allowImportingTsExtensions`
+because those scripts import each other by `.mts` path. The flag permits rather
+than requires that form, so the packages' `.js` specifiers are unaffected. Ten
+errors surfaced across three files and all were real.
+
+`benchmark-layout.mts` built a `SnapshotGraph` without `projects` or
+`diagnostics` — the identical omission that took CI red on 2026-07-29 (run
+`30514433954`). It survived because the schema defaults both to `[]` while the
+store iterated the unparsed input; the store was corrected then, the benchmark
+that triggered it was not, and nothing could see it. `serveBenchmark.mts`
+declared `command(method: string, params?: object)` where Playwright's
+`CDPSession.send` accepts only known method names and returns a typed response,
+so the loose signature admitted invalid CDP methods and forced callers to cast
+results back; its `waitFor` also called `this.evaluate`, which is uncallable
+under a type check because `this` widens to include the PromiseLike side of
+`Promise<BrowserPageSession>`. `verify-viz-e2e.mts` guarded a nullable with
+`assert.notEqual`, which does not narrow, where `assert.ok` is declared
+`asserts value`. Nothing was suppressed. `pnpm verify:viz:e2e` and
+`pnpm benchmark:layout` both exit 0 after the change.
 
 PR #59 also reproduced the silent-gate failure PR #56 was written to fix, by a
 different route: a conflicting PR gets no checks at all, because GitHub builds
