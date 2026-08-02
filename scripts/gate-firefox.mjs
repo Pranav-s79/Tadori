@@ -78,6 +78,12 @@ const script = [
 
 const run = spawnSync(dockerBinary, [
   "run", "--rm",
+  // `--init` because bash execs the final command of the `&&` chain, which puts
+  // `xvfb-run` at PID 1. A shell there does not reap the way it does elsewhere:
+  // the smoke exited but xvfb-run never did, and the gate sat with only Xvfb
+  // alive for an hour. tini takes PID 1 instead and the chain terminates. CI is
+  // unaffected — there `xvfb-run` runs under the runner's shell, not as init.
+  "--init",
   "-v", `${repoRoot}:/src:ro`,
   "-v", "tadori-pnpm-store:/root/.local/share/pnpm/store",
   "-w", "/",
