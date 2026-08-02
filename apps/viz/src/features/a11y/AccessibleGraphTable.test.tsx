@@ -41,8 +41,14 @@ describe("AccessibleGraphTable", () => {
     expect(screen.getByRole("table")).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Name" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Capability" })).toBeTruthy();
-    expect(screen.getByRole("columnheader", { name: "Archaeological form" })).toBeTruthy();
-    expect(screen.getByRole("columnheader", { name: "Material" })).toBeTruthy();
+    // The decorative "Archaeological form" and "Material" columns are gone.
+    // They wrapped every row to about 180px and pushed these two — the
+    // columns a reader of the accessibility peer view is here for — behind a
+    // horizontal scrollbar.
+    expect(screen.getByRole("columnheader", { name: "Derivation" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Outgoing provenance" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Archaeological form" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Material" })).toBeNull();
     expect(screen.getByRole("columnheader", { name: "Story state" })).toBeTruthy();
     expect(screen.getByRole("rowheader")).toBeTruthy();
     const table = screen.getByRole("table");
@@ -112,8 +118,10 @@ describe("AccessibleGraphTable", () => {
     expect(screen.getByText("python")).toBeInTheDocument();
     expect(screen.getByText("structural")).toBeInTheDocument();
     expect(screen.getByText("parser-derived")).toBeInTheDocument();
-    expect(screen.getByText("package foundation")).toBeInTheDocument();
-    expect(screen.getByText("open-course green-grey stone; structural")).toBeInTheDocument();
+    // Capability is still named in text — from its own column. It used to be
+    // stated twice, the second time appended to a decorative material label
+    // ("open-course green-grey stone; structural"), which is what pushed the
+    // technical columns off-screen. Nothing is lost by dropping the duplicate.
   });
 
   it("names every evidence-backed Story state without relying on copper emphasis", () => {

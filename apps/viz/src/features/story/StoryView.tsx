@@ -8,6 +8,10 @@ import {
   type StoryStepLabel,
   type StoryTransition
 } from "./storyApi.ts";
+import { resolveStepNames, type StepName } from "./stepNames.ts";
+
+/** Stable identity so the resolve effect cannot re-fire on a fresh empty map. */
+const EMPTY_STEP_NAMES: ReadonlyMap<string, StepName> = new Map();
 
 export interface StoryPlaybackState {
   story: BehaviorStory;
@@ -63,33 +67,45 @@ type StoryState =
   | { status: "ready"; story: BehaviorStory }
   | { status: "refused"; error: StoryError };
 
+/**
+ * The step heading. `/story/route/:key` carries no display name, so this used
+ * to print the raw 64-character entity digest and the trace could not be read,
+ * let alone recalled. `name` is resolved separately through the entity endpoint;
+ * until it arrives, or when the snapshot genuinely cannot name the entity, the
+ * row says so instead of showing the digest as if it were a name.
+ */
 function StepRow({
   step,
-  index,
   repoRoot,
+  name,
   onInspect,
   active
 }: {
   step: StoryStep;
-  index: number;
   repoRoot: string | null;
+  name: StepName | undefined;
   onInspect?: (entityKey: string) => void;
   active: boolean;
 }): ReactElement {
-  const name = step.entityKey ?? "(unresolved)";
+  const heading = name === undefined
+    ? "Resolving name…"
+    : name.displayName ?? "Name unavailable in this snapshot";
   return (
     <li className={`story-step story-step-${step.label}${active ? " story-step-active" : ""}`} aria-current={active ? "step" : undefined}>
       <div className="story-step-head">
-        <span className="story-step-index" aria-hidden="true">{`${index + 1}.`}</span>
+        <span className="story-step-kind">{step.kind}</span>
         {step.entityKey !== null ? (
           <button type="button" onClick={() => onInspect?.(step.entityKey as string)}>
-            {`${step.kind}: ${name}`}
+            {heading}
           </button>
         ) : (
           <span className="story-step-wall">Unresolved wall (dynamic dispatch)</span>
         )}
         <span className="story-step-label">{storyStepLabelText(step.label)}</span>
       </div>
+      {name?.qualifiedName !== null && name?.qualifiedName !== undefined && (
+        <p className="story-step-qualified">{name.qualifiedName}</p>
+      )}
       <div className="story-step-provenance">
         {`${step.origin} · ${step.confidence} · ${step.resolution}`}
       </div>
@@ -122,6 +138,7 @@ export function transitionForStoryStep(story: BehaviorStory, stepIndex: number):
 export function StoryView({ entityKey, repoRoot = null, onInspect, onClose, onPlaybackChange }: StoryViewProps): ReactElement | null {
   const [state, setState] = useState<StoryState>({ status: "loading" });
   const [activeStepIndex, setActiveStepIndex] = useState(-1);
+  const [stepNames, setStepNames] = useState<ReadonlyMap<string, StepName>>(EMPTY_STEP_NAMES);
 
   useEffect(() => {
     if (entityKey === null) {
@@ -153,6 +170,22 @@ export function StoryView({ entityKey, repoRoot = null, onInspect, onClose, onPl
       cancelled = true;
     };
   }, [entityKey]);
+
+  // Resolved after the story arrives, not with it: the story endpoint carries
+  // no display names, so the names come from the entity endpoint the inspector
+  // already uses. The steps render immediately and the digests never appear.
+  useEffect(() => {
+    if (state.status !== "ready") {
+      setStepNames(EMPTY_STEP_NAMES);
+      return;
+    }
+    let cancelled = false;
+    const keys = state.story.steps.flatMap((step) => step.entityKey === null ? [] : [step.entityKey]);
+    void resolveStepNames(keys).then((names) => {
+      if (!cancelled) setStepNames(names);
+    });
+    return () => { cancelled = true; };
+  }, [state]);
 
   useEffect(() => {
     if (state.status !== "ready") {
@@ -219,7 +252,7 @@ export function StoryView({ entityKey, repoRoot = null, onInspect, onClose, onPl
           ) : (
             <ol className="story-steps" aria-label="Story steps">
               {state.story.steps.map((step, index) => (
-                <StepRow key={step.id} step={step} index={index} repoRoot={repoRoot} onInspect={onInspect} active={index === activeStepIndex} />
+                <StepRow key={step.id} step={step} repoRoot={repoRoot} name={stepNames.get(step.entityKey ?? "")} onInspect={onInspect} active={index === activeStepIndex} />
               ))}
             </ol>
           )}

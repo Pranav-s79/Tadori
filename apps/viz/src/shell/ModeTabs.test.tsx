@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { LensButton } from "./LensButton.tsx";
 import { ModeTabs } from "./ModeTabs.tsx";
 
 describe("ModeTabs", () => {
@@ -35,5 +36,37 @@ describe("ModeTabs", () => {
     fireEvent.keyDown(screen.getByRole("tab", { name: "Table" }), { key: "Home" });
     expect(onChange).toHaveBeenLastCalledWith("overview");
     expect(screen.getByRole("tab", { name: "Overview" })).toHaveFocus();
+  });
+});
+
+describe("LensButton", () => {
+  /**
+   * The rail showed four bare letters — B, delta, A, P — and no legend
+   * anywhere explained them. The accessible name was already correct, so the
+   * defect was that sighted readers had strictly less information than
+   * screen-reader users.
+   */
+  it("names the lens in visible text, not only in its accessible name", () => {
+    render(<LensButton active={false} label="Boundaries" symbol="B" onClick={() => undefined} />);
+
+    expect(screen.getByText("Boundaries")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Boundaries lens" })).toBeInTheDocument();
+  });
+
+  it("still names a disabled lens and says why it is unavailable", () => {
+    render(
+      <LensButton
+        active={false}
+        label="Changes"
+        symbol="Δ"
+        onClick={() => undefined}
+        disabledReason="Available in map-based views, not Table mode."
+      />
+    );
+
+    expect(screen.getByText("Changes")).toBeInTheDocument();
+    expect(screen.getByRole("button", {
+      name: "Changes lens unavailable: Available in map-based views, not Table mode."
+    })).toBeDisabled();
   });
 });

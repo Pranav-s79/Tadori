@@ -23,8 +23,40 @@ describe("ResultList keyboard navigation", () => {
 
   it("each option's accessible name includes kind + qualified name", () => {
     render(<ResultList rows={rows} onSelect={vi.fn()} />);
-    expect(screen.getByRole("option", { name: /function: mod\.a/ })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: /class: mod\.B/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /function mod\.a/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /class mod\.B/ })).toBeInTheDocument();
+  });
+
+  /**
+   * WCAG 2.5.3 Label in Name: the visible label must be contained in the
+   * accessible name, because speech input activates a control by what it says.
+   * Lighthouse failed the previous punctuated name ("function: mod.a, …")
+   * against unpunctuated visible text.
+   */
+  it("keeps every visible word inside the accessible name", () => {
+    render(<ResultList rows={rows} onSelect={vi.fn()} />);
+    for (const option of screen.getAllByRole("option")) {
+      const accessibleName = option.getAttribute("aria-label") ?? "";
+      for (const word of (option.textContent ?? "").split(/\s+/).filter((w) => w.length > 0)) {
+        expect(accessibleName).toContain(word);
+      }
+    }
+  });
+
+  /**
+   * The six result spans carried no CSS rule anywhere, so the fields rendered
+   * as one unbroken token — "functionmod.asrc/a.ts:3exact". The separation has
+   * to survive in `textContent`, not only in the grid, or copy-paste and every
+   * text-reading consumer still sees the concatenation.
+   */
+  it("separates the fields so they cannot run together as one string", () => {
+    render(<ResultList rows={rows} onSelect={vi.fn()} />);
+    const [first] = screen.getAllByRole("option");
+
+    expect(first?.textContent).not.toContain("functionmod.a");
+    expect(first?.querySelector(".search-result-kind")?.textContent).toBe("function");
+    expect(first?.querySelector(".search-result-name")?.textContent).toBe("mod.a");
+    expect(first?.querySelector(".search-result-loc")?.textContent).toBe("src/a.ts:3");
   });
 
   it("ArrowDown moves the active option (aria-selected + roving tabindex)", () => {

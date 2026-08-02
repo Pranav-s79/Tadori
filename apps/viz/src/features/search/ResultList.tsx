@@ -15,18 +15,23 @@ function fileLine(row: SearchResultRow): string | null {
 
 /** Accessible name per row: kind + qualified name (never display name alone),
  * so a screen-reader user can disambiguate two nodes with the same display
- * name (blueprint §19 screen-reader text). */
+ * name (blueprint §19 screen-reader text).
+ *
+ * Composed from the same words in the same order as the visible text, because
+ * WCAG 2.5.3 Label in Name requires the visible label to be contained in the
+ * accessible name — speech input activates a control by what it says. The
+ * previous variant punctuated the name ("class: …, …, exact match") while the
+ * visible text was unpunctuated, and Lighthouse failed it. */
 function rowLabel(row: SearchResultRow): string {
   const loc = fileLine(row);
-  const base = `${row.kind}: ${row.qualifiedName}`;
-  const parts = [base];
+  const parts = [row.kind, row.qualifiedName];
   if (loc !== null) {
     parts.push(loc);
   }
   if (row.exactMatch) {
-    parts.push("exact match");
+    parts.push("exact");
   }
-  return parts.join(", ");
+  return parts.join(" ");
 }
 
 /**
@@ -115,13 +120,16 @@ export function ResultList({ rows, onSelect }: ResultListProps): React.ReactElem
               onSelect(row.entityKey);
             }}
           >
-            <span className="search-result-kind">{row.kind}</span>
-            <span className="search-result-name">{row.qualifiedName}</span>
-            {loc !== null && <span className="search-result-loc">{loc}</span>}
+            {/* The single spaces are load-bearing. Without them `textContent`
+                concatenates the fields into one unbroken token, which breaks
+                copy-paste and any consumer reading the row as text. A
+                whitespace-only run directly inside a grid container is not
+                rendered as a grid item, so the layout is unaffected. */}
+            <span className="search-result-kind">{row.kind}</span>{" "}
+            <span className="search-result-name">{row.qualifiedName}</span>{" "}
+            {loc !== null && <><span className="search-result-loc">{loc}</span>{" "}</>}
             {row.exactMatch && (
-              <span className="search-result-badge" aria-hidden="true">
-                exact
-              </span>
+              <span className="search-result-badge">exact</span>
             )}
           </li>
         );

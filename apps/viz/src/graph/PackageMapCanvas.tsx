@@ -1,6 +1,6 @@
 import Graph from "graphology";
 import Sigma from "sigma";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ApiEdge, ApiNode, LayoutPositionDto, NodeKind } from "../api/types.ts";
 import { usePackageExpansion } from "../hooks/usePackageExpansion.ts";
 import { useFileExpansion } from "../hooks/useFileExpansion.ts";
@@ -849,6 +849,33 @@ export function PackageMapCanvas({
     publishRef.current?.();
   }, [active]);
 
+  // The keyboard contract (+, -, 0) has always existed and is announced in the
+  // application element's accessible name, but the landing map is one node in
+  // an otherwise empty field with no visible affordance that it can be moved
+  // at all. These are the same three operations, reachable by pointer. The
+  // arithmetic mirrors the key handlers exactly so the two cannot drift.
+  const nudgeCamera = useCallback((state: Partial<CameraState>): void => {
+    const renderer = sigmaRef.current;
+    if (renderer === null) return;
+    const camera = renderer.getCamera();
+    if (prefersReducedMotion()) camera.setState(state);
+    else camera.animate(state, { duration: 180 });
+  }, []);
+
+  const zoomIn = useCallback(() => {
+    const current = sigmaRef.current?.getCamera().getState();
+    if (current !== undefined) nudgeCamera({ ratio: Math.max(0.02, current.ratio * 0.75) });
+  }, [nudgeCamera]);
+
+  const zoomOut = useCallback(() => {
+    const current = sigmaRef.current?.getCamera().getState();
+    if (current !== undefined) nudgeCamera({ ratio: Math.min(10, current.ratio / 0.75) });
+  }, [nudgeCamera]);
+
+  const resetCamera = useCallback(() => {
+    nudgeCamera({ x: 0.5, y: 0.5, ratio: 1, angle: 0 });
+  }, [nudgeCamera]);
+
   const partialScopes = [
     ...[...expandedPackages].flatMap((key) => fileData.get(key)?.partial ? [fileData.get(key)!.partial!] : []),
     ...[...expandedFiles].flatMap((key) => symbolData.get(key)?.partial ? [symbolData.get(key)!.partial!] : [])
@@ -880,6 +907,20 @@ export function PackageMapCanvas({
       <p className="tadori-visually-hidden" aria-live="polite" aria-atomic="true">
         {focusAnnouncement}
       </p>
+      <div className="atlas-controls" role="group" aria-label="Map controls">
+        <button type="button" onClick={zoomIn}>
+          <span aria-hidden="true">+</span>
+          <span className="tadori-visually-hidden">Zoom in</span>
+        </button>
+        <button type="button" onClick={zoomOut}>
+          <span aria-hidden="true">−</span>
+          <span className="tadori-visually-hidden">Zoom out</span>
+        </button>
+        <button type="button" onClick={resetCamera}>
+          <span aria-hidden="true">⌂</span>
+          <span className="tadori-visually-hidden">Reset the view</span>
+        </button>
+      </div>
       <div
         ref={containerRef}
         className="package-map-canvas"

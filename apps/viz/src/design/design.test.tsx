@@ -3,6 +3,11 @@ import { describe, expect, it } from "vitest";
 import { CapabilityMark } from "./CapabilityMark.tsx";
 import { ProvenanceStroke } from "./ProvenanceStroke.tsx";
 
+// The stylesheet-as-a-file assertions live in
+// apps/viz/test/stylesheetContract.test.ts: they need node:fs, and apps/viz/src
+// is the browser bundle, which lint correctly forbids from importing Node
+// builtins.
+
 describe("archaeological-circuit design primitives", () => {
   it("names capability and analysis limits without relying on texture", () => {
     render(<CapabilityMark capability="structural" />);

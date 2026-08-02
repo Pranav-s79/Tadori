@@ -111,4 +111,33 @@ describe("SearchPanel states", () => {
       expect(screen.getByRole("group", { name: label })).toBeInTheDocument();
     }
   });
+
+  /**
+   * The eight groups used to stand between the input and the results, so the
+   * first result landed below the fold of a 900px panel and typing looked like
+   * it did nothing. Collapsing them is the fix; every group stays reachable.
+   */
+  it("keeps the filter groups collapsed so results sit near the input", () => {
+    installSearchFetch(() => ({ matches: [], total: 0 }));
+    render(<SearchPanel />);
+
+    const disclosure = screen.getByRole("group", { name: "Filters" });
+    expect(disclosure.tagName).toBe("DETAILS");
+    expect(disclosure.hasAttribute("open")).toBe(false);
+  });
+
+  it("shows how many filters are active without opening the panel", async () => {
+    installSearchFetch(() => ({ matches: [], total: 0 }));
+    render(<SearchPanel />);
+
+    const summary = screen.getByRole("group", { name: "Filters" }).querySelector("summary");
+    expect(summary?.querySelector(".search-filters-count")?.textContent).toBe("0");
+
+    const kindGroup = screen.getByRole("group", { name: "Filter by kind" });
+    fireEvent.click(kindGroup.querySelectorAll("input[type=checkbox]")[0] as HTMLInputElement);
+
+    await waitFor(() => {
+      expect(summary?.querySelector(".search-filters-count")?.textContent).toBe("1");
+    });
+  });
 });

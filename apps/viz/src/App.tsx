@@ -83,6 +83,12 @@ function useForcedColors(): boolean {
   return active;
 }
 
+/** "1 nodes and 0 relations" was the shell's own copy defect. */
+function countLabel(count: number | undefined, noun: string): string {
+  const value = count ?? 0;
+  return `${String(value)} ${noun}${value === 1 ? "" : "s"}`;
+}
+
 function wsUrl(): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${window.location.host}/api/v1/events`;
@@ -371,7 +377,10 @@ export function App(): ReactElement {
           onInspect={openInspectionPanel}
         />
       )}
-      {lenses.provenance && (
+      {/* A five-entry stroke legend rendered over an empty landing map, where
+          no edge is drawn, explains nothing and occupies the corner the reader
+          needs. It appears once there is a relation to read. */}
+      {lenses.provenance && (renderedGraph?.edges.length ?? 0) > 0 && (
         <div className="atlas-legend-cartouche">
           <p>Evidence paths</p>
           <ProvenanceLegend />
@@ -386,10 +395,19 @@ export function App(): ReactElement {
       <header className="atlas-header">
         <div className="atlas-brand">
           <h1>Tadori</h1>
-          <small>Archaeological circuit atlas</small>
+          <small>Codebase study workspace</small>
         </div>
+        {/* The repository identity was the full absolute path, which consumed
+            the header and then truncated mid-token — "C:/Users/…/c--SideProj…"
+            — so the one thing the reader needs to know first, which repository
+            is loaded, was the one thing they could not read. The name leads;
+            the full path stays available on hover. */}
         <div className="atlas-snapshot" role="group" aria-label="Served snapshot">
-          <strong>{snapshot?.repository ?? "Repository"}</strong>
+          <strong title={snapshot?.repository ?? undefined}>
+            {snapshot === null
+              ? "Repository"
+              : /[^/\\]+$/.exec(snapshot.repository)?.[0] ?? snapshot.repository}
+          </strong>
           <span>{snapshot === null ? "No active snapshot" : `#${snapshot.snapshotId} · ${snapshot.snapshotKind}`}</span>
           <span className={`freshness freshness-${snapshot?.freshness ?? "unknown"}`}>
             {snapshot?.freshness ?? "unknown"}
@@ -430,8 +448,8 @@ export function App(): ReactElement {
 
         <aside ref={navigationFocus.drawerRef} id="atlas-navigation" className="atlas-navigation" data-open={navigationOpen} aria-label="Repository navigation" aria-hidden={!navigationOpen} inert={!navigationOpen} tabIndex={-1} onKeyDown={navigationFocus.onDrawerKeyDown}>
           <div className="navigation-heading">
-            <p>Survey tools</p>
-            <span>{data === null ? "No graph" : `${data.nodes.length} sites · ${data.edges.length} paths`}</span>
+            <p>Explore</p>
+            <span>{data === null ? "No graph" : `${data.nodes.length} entities · ${data.edges.length} relations`}</span>
           </div>
           <details className="navigation-section" open>
             <summary>Search and filter</summary>
@@ -471,16 +489,28 @@ export function App(): ReactElement {
                 : mode === "changes" ? "Change review"
                 : "Structured graph"
             }</span>
-            {mode !== "table" && <SpatialProjectionToggle active={spatialProjection} onChange={setSpatialProjection} />}
-            <nav aria-label="Atlas location">
-              <ol>
-                {(renderedGraph?.breadcrumb ?? ["Repository"]).map((label, index, labels) => (
-                  <li key={`${index}:${label}`} aria-current={index === labels.length - 1 ? "location" : undefined}>{label}</li>
-                ))}
-              </ol>
-            </nav>
-            <span>{`${renderedGraph?.lodLevel ?? "repository"} level`}</span>
-            <span role="status" aria-live="polite" aria-atomic="true">{data === null ? "Graph unavailable" : `Showing ${visibleNodeCount} nodes and ${visibleEdgeCount} relations`}</span>
+            {/* The projection toggle, breadcrumb and level describe the map. In
+                Overview and Interview there is no map, so they described
+                nothing — and they were what truncated the bar to ellipses
+                ("REPOSITOR…", "FILE L…") the moment the inspector opened.
+                The count stays in every mode: it is the live region that
+                announces graph refreshes, and silencing it in the landing mode
+                would take that announcement away from exactly the reader who
+                arrives while indexing is still settling. */}
+            {mode !== "overview" && mode !== "interview" && (
+              <>
+                {mode !== "table" && <SpatialProjectionToggle active={spatialProjection} onChange={setSpatialProjection} />}
+                <nav aria-label="Atlas location">
+                  <ol>
+                    {(renderedGraph?.breadcrumb ?? ["Repository"]).map((label, index, labels) => (
+                      <li key={`${index}:${label}`} aria-current={index === labels.length - 1 ? "location" : undefined}>{label}</li>
+                    ))}
+                  </ol>
+                </nav>
+                <span>{`${renderedGraph?.lodLevel ?? "repository"} level`}</span>
+              </>
+            )}
+            <span role="status" aria-live="polite" aria-atomic="true">{data === null ? "Graph unavailable" : `Showing ${countLabel(visibleNodeCount, "node")} and ${countLabel(visibleEdgeCount, "relation")}`}</span>
           </div>
 
           {focusUnavailable !== null && (
@@ -548,7 +578,21 @@ export function App(): ReactElement {
                   <div className="mode-empty-state">
                     <span className="empty-state-mark" aria-hidden="true">◇</span>
                     <h2>Select a registered route</h2>
-                    <p>Open Routes under Explore evidence to trace a static, evidence-backed behavior path.</p>
+                    <p>Trace a static, evidence-backed behavior path from a registered route.</p>
+                    {/* The empty state used to name a location — "Routes under
+                        Explore evidence" — and leave the reader to hunt for it
+                        in a panel that scrolls. An empty state that knows where
+                        to send you should send you. */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNavigationOpen(true);
+                        document.getElementById("explore-tab-routes")?.click();
+                        document.getElementById("explore-panel-routes")?.scrollIntoView({ block: "center" });
+                      }}
+                    >
+                      Open registered routes
+                    </button>
                   </div>
                 )}
                 </>

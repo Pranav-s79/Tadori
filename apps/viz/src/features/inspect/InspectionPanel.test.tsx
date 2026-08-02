@@ -218,4 +218,39 @@ describe("InspectionPanel", () => {
     expect(screen.getByRole("heading", { name: "calls" })).toBeInTheDocument();
     expect(screen.queryByText("Edge details are unavailable.")).not.toBeInTheDocument();
   });
+
+  /**
+   * "What depends on this?" is the question an interview asks, and the incoming
+   * edges were already fetched and then reduced to a bare count. Both
+   * directions are now listed, and each says plainly when it is empty rather
+   * than rendering an unexplained gap.
+   */
+  it("lists dependents and dependencies separately instead of one count", async () => {
+    const incoming: ToolEdge = {
+      entityKey: "e:in",
+      srcEntityKey: "b",
+      srcQualifiedName: "pkg/Beta",
+      relation: "references",
+      dstEntityKey: "a",
+      dstQualifiedName: "pkg/Alpha",
+      origin: "compiler",
+      confidence: "certain",
+      resolution: "resolved",
+      evidence: [],
+      evidenceOmittedCount: 0,
+      freshness: "fresh",
+      stale: false,
+      staleReason: null
+    };
+    routeFetch({ a: { ...nodeBody("a", "Alpha"), inEdges: [incoming] } });
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("open-a"));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Alpha" })).toBeInTheDocument());
+
+    expect(screen.getByRole("region", { name: "Dependents" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "pkg/Beta → references" })).toBeInTheDocument();
+    expect(screen.getByText("No outgoing relation was extracted for this entity."))
+      .toBeInTheDocument();
+  });
 });

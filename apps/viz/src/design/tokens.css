@@ -27,6 +27,12 @@
 
   /* Interaction and state. These are not capability colors. */
   --tadori-focus: #315f8c;
+  /* Link text needs its own value. The focus colour is a 2px outline, where the
+     3:1 non-text threshold applies, but the Overview entity links reused it as
+     text and measured 4.31:1 on --tadori-ground — a Lighthouse color-contrast
+     failure on the primary clickable entity of the landing surface. This value
+     measures 5.07:1 on the ground and 7.39:1 on the raised panel. */
+  --tadori-link: #2c5578;
   --tadori-change: #a43f27;
   --tadori-danger: #8f2f25;
 
@@ -156,6 +162,7 @@
     --tadori-ink-muted: CanvasText;
     --tadori-rule: CanvasText;
     --tadori-copper: LinkText;
+    --tadori-link: LinkText;
     --tadori-bronze: LinkText;
     --tadori-verdigris: CanvasText;
     --tadori-clay: CanvasText;

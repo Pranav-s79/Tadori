@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ApiEdge, ApiNode } from "../src/api/types.ts";
 import {
+  activeFilterCount,
   applyFiltersToGraph,
   defaultFilters,
   filtersActive,
@@ -113,5 +114,30 @@ describe("applyFiltersToGraph", () => {
       languages: ["python"], capabilities: ["structural"]
     });
     expect(sameBucket.edges[0]?.visible).toBe(true);
+  });
+});
+
+describe("activeFilterCount", () => {
+  it("counts nothing when no filter is selected", () => {
+    expect(activeFilterCount(defaultFilters())).toBe(0);
+  });
+
+  /**
+   * The filter groups live behind a collapsed disclosure whose summary shows
+   * this number. It has to sum across groups, not report how many groups are
+   * touched, or a reader could not tell two active filters from five.
+   */
+  it("sums selected values across every group", () => {
+    expect(activeFilterCount({
+      ...defaultFilters(),
+      kinds: ["class", "function"],
+      capabilities: ["semantic"],
+      languages: ["python", "typescript"]
+    })).toBe(5);
+  });
+
+  it("agrees with filtersActive at the zero boundary", () => {
+    expect(filtersActive(defaultFilters())).toBe(false);
+    expect(filtersActive({ ...defaultFilters(), kinds: ["class"] })).toBe(true);
   });
 });

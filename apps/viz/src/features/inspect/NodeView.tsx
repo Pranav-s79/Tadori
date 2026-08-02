@@ -114,18 +114,48 @@ export function NodeView({ entityKey, repoRoot, onPivot }: NodeViewProps): React
         )}
       </section>
 
-      <section aria-label="Connections" className="inspect-connections">
-        <h4>Connections</h4>
-        <p>{`${node.outEdges.length} outgoing · ${node.inEdges.length} incoming`}</p>
-        <ul>
-          {node.outEdges.slice(0, 20).map((edge) => (
-            <li key={edge.entityKey}>
-              <button type="button" onClick={() => onPivot(edge.entityKey, "edge", edge)}>
-                {`${edge.relation} → ${edge.dstQualifiedName}`}
-              </button>
-            </li>
-          ))}
-        </ul>
+      {/* Dependencies and dependents answer two different questions — "what
+          does this need" and "what breaks if I change it" — and the second is
+          the one an interview asks about. It was previously a bare count while
+          the edges themselves were already fetched and discarded. */}
+      <section aria-label="Dependencies" className="inspect-connections">
+        <h4>Dependencies</h4>
+        {node.outEdges.length === 0 ? (
+          <p>No outgoing relation was extracted for this entity.</p>
+        ) : (
+          <>
+            <p>{`${String(node.outEdges.length)} outgoing`}</p>
+            <ul>
+              {node.outEdges.slice(0, 20).map((edge) => (
+                <li key={edge.entityKey}>
+                  <button type="button" onClick={() => onPivot(edge.entityKey, "edge", edge)}>
+                    {`${edge.relation} → ${edge.dstQualifiedName}`}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+
+      <section aria-label="Dependents" className="inspect-connections">
+        <h4>Dependents</h4>
+        {node.inEdges.length === 0 ? (
+          <p>No incoming relation was extracted for this entity.</p>
+        ) : (
+          <>
+            <p>{`${String(node.inEdges.length)} incoming`}</p>
+            <ul>
+              {node.inEdges.slice(0, 20).map((edge) => (
+                <li key={edge.entityKey}>
+                  <button type="button" onClick={() => onPivot(edge.entityKey, "edge", edge)}>
+                    {`${edge.srcQualifiedName} → ${edge.relation}`}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </section>
     </div>
   );

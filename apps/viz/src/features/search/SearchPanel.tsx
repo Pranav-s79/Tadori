@@ -7,6 +7,7 @@ import {
   ORIGINS,
   RELATIONS,
   RESOLUTIONS,
+  activeFilterCount,
   type SearchFilters
 } from "./filterState.ts";
 import { ResultList } from "./ResultList.tsx";
@@ -116,7 +117,17 @@ export function SearchPanel(props: SearchStoreCallbacks = {}): React.ReactElemen
         onKeyDown={onInputKeyDown}
       />
 
-      <div className="search-filters">
+      {/* Collapsed by default. The eight groups previously stood between the
+          input and its results, so the first result landed ~900px down the
+          panel: the reader typed and watched nothing happen. The count in the
+          summary is what keeps a collapsed set honest — a constrained result
+          list can never look unconstrained. */}
+      <details className="search-filters-disclosure" role="group" aria-label="Filters">
+        <summary>
+          Filters
+          <span className="search-filters-count">{activeFilterCount(store.filters)}</span>
+        </summary>
+        <div className="search-filters">
         <FilterGroup
           label="Filter by kind"
           options={NODE_KINDS}
@@ -165,7 +176,8 @@ export function SearchPanel(props: SearchStoreCallbacks = {}): React.ReactElemen
           selected={store.filters.derivations}
           onToggle={(v) => patch({ derivations: toggleValue(store.filters.derivations, v) })}
         />
-      </div>
+        </div>
+      </details>
 
       <div role="status" aria-live="polite" className="search-status">
         {message}

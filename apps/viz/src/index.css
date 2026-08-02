@@ -148,7 +148,7 @@ button { min-height: 2rem; }
   position: relative;
   grid-row: 3;
   display: grid;
-  grid-template-columns: 3rem minmax(15rem, 19rem) minmax(0, 1fr);
+  grid-template-columns: 4.75rem minmax(15rem, 19rem) minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
 }
@@ -156,7 +156,7 @@ button { min-height: 2rem; }
 .stale-state { grid-row: 2; }
 
 .app-shell.has-inspector .atlas-workspace {
-  grid-template-columns: 3rem minmax(15rem, 19rem) minmax(0, 1fr) minmax(18rem, 23rem);
+  grid-template-columns: 4.75rem minmax(15rem, 19rem) minmax(0, 1fr) minmax(18rem, 23rem);
 }
 
 .lens-rail {
@@ -172,9 +172,10 @@ button { min-height: 2rem; }
 
 .lens-button {
   display: grid;
-  width: 2rem;
-  height: 2rem;
-  min-height: 2rem;
+  width: 100%;
+  min-height: 2.75rem;
+  gap: 0.1rem;
+  padding: var(--tadori-space-1) 0;
   place-items: center;
   border: 1px solid transparent;
   border-radius: var(--tadori-radius-sm);
@@ -187,6 +188,20 @@ button { min-height: 2rem; }
 }
 
 .lens-button:hover { border-color: var(--tadori-rule); background: var(--tadori-panel); }
+
+/* Word or symbol, never both. Showing both makes the button's visible text
+   read "BBoundaries", which is not contained in its accessible name
+   "Boundaries lens" — a WCAG 2.5.3 Label in Name failure, and axe reports it.
+   The word is the control wherever the rail can carry it. */
+.lens-button-symbol { display: none; font-size: var(--tadori-text-sm); line-height: 1; }
+
+.lens-button-label {
+  font-family: var(--tadori-font-ui);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
 
 .lens-button[aria-pressed="true"] {
   border-color: var(--tadori-copper);
@@ -272,6 +287,40 @@ button { min-height: 2rem; }
   padding: 0 var(--tadori-space-2);
 }
 
+/* The eight filter groups previously sat between the search input and its
+   results, pushing the first result roughly 900px down a 900px-tall panel: the
+   reader typed and saw nothing change. Collapsed by default, with the active
+   count always visible so a constrained result set can never read as
+   unconstrained. */
+.search-filters-disclosure { margin-top: var(--tadori-space-2); }
+
+.search-filters-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--tadori-space-2);
+  padding: var(--tadori-space-1) 0;
+  cursor: pointer;
+  font-size: var(--tadori-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.search-filters-count {
+  min-width: 1.25rem;
+  padding: 0 0.3rem;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  color: var(--tadori-ink-muted);
+  font-family: var(--tadori-font-mono);
+  text-align: center;
+}
+
+/* The navigation panel overflowed horizontally at every width because the
+   filter rows could not wrap below their intrinsic width. */
+.atlas-navigation { overflow-x: hidden; }
+.search-filter-group, .search-filter-option { min-width: 0; overflow-wrap: anywhere; }
+
 .search-filters { display: grid; gap: var(--tadori-space-2); margin-top: var(--tadori-space-3); }
 .search-filter-group { display: flex; flex-wrap: wrap; gap: var(--tadori-space-1); }
 
@@ -296,6 +345,75 @@ button { min-height: 2rem; }
 
 .search-filter-option input { width: 1rem; height: 1rem; margin: 0; }
 .search-status, .a11y-graph-caption, .story-static-note { color: var(--tadori-ink-muted); font-size: var(--tadori-text-xs); }
+
+/* Search results. These six spans previously carried no rule anywhere in the
+   stylesheet, so kind, qualified name, location and the exact-match badge
+   rendered as one unbroken string: "classsrc/services/user-service.ts.User
+   Servicesrc/services/user-service.ts:1exact". A two-line grid puts the name
+   on one line and the path directly beneath it, in the same position on every
+   result, so a reader scanning a list is reading down a single column. */
+.search-result-list {
+  display: grid;
+  gap: var(--tadori-space-1);
+  margin: var(--tadori-space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.search-result-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--tadori-space-1) var(--tadori-space-2);
+  padding: var(--tadori-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--tadori-radius-sm);
+  cursor: pointer;
+}
+
+.search-result-row:hover { border-color: var(--tadori-rule); background: var(--tadori-panel); }
+
+.search-result-row[aria-selected="true"] {
+  border-color: var(--tadori-copper);
+  background: color-mix(in srgb, var(--tadori-copper) 10%, transparent);
+}
+
+.search-result-kind {
+  grid-column: 1;
+  align-self: start;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  color: var(--tadori-ink-muted);
+  font-size: var(--tadori-text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.search-result-name {
+  grid-column: 2;
+  overflow-wrap: anywhere;
+  color: var(--tadori-ink);
+  font-weight: 650;
+}
+
+.search-result-loc {
+  grid-column: 2;
+  overflow-wrap: anywhere;
+  color: var(--tadori-ink-muted);
+  font-family: var(--tadori-font-mono);
+  font-size: var(--tadori-text-xs);
+}
+
+.search-result-badge {
+  grid-column: 2;
+  justify-self: start;
+  color: var(--tadori-verdigris-text);
+  font-size: var(--tadori-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 
 .explore-tabs [role="tablist"] {
   display: grid;
@@ -385,7 +503,17 @@ button { min-height: 2rem; }
 .spatial-projection-toggle button:last-child { border-right: 0; }
 .spatial-projection-toggle button[aria-pressed="true"] { background: var(--tadori-copper); color: var(--tadori-panel-raised); }
 .mode-panel, .story-workspace, .changes-workspace { min-width: 0; min-height: 0; }
+
+/* The spatial modes fill the stage exactly and manage their own absolutely
+   positioned overlays, so they must not scroll. The document modes are
+   long-form reading surfaces and must. Previously every mode panel was
+   `overflow: hidden` while Overview and Interview sized themselves to their
+   content, so at 1440x900 the Overview was 2063px tall inside a 682px box and
+   1381px of it — two thirds of the landing surface — could not be reached by
+   wheel or scrollbar at all. */
 .mode-panel { position: relative; overflow: hidden; }
+.mode-panel-overview,
+.mode-panel-interview { overflow-y: auto; overscroll-behavior: contain; }
 
 .app-graph-stage {
   position: relative;
@@ -411,6 +539,38 @@ button { min-height: 2rem; }
 }
 
 .package-map-canvas { position: absolute; z-index: 1; inset: 0; }
+
+/* The landing map is a single node in an otherwise empty field. The keyboard
+   contract for zoom and reset has always existed and is announced in the
+   canvas's accessible name, but nothing on screen said the map could be moved
+   at all. */
+.atlas-controls {
+  position: absolute;
+  z-index: 6;
+  top: var(--tadori-space-3);
+  left: var(--tadori-space-3);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-panel-raised);
+}
+
+.atlas-controls button {
+  width: 2rem;
+  height: 2rem;
+  min-height: 2rem;
+  border: 0;
+  border-bottom: 1px solid var(--tadori-rule);
+  background: transparent;
+  color: var(--tadori-ink);
+  cursor: pointer;
+  font-size: var(--tadori-text-md);
+  line-height: 1;
+}
+
+.atlas-controls button:last-child { border-bottom: 0; }
+.atlas-controls button:hover { background: var(--tadori-panel); }
 
 .atlas-plan-layer { position: absolute; inset: 0; }
 
@@ -665,6 +825,39 @@ button { min-height: 2rem; }
 .story-view h2, .story-view h3, .mode-empty-state h2, .a11y-graph h2 { font-family: var(--tadori-font-label); }
 .story-steps, .story-tests ul { padding-left: var(--tadori-space-4); }
 .story-step { padding: var(--tadori-space-2) 0; border-bottom: 1px solid var(--tadori-rule); }
+.story-step-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--tadori-space-2); }
+
+.story-step-kind {
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  color: var(--tadori-ink-muted);
+  font-size: var(--tadori-text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.story-step-head button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tadori-link);
+  cursor: pointer;
+  font-weight: 650;
+  text-align: left;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
+.story-step-qualified {
+  margin: var(--tadori-space-1) 0 0;
+  overflow-wrap: anywhere;
+  color: var(--tadori-ink-muted);
+  font-family: var(--tadori-font-mono);
+  font-size: var(--tadori-text-xs);
+}
+
+.story-step-label, .story-step-provenance { color: var(--tadori-ink-muted); font-size: var(--tadori-text-xs); }
 .story-step-active {
   border-left: 3px solid var(--tadori-copper);
   background: color-mix(in srgb, var(--tadori-copper) 8%, transparent);
@@ -716,6 +909,178 @@ button { min-height: 2rem; }
 .a11y-graph thead { position: sticky; z-index: 1; top: 0; background: var(--tadori-panel); }
 .inspection-panel { min-height: 100%; outline: none; }
 
+/* Inspector reading column. None of these classes previously carried a rule,
+   so the nine-fact header rendered as a browser-default definition list —
+   label on one line, value indented beneath — spending roughly 500px on nine
+   short facts, and the connection pivots rendered as default grey buttons
+   inside bullets. A fixed label column puts every value in the same place on
+   every entity, so a reader who studies several of them is reading the same
+   shape each time and can recall it by position. */
+.inspect-node, .inspect-edge { display: grid; gap: var(--tadori-space-4); }
+
+.inspect-entity-header > h3 {
+  margin: 0 0 var(--tadori-space-2);
+  overflow-wrap: anywhere;
+  font: 700 var(--tadori-text-lg) / 1.25 var(--tadori-font-label);
+}
+
+.inspect-meta {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, auto) minmax(0, 1fr);
+  gap: var(--tadori-space-1) var(--tadori-space-3);
+  margin: 0;
+  font-size: var(--tadori-text-xs);
+}
+
+.inspect-meta > div { display: contents; }
+
+.inspect-meta dt {
+  color: var(--tadori-ink-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.inspect-meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--tadori-ink);
+  font-family: var(--tadori-font-mono);
+}
+
+.inspect-interpretation > h4,
+.inspect-connections > h4,
+.inspect-rationale > h4,
+.inspect-evidence > h4,
+.inspect-source > h4 {
+  margin: 0 0 var(--tadori-space-2);
+  padding-bottom: var(--tadori-space-1);
+  border-bottom: 1px solid var(--tadori-rule);
+  font: 700 var(--tadori-text-sm) / 1.3 var(--tadori-font-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.inspect-interpretation p { margin: 0 0 var(--tadori-space-2); font-size: var(--tadori-text-sm); }
+.inspect-readings { display: grid; gap: var(--tadori-space-2); margin: 0; padding: 0; list-style: none; }
+.inspect-readings > li { font-size: var(--tadori-text-sm); }
+
+.inspect-connections p, .inspect-evidence p { margin: 0; color: var(--tadori-ink-muted); font-size: var(--tadori-text-xs); }
+
+.inspect-connections ul,
+.inspect-evidence ul { display: grid; gap: var(--tadori-space-1); margin: var(--tadori-space-2) 0 0; padding: 0; list-style: none; }
+
+.inspect-connections button {
+  width: 100%;
+  padding: var(--tadori-space-1) var(--tadori-space-2);
+  overflow-wrap: anywhere;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-panel);
+  color: var(--tadori-ink);
+  cursor: pointer;
+  font-family: var(--tadori-font-mono);
+  font-size: var(--tadori-text-xs);
+  text-align: left;
+}
+
+.inspect-connections button:hover { border-color: var(--tadori-copper); }
+
+.inspect-evidence a, .inspect-rationale a { color: var(--tadori-link); overflow-wrap: anywhere; }
+.inspect-evidence-empty, .inspect-evidence-omitted, .inspect-source-notice {
+  margin: 0;
+  color: var(--tadori-ink-muted);
+  font-size: var(--tadori-text-xs);
+}
+
+.inspect-source-body {
+  margin: 0;
+  padding: var(--tadori-space-2);
+  overflow-x: auto;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-panel);
+  font-family: var(--tadori-font-mono);
+  font-size: var(--tadori-text-xs);
+  tab-size: 2;
+}
+
+.inspect-rationale article { margin: 0; font-size: var(--tadori-text-sm); }
+
+.inspector-continuations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tadori-space-2);
+  padding: var(--tadori-space-3);
+  border-top: 1px solid var(--tadori-rule);
+  background: var(--tadori-panel);
+}
+
+.inspector-continuations button {
+  padding: 0 var(--tadori-space-3);
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-panel-raised);
+  color: var(--tadori-ink);
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.inspector-continuations button:hover { border-color: var(--tadori-copper); }
+
+/* Routes feed Story mode, and Story mode is only reachable through this
+   table's action column. At the navigation panel's real width the five-column
+   table overflowed horizontally and pushed that column off-screen, so the
+   entry point could not be reached at all. Below 26rem the rows stack. */
+.explore-routes-wrap { container-type: inline-size; }
+.explore-routes { width: 100%; border-collapse: collapse; font-size: var(--tadori-text-xs); }
+
+.explore-routes th,
+.explore-routes td {
+  padding: var(--tadori-space-1) var(--tadori-space-2) var(--tadori-space-1) 0;
+  border-bottom: 1px solid var(--tadori-rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.explore-routes th { color: var(--tadori-ink-muted); letter-spacing: 0.04em; text-transform: uppercase; }
+
+.explore-routes button {
+  padding: 0 var(--tadori-space-1);
+  overflow-wrap: anywhere;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-panel);
+  color: var(--tadori-ink);
+  cursor: pointer;
+  font-family: var(--tadori-font-mono);
+  font-size: var(--tadori-text-xs);
+  text-align: left;
+}
+
+.explore-routes button:hover { border-color: var(--tadori-copper); }
+.explore-routes-story { font-family: var(--tadori-font-ui); font-weight: 650; white-space: nowrap; }
+.explore-routes-source-none { color: var(--tadori-ink-muted); }
+
+@container (max-width: 26rem) {
+  .explore-routes thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .explore-routes tr {
+    display: grid;
+    gap: var(--tadori-space-1);
+    padding: var(--tadori-space-2) 0;
+    border-bottom: 1px solid var(--tadori-rule);
+  }
+
+  .explore-routes td { padding: 0; border: 0; }
+  .explore-routes-story { justify-self: start; }
+}
+
 .inspection-panel-toolbar {
   position: sticky;
   z-index: 2;
@@ -740,16 +1105,40 @@ button { min-height: 2rem; }
   .atlas-brand > small,
   .atlas-snapshot > span:not(.freshness) { display: none; }
 
+  /* The rail narrows here, so the word gives way to the symbol. The symbol is
+     aria-hidden and the button keeps its aria-label and title, so the lens is
+     still named for assistive technology and on hover — just not in ink. */
+  .lens-button-label { display: none; }
+  .lens-button-symbol { display: block; }
+  .lens-button { min-height: 2rem; }
+
   .atlas-workspace,
   .app-shell.has-inspector .atlas-workspace { grid-template-columns: 3rem minmax(14rem, 17rem) minmax(0, 1fr); }
 
+  /* Below 1280px the inspector overlays the stage. It used to do so with no
+     visible boundary, starting at the top and covering the context bar's
+     level and count indicators exactly when the reader needed them — so the
+     map read as broken rather than as covered. It now begins below the bar
+     and carries a rule and a shadow. */
   .atlas-inspector {
     position: absolute;
     z-index: 15;
-    top: 0;
+    top: 2rem;
     right: 0;
     bottom: 0;
     width: min(23rem, calc(100% - 3rem));
+    border-left: 1px solid var(--tadori-rule);
+    box-shadow: -8px 0 24px rgb(72 55 30 / 22%);
+  }
+}
+
+/* One step before the drawer breakpoint: the navigation panel gives up width
+   before the map does. At 1100px the map was down to roughly 380px with the
+   inspector covering half of it. */
+@media (max-width: 1180px) {
+  .atlas-workspace,
+  .app-shell.has-inspector .atlas-workspace {
+    grid-template-columns: 3rem minmax(11rem, 13rem) minmax(0, 1fr);
   }
 }
 
@@ -834,6 +1223,7 @@ button { min-height: 2rem; }
   .atlas-ground { background: Canvas; }
   .lens-button[aria-pressed="true"],
   .mode-tabs button[aria-selected="true"],
+  .search-result-row[aria-selected="true"],
   .spatial-projection-toggle button[aria-pressed="true"] { outline: 2px solid Highlight; }
 
   .relief-plates polygon,
@@ -934,7 +1324,17 @@ button { min-height: 2rem; }
   border-radius: var(--tadori-radius-sm);
   white-space: nowrap;
 }
-.claim-badge[data-basis="observed"] { border-color: var(--tadori-verdigris-text); color: var(--tadori-verdigris-text); }
+/* Observed is the common case — in a healthy snapshot nearly every claim
+   carries it — so a bordered chip on all of them made the rare and important
+   ones (documented, inferred, unknown) impossible to spot while skimming. The
+   label text and the data-basis hook are unchanged; only the emphasis moves to
+   where it carries information. */
+.claim-badge[data-basis="observed"] {
+  padding-left: 0;
+  border-color: transparent;
+  color: var(--tadori-verdigris-text);
+  font-weight: 500;
+}
 .claim-badge[data-basis="documented"] { border-color: var(--tadori-copper-text); color: var(--tadori-copper-text); }
 .claim-badge[data-basis="inferred"] { border-style: dashed; color: var(--tadori-ink-muted); }
 .claim-badge[data-basis="unknown"] { border-style: dotted; color: var(--tadori-ink-muted); }
@@ -942,11 +1342,11 @@ button { min-height: 2rem; }
 /* Overview and Interview: reading surfaces, not dashboards. Measure is capped
    so long-form explanation stays legible. */
 .overview-panel, .interview-panel {
-  overflow-y: auto;
   padding: var(--tadori-space-6);
   display: grid;
   gap: var(--tadori-space-6);
   align-content: start;
+  max-width: 78ch;
 }
 .overview-intro h2, .interview-intro h2 { margin: 0 0 var(--tadori-space-2); font-size: var(--tadori-text-xl); }
 .overview-intro p, .interview-intro p {
@@ -965,7 +1365,8 @@ button { min-height: 2rem; }
 .overview-claim-link {
   background: none; border: none; padding: 0;
   font: 600 var(--tadori-text-sm) / 1.3 var(--tadori-font-ui);
-  color: var(--tadori-focus); text-decoration: underline; cursor: pointer;
+  color: var(--tadori-link); text-decoration: underline; cursor: pointer;
+  text-align: left;
 }
 .overview-claim-value { margin: var(--tadori-space-1) 0 0; max-width: 72ch; font-size: var(--tadori-text-sm); }
 .overview-claim-evidence, .interview-evidence {
@@ -985,7 +1386,7 @@ button { min-height: 2rem; }
 .interview-answer { margin: var(--tadori-space-1) 0 0; padding-left: var(--tadori-space-4); font-size: var(--tadori-text-sm); }
 .interview-evidence-link {
   background: none; border: none; padding: 0;
-  color: var(--tadori-focus); text-decoration: underline; cursor: pointer;
+  color: var(--tadori-link); text-decoration: underline; cursor: pointer;
   font-family: var(--tadori-font-mono); font-size: var(--tadori-text-xs);
 }
 

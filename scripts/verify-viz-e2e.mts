@@ -156,7 +156,7 @@ try {
   })`);
   assert.equal(initial.title, "Tadori");
   assert.equal(initial.heading, "Tadori");
-  assert.equal(initial.tagline, "Archaeological circuit atlas");
+  assert.equal(initial.tagline, "Codebase study workspace");
   // Overview leads and Interview follows Atlas: a reader gets oriented before
   // being handed a graph, and can prepare to discuss what they just read.
   assert.deepEqual(initial.modeNames, ["Overview", "Atlas", "Interview", "Story", "Changes", "Table"]);

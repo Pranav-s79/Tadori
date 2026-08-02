@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ReviewDiffView } from "../src/features/review/ReviewDiffView.tsx";
+import { ReviewDiffView, diffFailureText } from "../src/features/review/ReviewDiffView.tsx";
 import type { AccumulatedDiff, ReviewDiffStatus, ReviewDiffStore } from "../src/features/review/useReviewDiffStore.ts";
 import type { EdgeDiffRow, ReviewDiffNode } from "../src/features/review/reviewDiffApi.ts";
 import { mockContext } from "./mockServer.ts";
@@ -231,5 +231,33 @@ describe("ReviewDiffView determinism", () => {
     expect(secondOrder).toEqual(firstOrder);
     expect(firstOrder[0]).toContain("z");
     expect(firstOrder[2]).toContain("m");
+  });
+});
+
+describe("diffFailureText", () => {
+  /**
+   * A freshly indexed repository has exactly one snapshot, so a
+   * snapshot-to-snapshot diff has nothing to compare against. Rendering the
+   * bare code made that ordinary state read as a fault with no way forward.
+   */
+  it("explains the no-baseline case and names the comparisons that work", () => {
+    const text = diffFailureText("bad_snapshot_ref");
+
+    expect(text).toContain("no earlier snapshot");
+    expect(text).toContain("Working tree");
+    expect(text).toContain("Staged");
+    expect(text).not.toContain("bad_snapshot_ref");
+  });
+
+  /**
+   * An unrecognised failure must never be disguised as a handled one — the
+   * code is the only thing that can be acted on, so it stays visible.
+   */
+  it("keeps an unrecognised code verbatim", () => {
+    expect(diffFailureText("wat_is_this")).toBe("Could not load the diff (wat_is_this).");
+  });
+
+  it("still says something when there is no code at all", () => {
+    expect(diffFailureText(null)).toBe("Could not load the diff.");
   });
 });
