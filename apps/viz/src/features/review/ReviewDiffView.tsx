@@ -333,6 +333,26 @@ function CoalescedRow({
   );
 }
 
+/**
+ * A raw server code is not an error message. `bad_snapshot_ref` in particular
+ * is the ordinary state of a freshly indexed repository — there is no earlier
+ * snapshot to compare against — and rendering the bare code made a normal
+ * condition look like a fault with no way forward. The code is still shown for
+ * anything unrecognised, so an unexpected failure is never disguised as a
+ * handled one.
+ */
+export function diffFailureText(errorCode: string | null): string {
+  switch (errorCode) {
+    case "bad_snapshot_ref":
+      return "There is no earlier snapshot to compare against — this repository has been"
+        + " indexed once. Choose Working tree or Staged to see uncommitted changes instead.";
+    case null:
+      return "Could not load the diff.";
+    default:
+      return `Could not load the diff (${errorCode}).`;
+  }
+}
+
 function StatusRegion({ store }: { store: ReviewDiffStore }): ReactElement | null {
   switch (store.status) {
     case "loading":
@@ -356,7 +376,7 @@ function StatusRegion({ store }: { store: ReviewDiffStore }): ReactElement | nul
     case "failed":
       return (
         <div role="alert" className="review-diff-status">
-          {`Could not load the diff${store.errorCode !== null ? `: ${store.errorCode}` : "."}`}
+          {diffFailureText(store.errorCode)}
         </div>
       );
     case "partial":

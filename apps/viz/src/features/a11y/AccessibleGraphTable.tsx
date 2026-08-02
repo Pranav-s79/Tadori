@@ -2,7 +2,6 @@ import { useMemo, type ReactElement } from "react";
 import type { ApiEdge, ApiNode } from "../../api/types.ts";
 import { applyFiltersToGraph, defaultFilters, type SearchFilters } from "../search/filterState.ts";
 import type { StoryMapEmphasis } from "../../graph/PackageMapCanvas.tsx";
-import { atlasNodeVisual } from "../../graph/atlasVisuals.ts";
 
 interface AccessibleGraphTableProps {
   nodes: readonly ApiNode[];
@@ -94,8 +93,6 @@ export function AccessibleGraphTable({
             <tr>
               <th scope="col">Name</th>
               <th scope="col">Kind</th>
-              <th scope="col">Archaeological form</th>
-              <th scope="col">Material</th>
               <th scope="col">Language</th>
               <th scope="col">Capability</th>
               <th scope="col">Derivation</th>
@@ -109,7 +106,6 @@ export function AccessibleGraphTable({
           </thead>
           <tbody>
             {nodes.map((node) => {
-              const visual = atlasNodeVisual(node);
               return (
               <tr key={node.entityKey} data-filter-dimmed={nodeEmphasis.get(node.entityKey) === false ? "true" : "false"}>
                 <th scope="row">
@@ -121,9 +117,14 @@ export function AccessibleGraphTable({
                     {node.displayName}
                   </button>
                 </th>
+                {/* "Archaeological form" (file slab) and "Material"
+                    (foundation-course gold stone) were decoration in the
+                    accessibility peer view: they wrapped every row to about
+                    180px and pushed capability, derivation and provenance —
+                    the columns a reader is actually here for — behind a
+                    horizontal scrollbar. The capability text they carried is
+                    already in its own column. */}
                 <td>{node.kind}</td>
-                <td>{visual.formLabel}</td>
-                <td>{`${visual.materialLabel}; ${visual.capabilityLabel}`}</td>
                 <td>{node.language ?? node.aggregateLanguages?.join(", ") ?? "not attributed"}</td>
                 <td>{node.provenance?.capability ?? node.aggregateCapabilities?.join(", ") ?? "not attributed"}</td>
                 <td>{node.provenance?.derivation ?? node.aggregateDerivations?.join(", ") ?? "not attributed"}</td>

@@ -95,11 +95,14 @@ function couplingClaims(coupling: CouplingState): OverviewClaim[] {
       evidence: []
     }];
   }
+  // The consequence clause used to be appended verbatim to every row, so a
+  // list of eight read as the same sentence eight times — and claimed that
+  // changing a one-reference entity "affects every dependent". The count is
+  // the fact; the reader draws the consequence.
   return ranked.map((node) => ({
     label: node.displayName,
     value: `${plural(node.fanIn, "incoming reference", "incoming references")}`
-      + ` · ${node.kind.replace(/_/gu, " ")}`
-      + " — changing this affects every dependent",
+      + ` · ${node.kind.replace(/_/gu, " ")}`,
     basis: "observed" as ClaimBasis,
     evidence: node.file === null ? [] : [node.file],
     entityKey: node.entityKey
@@ -203,7 +206,10 @@ export function buildOverview(input: OverviewInput): OverviewSection[] {
   });
 
   const regionClaims: OverviewClaim[] = (regions?.regions ?? []).map((region) => ({
-    label: region.label,
+    // A project root indexed as "." is a real fact, but a clickable entity
+    // labelled "." reads as a rendering failure rather than as the repository
+    // root it is. Naming it changes no data — the entity key is untouched.
+    label: region.label === "." ? "Repository root" : region.label,
     value: region.role.text
       ?? plural(region.counts.entities, "entity", "entities")
         + ` · ${plural(region.counts.outgoingCrossRegionRelations, "outgoing relation", "outgoing relations")}`,

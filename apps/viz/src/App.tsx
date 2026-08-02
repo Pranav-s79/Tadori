@@ -371,7 +371,10 @@ export function App(): ReactElement {
           onInspect={openInspectionPanel}
         />
       )}
-      {lenses.provenance && (
+      {/* A five-entry stroke legend rendered over an empty landing map, where
+          no edge is drawn, explains nothing and occupies the corner the reader
+          needs. It appears once there is a relation to read. */}
+      {lenses.provenance && (renderedGraph?.edges.length ?? 0) > 0 && (
         <div className="atlas-legend-cartouche">
           <p>Evidence paths</p>
           <ProvenanceLegend />
@@ -548,7 +551,21 @@ export function App(): ReactElement {
                   <div className="mode-empty-state">
                     <span className="empty-state-mark" aria-hidden="true">◇</span>
                     <h2>Select a registered route</h2>
-                    <p>Open Routes under Explore evidence to trace a static, evidence-backed behavior path.</p>
+                    <p>Trace a static, evidence-backed behavior path from a registered route.</p>
+                    {/* The empty state used to name a location — "Routes under
+                        Explore evidence" — and leave the reader to hunt for it
+                        in a panel that scrolls. An empty state that knows where
+                        to send you should send you. */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNavigationOpen(true);
+                        document.getElementById("explore-tab-routes")?.click();
+                        document.getElementById("explore-panel-routes")?.scrollIntoView({ block: "center" });
+                      }}
+                    >
+                      Open registered routes
+                    </button>
                   </div>
                 )}
                 </>
