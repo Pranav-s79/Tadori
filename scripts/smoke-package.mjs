@@ -55,16 +55,21 @@ async function verifyInstalledGui(url, engine) {
   const playwright = await import("playwright-core");
   const browserType = playwright[engine];
   assert.notEqual(browserType, undefined, `Unsupported TADORI_PACKAGE_BROWSER: ${engine}`);
-  // Sigma renders through WebGL, and headless Firefox on Linux ships with it
-  // effectively unavailable. Without these prefs the app takes its (correct)
-  // renderer-error path and falls back to Table mode, which hides the canvas
-  // and makes the keyboard-descent check unreachable rather than failing
-  // honestly. Enabling WebGL exercises the real Atlas instead of asserting
-  // against a fallback. Chromium ignores unknown Firefox prefs.
+  // Sigma renders through WebGL. On Linux, Playwright's Firefox gets a WebGL
+  // context only when an X display is present: under `xvfb-run` it renders
+  // through Mesa llvmpipe, and without one `getContext("webgl")` returns null
+  // whatever prefs are set (measured both ways in the pinned Playwright image).
+  // So the display — supplied by the caller, see the `browser` job in
+  // .github/workflows/ci.yml and scripts/gate-firefox.mjs — is what makes this
+  // exercise the real Atlas rather than the renderer-error fallback.
+  //
+  // These prefs are only blocklist insurance: a hosted runner can blocklist the
+  // software renderer the container accepts. They were NOT what fixed KF-001
+  // and do not substitute for the display. Chromium ignores Firefox prefs.
   const browser = await browserType.launch({
     headless: true,
     firefoxUserPrefs: engine === "firefox"
-      ? { "webgl.disabled": false, "webgl.force-enabled": true, "gfx.webrender.all": true }
+      ? { "webgl.disabled": false, "webgl.force-enabled": true }
       : undefined
   });
   try {
@@ -87,17 +92,47 @@ async function verifyInstalledGui(url, engine) {
     await page.getByRole("tab", { name: "Atlas" }).click();
     const canvas = page.locator(".package-map-canvas");
     await canvas.waitFor({ state: "visible", timeout: 60_000 });
-    await page.waitForFunction(() => {
+    // Readiness is three separate conditions, so report them separately. The
+    // previous single `waitForFunction` ANDed them and, on timeout, printed
+    // only "Timeout 30000ms exceeded" with an empty `log: []` — a gate failing
+    // without saying why, for the third time on this leg. Each sample is
+    // recorded so a failure names the condition that never came true.
+    const readState = () => page.evaluate(() => {
       const surface = document.querySelector(".package-map-canvas");
       const canvases = [...(surface?.querySelectorAll("canvas") ?? [])];
-      return canvases.some((item) => item.width > 0 && item.height > 0)
+      return {
         // A painted canvas is not a populated graph. Until the Sigma graph has
         // nodes, an arrow key reaches the handler, finds nothing to focus, and
         // silently pans — which is exactly how this gate failed with keys
         // provably delivered and focusedNode still null.
-        && surface?.dataset.graphReady === "true"
-        && !(document.body.textContent?.includes("Loading repository graph") ?? false);
+        painted: canvases.filter((item) => item.width > 0 && item.height > 0).length,
+        canvasCount: canvases.length,
+        graphReady: surface?.dataset.graphReady ?? "(attribute absent)",
+        loadingText: document.body.textContent?.includes("Loading repository graph") ?? false,
+        readyState: document.readyState,
+        // The app switches to Table and hides the Atlas workspace when the
+        // renderer fails, which would leave the graph permanently unpopulated.
+        // If that is what happens here, this is where it shows.
+        alerts: [...document.querySelectorAll('[role="alert"]')].map((node) => node.textContent?.trim() ?? ""),
+        selectedTab: [...document.querySelectorAll('[role="tab"]')]
+          .filter((tab) => tab.getAttribute("aria-selected") === "true")
+          .map((tab) => tab.textContent?.trim() ?? "")
+      };
     });
+
+    const isNavigable = (state) =>
+      state.painted > 0 && state.graphReady === "true" && !state.loadingText;
+
+    let readiness = await readState();
+    const readinessDeadline = Date.now() + 30_000;
+    while (Date.now() < readinessDeadline && !isNavigable(readiness)) {
+      await page.waitForTimeout(250);
+      readiness = await readState();
+    }
+    assert.ok(
+      isNavigable(readiness),
+      `${engine} never reached a navigable graph.\nreadiness: ${JSON.stringify(readiness)}`
+    );
 
     assert.equal(await page.title(), "Tadori");
     const modeNames = await page.getByRole("tablist", { name: "Repository views" })
