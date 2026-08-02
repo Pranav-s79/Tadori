@@ -83,6 +83,12 @@ function useForcedColors(): boolean {
   return active;
 }
 
+/** "1 nodes and 0 relations" was the shell's own copy defect. */
+function countLabel(count: number | undefined, noun: string): string {
+  const value = count ?? 0;
+  return `${String(value)} ${noun}${value === 1 ? "" : "s"}`;
+}
+
 function wsUrl(): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${window.location.host}/api/v1/events`;
@@ -483,10 +489,14 @@ export function App(): ReactElement {
                 : mode === "changes" ? "Change review"
                 : "Structured graph"
             }</span>
-            {/* Projection, breadcrumb, level and counts describe the map. In
+            {/* The projection toggle, breadcrumb and level describe the map. In
                 Overview and Interview there is no map, so they described
                 nothing — and they were what truncated the bar to ellipses
-                ("REPOSITOR…", "FILE L…") the moment the inspector opened. */}
+                ("REPOSITOR…", "FILE L…") the moment the inspector opened.
+                The count stays in every mode: it is the live region that
+                announces graph refreshes, and silencing it in the landing mode
+                would take that announcement away from exactly the reader who
+                arrives while indexing is still settling. */}
             {mode !== "overview" && mode !== "interview" && (
               <>
                 {mode !== "table" && <SpatialProjectionToggle active={spatialProjection} onChange={setSpatialProjection} />}
@@ -498,9 +508,9 @@ export function App(): ReactElement {
                   </ol>
                 </nav>
                 <span>{`${renderedGraph?.lodLevel ?? "repository"} level`}</span>
-                <span role="status" aria-live="polite" aria-atomic="true">{data === null ? "Graph unavailable" : `Showing ${visibleNodeCount} nodes and ${visibleEdgeCount} relations`}</span>
               </>
             )}
+            <span role="status" aria-live="polite" aria-atomic="true">{data === null ? "Graph unavailable" : `Showing ${countLabel(visibleNodeCount, "node")} and ${countLabel(visibleEdgeCount, "relation")}`}</span>
           </div>
 
           {focusUnavailable !== null && (
