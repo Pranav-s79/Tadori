@@ -441,9 +441,9 @@ all six jobs with `Installed GUI smoke passed in firefox (4 -> 5 nodes)`. The
 readiness diagnostics in `51b0b15` produced this on their first CI run, after
 four speculative fixes; the "40+ canvases, zero errors" reasoning that had
 discarded the WebGL hypothesis was wrong because Sigma builds its canvas layers
-before it throws and the app catches the throw itself. Follow-up: the job stays
-`continue-on-error` until green twice running, per its own stated criterion —
-this is 1 of 2.
+before it throws and the app catches the throw itself. Green twice running
+(`30736433285`, `30736820331`), which was the workflow's own stated criterion, so
+`browser` is a blocking job again and its `continue-on-error` is gone.
 
 Claude Opus backend review queue and frontend handoff contract:
 
