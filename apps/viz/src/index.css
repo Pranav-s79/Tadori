@@ -188,11 +188,13 @@ button { min-height: 2rem; }
 }
 
 .lens-button:hover { border-color: var(--tadori-rule); background: var(--tadori-panel); }
-.lens-button-symbol { font-size: var(--tadori-text-sm); line-height: 1; }
 
-/* The word is the control. Below 1100px the rail is too narrow to carry it,
-   so it is hidden visually — the button's aria-label still names the lens, so
-   nothing is lost for assistive technology or for the tooltip. */
+/* Word or symbol, never both. Showing both makes the button's visible text
+   read "BBoundaries", which is not contained in its accessible name
+   "Boundaries lens" — a WCAG 2.5.3 Label in Name failure, and axe reports it.
+   The word is the control wherever the rail can carry it. */
+.lens-button-symbol { display: none; font-size: var(--tadori-text-sm); line-height: 1; }
+
 .lens-button-label {
   font-family: var(--tadori-font-ui);
   font-size: 0.625rem;
@@ -1103,21 +1105,40 @@ button { min-height: 2rem; }
   .atlas-brand > small,
   .atlas-snapshot > span:not(.freshness) { display: none; }
 
-  /* The rail narrows here, so the lens words go. The buttons keep their
-     aria-label and title, so the lens is still named — just not in ink. */
+  /* The rail narrows here, so the word gives way to the symbol. The symbol is
+     aria-hidden and the button keeps its aria-label and title, so the lens is
+     still named for assistive technology and on hover — just not in ink. */
   .lens-button-label { display: none; }
+  .lens-button-symbol { display: block; }
   .lens-button { min-height: 2rem; }
 
   .atlas-workspace,
   .app-shell.has-inspector .atlas-workspace { grid-template-columns: 3rem minmax(14rem, 17rem) minmax(0, 1fr); }
 
+  /* Below 1280px the inspector overlays the stage. It used to do so with no
+     visible boundary, starting at the top and covering the context bar's
+     level and count indicators exactly when the reader needed them — so the
+     map read as broken rather than as covered. It now begins below the bar
+     and carries a rule and a shadow. */
   .atlas-inspector {
     position: absolute;
     z-index: 15;
-    top: 0;
+    top: 2rem;
     right: 0;
     bottom: 0;
     width: min(23rem, calc(100% - 3rem));
+    border-left: 1px solid var(--tadori-rule);
+    box-shadow: -8px 0 24px rgb(72 55 30 / 22%);
+  }
+}
+
+/* One step before the drawer breakpoint: the navigation panel gives up width
+   before the map does. At 1100px the map was down to roughly 380px with the
+   inspector covering half of it. */
+@media (max-width: 1180px) {
+  .atlas-workspace,
+  .app-shell.has-inspector .atlas-workspace {
+    grid-template-columns: 3rem minmax(11rem, 13rem) minmax(0, 1fr);
   }
 }
 

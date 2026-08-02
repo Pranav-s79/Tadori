@@ -25,10 +25,13 @@ export function LensButton(props: LensButtonProps): ReactElement {
       >
         {/* Four unlabelled letters — B, delta, A, P — asked the reader to
             memorise a legend that was never shown anywhere. The word is the
-            control; the symbol is a secondary cue that survives the narrow
-            rail, where the word is hidden but stays in the accessible name. */}
+            control. Exactly one of these is displayed at a time: showing both
+            makes the visible text read "BBoundaries", which is not contained
+            in the accessible name and fails WCAG 2.5.3 Label in Name. The
+            symbol stays aria-hidden, so on the narrow rail the accessible name
+            is the sole label, exactly as it was before. */}
         <span aria-hidden="true" className="lens-button-symbol">{props.symbol}</span>
-        <span aria-hidden="true" className="lens-button-label">{props.label}</span>
+        <span className="lens-button-label">{props.label}</span>
       </button>
       {disabled && <span id={reasonId} className="tadori-visually-hidden">{props.disabledReason}</span>}
     </>
