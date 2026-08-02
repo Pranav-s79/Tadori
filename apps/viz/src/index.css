@@ -297,6 +297,75 @@ button { min-height: 2rem; }
 .search-filter-option input { width: 1rem; height: 1rem; margin: 0; }
 .search-status, .a11y-graph-caption, .story-static-note { color: var(--tadori-ink-muted); font-size: var(--tadori-text-xs); }
 
+/* Search results. These six spans previously carried no rule anywhere in the
+   stylesheet, so kind, qualified name, location and the exact-match badge
+   rendered as one unbroken string: "classsrc/services/user-service.ts.User
+   Servicesrc/services/user-service.ts:1exact". A two-line grid puts the name
+   on one line and the path directly beneath it, in the same position on every
+   result, so a reader scanning a list is reading down a single column. */
+.search-result-list {
+  display: grid;
+  gap: var(--tadori-space-1);
+  margin: var(--tadori-space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.search-result-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--tadori-space-1) var(--tadori-space-2);
+  padding: var(--tadori-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--tadori-radius-sm);
+  cursor: pointer;
+}
+
+.search-result-row:hover { border-color: var(--tadori-rule); background: var(--tadori-panel); }
+
+.search-result-row[aria-selected="true"] {
+  border-color: var(--tadori-copper);
+  background: color-mix(in srgb, var(--tadori-copper) 10%, transparent);
+}
+
+.search-result-kind {
+  grid-column: 1;
+  align-self: start;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  color: var(--tadori-ink-muted);
+  font-size: var(--tadori-text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.search-result-name {
+  grid-column: 2;
+  overflow-wrap: anywhere;
+  color: var(--tadori-ink);
+  font-weight: 650;
+}
+
+.search-result-loc {
+  grid-column: 2;
+  overflow-wrap: anywhere;
+  color: var(--tadori-ink-muted);
+  font-family: var(--tadori-font-mono);
+  font-size: var(--tadori-text-xs);
+}
+
+.search-result-badge {
+  grid-column: 2;
+  justify-self: start;
+  color: var(--tadori-verdigris-text);
+  font-size: var(--tadori-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .explore-tabs [role="tablist"] {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -844,6 +913,7 @@ button { min-height: 2rem; }
   .atlas-ground { background: Canvas; }
   .lens-button[aria-pressed="true"],
   .mode-tabs button[aria-selected="true"],
+  .search-result-row[aria-selected="true"],
   .spatial-projection-toggle button[aria-pressed="true"] { outline: 2px solid Highlight; }
 
   .relief-plates polygon,
