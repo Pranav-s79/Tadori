@@ -428,13 +428,22 @@ can resolve; file paths and language ids render as text instead of a selection
 that resolves to nothing. Atlas suite passes 52 files / 405 tests; repository
 lint, strict typecheck, and `git diff --check` pass.
 
-KF-001 (parked, `docs/KNOWN_FAILURES.md`): installed-GUI keyboard descent fails
-only on the `ubuntu-latest / Node 22.14.0` Firefox leg and blocks PR #53. No
-keydown reaches the canvas although the document has focus, the canvas is
-visible with `tabIndex 0`, and the renderer is healthy with zero browser errors.
-The assertion is unweakened. An instrumentation-only probe is now pushed and
-reports focusability, the ancestor chain, and synthetic-dispatch delivery beside
-the existing evidence; run `30635704089` at `7418b9a` is the decisive output.
+KF-001 RESOLVED 2026-08-02 (`docs/KNOWN_FAILURES.md`): Playwright's Firefox gets
+no WebGL context in true headless mode on Linux, so Sigma's constructor threw,
+the app took its correct `onRendererError` path to Table mode, and the hidden
+Atlas subtree left the canvas unfocusable — which is why no keydown ever
+arrived. Measured in the pinned Playwright image: an X display is necessary and
+sufficient (`xvfb-run` -> llvmpipe; without it `getContext("webgl")` is null
+whatever the prefs), so the `browser` job's Firefox leg now runs under
+`xvfb-run`. The `firefoxUserPrefs` were inert and their comment said otherwise;
+it now states what was measured. Nothing weakened: run `30736433285` is green on
+all six jobs with `Installed GUI smoke passed in firefox (4 -> 5 nodes)`. The
+readiness diagnostics in `51b0b15` produced this on their first CI run, after
+four speculative fixes; the "40+ canvases, zero errors" reasoning that had
+discarded the WebGL hypothesis was wrong because Sigma builds its canvas layers
+before it throws and the app catches the throw itself. Follow-up: the job stays
+`continue-on-error` until green twice running, per its own stated criterion —
+this is 1 of 2.
 
 Claude Opus backend review queue and frontend handoff contract:
 

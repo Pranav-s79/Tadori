@@ -9,7 +9,39 @@ without repeating the investigation.
 
 ## KF-001 — Installed-GUI smoke: keyboard descent on Ubuntu + headless Firefox
 
-**Status:** parked 2026-07-31. Blocks PR #53 merge (1 of 5 CI jobs).
+**Status: RESOLVED 2026-08-02.** Root cause: Playwright's Firefox cannot create
+a WebGL context in true headless mode on Linux. Sigma's constructor threw, the
+app took its correct `onRendererError` path to Table mode, and the Atlas
+workspace — with the canvas inside it — became `hidden`; an element in a hidden
+subtree keeps `tabIndex 0` and is still counted by `querySelectorAll` but cannot
+take focus, so `focus()` was a silent no-op and no keydown was ever delivered.
+Fixed by running that leg under `xvfb-run`, which gives Firefox Mesa llvmpipe.
+No assertion was weakened, skipped or narrowed. First green run: `30736433285`,
+`Installed GUI smoke passed in firefox (4 -> 5 nodes)`.
+
+Measured in `mcr.microsoft.com/playwright:v1.62.0-noble`,
+`getContext("webgl2") ?? getContext("webgl")`:
+
+| Configuration | Result |
+|---|---|
+| `xvfb-run`, no prefs | OK — `llvmpipe, or similar` |
+| `xvfb-run` + the prefs the smoke passed | OK — `llvmpipe, or similar` |
+| no xvfb, prefs, `LIBGL_ALWAYS_SOFTWARE=1` | `null` |
+
+An X display is necessary and sufficient; the `firefoxUserPrefs` were inert.
+
+**Why the WebGL hypothesis was wrongly discarded.** The table below records it
+as "disproved by 40+ canvases, zero browser errors". Both were bad evidence:
+Sigma creates its canvas layers *before* the context call throws, and
+`PackageMapCanvas` catches the throw itself, so a failed renderer produces many
+canvases and logs nothing. Canvas count was never a renderer-health signal.
+
+The readiness diagnostics added in `51b0b15` produced the answer on their first
+CI run, after four speculative fixes had failed — the cost note below, applied.
+
+The remainder of this entry is the investigation record, kept as written.
+
+**Status (historical):** parked 2026-07-31. Blocked PR #53 merge (1 of 5 CI jobs).
 **Gate:** `pnpm package:smoke` with `TADORI_PACKAGE_BROWSER=firefox`, run only on
 the canonical `ubuntu-latest / Node 22.14.0` leg.
 **Not weakened:** the assertion still fails the build. No skip, no narrowing.
