@@ -171,3 +171,50 @@ Four speculative fixes were pushed before instrumentation produced a decisive
 answer. The lesson recorded for next time: on an environment-specific failure
 the development machine cannot reproduce, add the probe **first**. Guessing
 across CI cycles is the expensive path.
+
+---
+
+## KF-002 — The serve benchmarks assert budgets that nothing runs
+
+**Status: open, parked 2026-08-02.** Not being worked on.
+
+**Gates:** `pnpm benchmark:serve:coldstart`, `benchmark:serve:memory`,
+`benchmark:serve:positions`. Each throws on a hard budget — coldstart's is
+5,000ms. CI runs `pnpm benchmark:layout` and no other benchmark
+(`.github/workflows/ci.yml`), so these three assertions have no scheduled
+executor.
+
+**Not weakened:** no budget was changed, relaxed, or skipped.
+
+### What was observed
+
+Two consecutive local runs of `benchmark:serve:coldstart`, same machine, minutes
+apart:
+
+| Commit | Cold interactive | Budget | Result |
+|---|---|---|---|
+| `1110ce2` | 6,433.7ms | 5,000ms | fail |
+| `b7911ea` | 15,909.6ms | 5,000ms | fail |
+
+### What this does and does not establish
+
+Established: the gate exists, asserts a hard budget, is executed by nothing, and
+did not pass in either observation.
+
+**Not** established: a product regression. The two runs are 2.5x apart on the
+same machine, and the slower one came second, so the spread is not warm-cache
+ordering. A second agent was working on this machine during both runs, so the
+measurement was not isolated and neither number is a trustworthy signal about
+the product. The figure recorded on 2026-07-26 for the same benchmark was
+4,173.06ms.
+
+Ruled out: the `scripts/lib/serveBenchmark.mts` refactor in #62. The slower of
+the two runs is the commit *before* it.
+
+### Next step
+
+Re-establish a baseline on a quiet, consistent machine before concluding
+anything. Wiring these into CI as they stand would import an unstable
+measurement into a blocking gate, which is the failure mode the verify/browser
+split exists to avoid. Either give them a non-blocking job that records numbers
+over time, or state in the scripts that they are local-only instruments.
