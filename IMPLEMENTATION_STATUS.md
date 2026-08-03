@@ -446,6 +446,44 @@ module-mock registry interaction. Deliberately not investigated during the
 deep-link slice. Until diagnosed, treat `--no-file-parallelism` as the
 authoritative local run and do not read a green parallel run as proof.
 
+Those four hypotheses are now falsified (2026-08-02, static audit). Two facts do
+the work, both verified directly rather than taken on report.
+
+`apps/viz/vite.config.ts` declares only `environment`, `globals` and
+`setupFiles` for tests — no `pool`, no `isolate`, no `poolOptions` — so vitest
+4.1.10's defaults apply: `pool: "forks"` with `isolate: true`. Every one of the
+58 files therefore runs in a freshly forked process that is killed afterwards.
+Cross-file leakage of global DOM state, `matchMedia`/`history` stubs, and the
+module-mock registry is not merely unobserved, it is structurally impossible.
+Three of the four hypotheses die there.
+
+The fourth cannot explain the evidence either. At the incident tree (`0a2fdf2`),
+`AnalysisPanel.test.tsx` and `AccessibleGraphTable.test.tsx` contain zero
+occurrences of `await` or `waitFor` — they are wholly synchronous. A synchronous
+test cannot fail a `waitFor` timeout, a real timer, or an animation frame, so
+contention explains at most `App.accessibility` and `explore`, never those two.
+
+The best-supported remaining explanation is environmental: the working tree was
+being written while the run was in flight, so different workers transformed
+different versions of the same sources. The record corroborates this from within
+— two of run B's six failures were *genuine stale-mock defects*, which means the
+tree was demonstrably mid-change at that moment, and the run happened during the
+deep-link slice. It also explains what no code hypothesis can: failures landing
+on synchronous and asynchronous files alike, in different counts each run.
+
+A caution that applies to the green matrices below as well: vitest's sequencer
+orders files by the previous run's results, failed-first then slowest-first, so
+consecutive runs do not repeat the same concurrency pairings. A green rerun is
+therefore weaker evidence than it appears — it did not re-test the pairing that
+failed.
+
+No test was changed on this basis. What a recurrence needs is data, not a fix:
+run with `--reporter=json --outputFile`, and capture `git status --porcelain`
+immediately before and after. If a tracked file's mtime falls inside the run
+window, the environmental explanation is confirmed. Raising `testTimeout` would
+be a cheap hedge against contention but would not have saved either synchronous
+file, so it must not be mistaken for a fix.
+
 Not reproduced (2026-08-02): a deliberate matrix of ten consecutive parallel
 runs at `acb207e` — six at default file parallelism and four at
 `--maxWorkers=16` to force contention — passed 56 files / 434 tests every time,
