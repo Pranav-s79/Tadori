@@ -23,7 +23,7 @@
     "gate:firefox": "node scripts/gate-firefox.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
-    "test": "pnpm --filter @tadori/viz build && vitest run --exclude=packages/cli/test/**/*.test.ts && vitest run packages/cli/test --pool=forks --minWorkers=1 --maxWorkers=1 --no-file-parallelism && pnpm --filter @tadori/viz test",
+    "test": "pnpm --filter @tadori/viz build && vitest run --exclude=packages/cli/test/**/*.test.ts && vitest run packages/cli/test --pool=forks --maxWorkers=1 --no-file-parallelism && pnpm --filter @tadori/viz test",
     "package:artifact": "pnpm --filter @tadori/viz build && node scripts/build-package.mjs",
     "package:smoke": "node scripts/smoke-package.mjs",
     "mcp:stdio": "tsx packages/mcp/src/cli.ts",
