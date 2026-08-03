@@ -548,12 +548,37 @@ closed below.
 Assessed and deliberately deferred (2026-08-02): the vitest divergence is a
 maintenance smell, not a live reliability defect. The two runners never interact
 — the root `vitest.config.ts` includes only `packages/*/test/**`, `apps/viz`
-carries its own config, and pnpm isolates the versions. Closing it means
-migrating the root two majors across roughly ninety test files, including the
-SQLite and CLI-lifecycle suites, and one breakage is already known: the root
-test command passes `--minWorkers=1`, which v4 removed and rejects with a
-`CACError`. Taking that churn while chasing intermittent failures would work
-against stability, so it is recorded rather than attempted.
+carries its own config, and pnpm isolates the versions.
+
+The cost was then surveyed properly, correcting two claims made here earlier.
+**Zero of the 92 root test files** require changes for any documented v2-to-v4
+breaking change: the repository's mocking surface is unusually thin — no
+`vi.mock`, no fake timers, no snapshots, no coverage or reporter configuration,
+ten `vi.spyOn` and two `vi.fn`. Every applicable documented change resolves to
+"not used" or "used in the form that survives". Four files carry real risk, all
+from the undocumented v4 spy rewrite, because they spy on an ES module namespace
+object: the `exit-codes`, `orphan-supervision`, `port-fallback` and
+`serve-lifecycle` suites under `packages/cli/test`. Second correction: v4 does
+not force a Vite major this workspace lacks. `vite@8.1.5` is already in the
+lockfile for `apps/viz`, while root vitest 2.1.9 drags in a second, older Vite
+privately, so migrating removes a duplicate tree rather than adding one.
+`better-sqlite3` is unaffected either way, because both majors default to
+`pool: "forks"` and the addon therefore never loads in a worker thread.
+
+The real cost is not the edit — it is proving those assumptions across three
+operating systems and three Node versions, landing on the process-owning CLI
+suites that spawn children, probe PID tables and bind loopback ports. It stays
+deferred for a better reason than churn: vitest 5.0.0-beta is already published
+and its guide flips the `clearMocks` default, which this repository's seven
+`vi.restoreAllMocks` sites do care about. A 2-to-4 hop now means paying the same
+verification twice, so the next move is a single 2-to-5 hop once 5 is stable.
+
+One piece was separable and did land (PR #69): the root test command's
+`--minWorkers=1` is a no-op under the current vitest — `--maxWorkers=1` already
+clamps the pool, verified by running the CLI tier without it for 13 files / 67
+tests — while v4 rejects the flag with a `CACError`. Leaving a removed flag in
+the default `pnpm test` path would have turned any later bump, including an
+automated dependency PR, into a gate failure that looks nothing like its cause.
 
 Scripts type-checked (2026-08-02 UTC, merged `1110ce2`, PR #62): `scripts/**`
 now participates in `pnpm typecheck`, which required `allowImportingTsExtensions`
