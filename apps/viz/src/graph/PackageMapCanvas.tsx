@@ -21,6 +21,8 @@ import { atlasEdgeVisual, atlasNodeVisual } from "./atlasVisuals.ts";
 import { visibleLabelEntityKeys } from "../lod/budgets.ts";
 
 const LABEL_MAX_LENGTH = 24;
+/** Breathing room around a fitted graph, as a multiple of its own extent. */
+const FIT_PADDING = 1.15;
 const NO_FILTERS = defaultFilters();
 
 interface CameraLike {
@@ -305,6 +307,57 @@ export function focusGraphEntity(
   const state = { x, y, ratio: 0.2 };
   if (reducedMotion) renderer.getCamera().setState(state);
   else renderer.getCamera().animate(state, { duration: 350 });
+  return true;
+}
+
+/**
+ * Frame every visible node.
+ *
+ * Expansion adds nodes at their persisted layout positions, which can sit far
+ * outside the current view: expanding the fixture's repository node put a test
+ * file so far from the rest that the cluster occupied a corner and roughly
+ * three quarters of the canvas stayed empty. Worse, Sigma suppresses a label
+ * below a rendered size threshold, so an unfitted camera also leaves most nodes
+ * unlabelled — the "only 3 of 14 labels" symptom and the "empty canvas" symptom
+ * are the same defect.
+ *
+ * Works in the same normalized framed-graph space `focusGraphEntity` uses, not
+ * raw layout coordinates. Returns false when there is nothing visible to frame,
+ * so the caller leaves the camera alone rather than jumping to the origin.
+ */
+export function fitCameraToVisibleNodes(
+  renderer: RendererWithCamera,
+  graph: Graph,
+  reducedMotion: boolean
+): boolean {
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  let seen = 0;
+
+  graph.forEachNode((key, attrs) => {
+    if (attrs.hidden === true) return;
+    const display = renderer.getNodeDisplayData(key);
+    const x = Number(display?.x);
+    const y = Number(display?.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+    seen += 1;
+  });
+
+  if (seen === 0) return false;
+
+  // A single node has no extent, so a span-derived zoom would divide the view
+  // down to nothing. Fall back to the same close ratio a focus request uses.
+  const span = Math.max(maxX - minX, maxY - minY);
+  const ratio = span <= 0 ? 0.2 : Math.min(1, Math.max(0.05, span * FIT_PADDING));
+  const state = { x: (minX + maxX) / 2, y: (minY + maxY) / 2, ratio };
+  if (reducedMotion) renderer.getCamera().setState(state);
+  else renderer.getCamera().animate(state, { duration: 280 });
   return true;
 }
 
@@ -791,7 +844,14 @@ export function PackageMapCanvas({
     applyAtlasGraphStyles(graph);
     applyFiltersToCanvasGraph(graph, filters);
     applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
-    sigmaRef.current?.refresh();
+    const renderer = sigmaRef.current;
+    renderer?.refresh();
+    // Only when the descent actually revealed something. Refitting on collapse
+    // would yank the view while the reader is climbing back out, and refitting
+    // on an unrelated filter change would undo a pan they chose.
+    if (added.length > 0 && renderer !== null && renderer !== undefined) {
+      fitCameraToVisibleNodes(renderer, graph, prefersReducedMotion());
+    }
     publishRef.current?.();
   }, [expandedPackages, fileData, filters]);
 
@@ -820,7 +880,11 @@ export function PackageMapCanvas({
     applyAtlasGraphStyles(graph);
     applyFiltersToCanvasGraph(graph, filters);
     applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
-    sigmaRef.current?.refresh();
+    const renderer = sigmaRef.current;
+    renderer?.refresh();
+    if (added.length > 0 && renderer !== null && renderer !== undefined) {
+      fitCameraToVisibleNodes(renderer, graph, prefersReducedMotion());
+    }
     publishRef.current?.();
   }, [expandedFiles, symbolData, filters]);
 
@@ -872,7 +936,15 @@ export function PackageMapCanvas({
     if (current !== undefined) nudgeCamera({ ratio: Math.min(10, current.ratio / 0.75) });
   }, [nudgeCamera]);
 
-  const resetCamera = useCallback(() => {
+  // Fit, not reset. A blind reset to the centre at ratio 1 is only the right
+  // view when the graph happens to fill the framed space; after a descent it
+  // put the reader back to the same empty field they pressed the button to
+  // escape. Falls back to reset when there is nothing visible to frame.
+  const fitToContent = useCallback(() => {
+    const renderer = sigmaRef.current;
+    const graph = graphRef.current;
+    if (renderer !== null && graph !== null
+      && fitCameraToVisibleNodes(renderer, graph, prefersReducedMotion())) return;
     nudgeCamera({ x: 0.5, y: 0.5, ratio: 1, angle: 0 });
   }, [nudgeCamera]);
 
@@ -916,9 +988,9 @@ export function PackageMapCanvas({
           <span aria-hidden="true">−</span>
           <span className="tadori-visually-hidden">Zoom out</span>
         </button>
-        <button type="button" onClick={resetCamera}>
-          <span aria-hidden="true">⌂</span>
-          <span className="tadori-visually-hidden">Reset the view</span>
+        <button type="button" onClick={fitToContent}>
+          <span aria-hidden="true">⤢</span>
+          <span className="tadori-visually-hidden">Fit the map to its content</span>
         </button>
       </div>
       <div
