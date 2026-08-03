@@ -1379,6 +1379,17 @@ button { min-height: 2rem; }
 .interview-questions { margin: 0; padding-left: var(--tadori-space-4); display: grid; gap: var(--tadori-space-4); }
 .interview-question-head { display: flex; align-items: baseline; gap: var(--tadori-space-2); flex-wrap: wrap; }
 .interview-question-text { margin: 0; max-width: 72ch; font-size: var(--tadori-text-sm); font-weight: 600; }
+
+/* An identifier a candidate has to say out loud reads as a token, not as
+   words, and takes the same shape in every question. */
+.interview-question-text code, .interview-answer code {
+  padding: 0 0.2rem;
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-panel);
+  font-family: var(--tadori-font-mono);
+  font-size: var(--tadori-text-xs);
+  overflow-wrap: anywhere;
+}
 .interview-difficulty {
   font-size: var(--tadori-text-xs); text-transform: uppercase;
   letter-spacing: 0.04em; color: var(--tadori-ink-muted);
