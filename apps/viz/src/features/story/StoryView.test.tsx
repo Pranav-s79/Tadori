@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { StoryView, evidencedPath, storyStepLabelText, transitionForStoryStep } from "./StoryView.tsx";
-import type { BehaviorStory, StoryStepLabel } from "./storyApi.ts";
+import type { BehaviorStory, StoryStep, StoryStepLabel, StoryTransition } from "./storyApi.ts";
 
 /**
  * The story endpoint carries no display name per step, so StoryView resolves
@@ -284,6 +284,53 @@ describe("StoryView", () => {
     expect(evidencedPath(loaded, 2)).toEqual([0, 2]);
     // The wall hangs off its known source and has no destination of its own.
     expect(evidencedPath(loaded, 3)).toEqual([0, 2, 3]);
+  });
+
+  /**
+   * The server emits a step at the first transition into an unvisited key, in
+   * BFS order, but sorts `unresolvedTransitions` by key and lists repeat edges
+   * into an already-reached wall. Pairing the k-th wall with the k-th sorted
+   * transition hung each wall here off the other's source.
+   */
+  it("pairs every wall with the transition that reached it", () => {
+    const wall: Omit<StoryStep, "id" | "entityKey"> = { kind: "unresolved", resolved: false, label: "unresolved", origin: "heuristic", confidence: "inferred", resolution: "unresolved", evidence: [] };
+    const resolved: Omit<StoryStep, "id" | "entityKey"> = { kind: "function", resolved: true, label: "statically-resolved", origin: "compiler", confidence: "certain", resolution: "resolved", evidence: [] };
+    const edge = (from: string, to: string, resolution: "resolved" | "unresolved"): StoryTransition => ({
+      from, to, relation: "calls", origin: "heuristic", confidence: "inferred", resolution, resolved: resolution === "resolved", evidence: []
+    });
+    const loaded = story({
+      steps: [
+        { id: "step:0:z", entityKey: "z", ...resolved },
+        { id: "step:1:a", entityKey: "a", ...resolved },
+        { id: "step:2:unresolved", entityKey: null, ...wall },
+        { id: "step:3:unresolved", entityKey: null, ...wall }
+      ],
+      transitions: [
+        edge("k-route", "z", "resolved"),
+        edge("k-route", "a", "resolved"),
+        edge("z", "unresolved:1", "unresolved"),
+        // A second edge into a wall already reached: no step of its own.
+        edge("a", "unresolved:1", "unresolved"),
+        edge("a", "unresolved:2", "unresolved")
+      ],
+      unresolvedTransitions: [
+        edge("a", "unresolved:1", "unresolved"),
+        edge("a", "unresolved:2", "unresolved"),
+        edge("z", "unresolved:1", "unresolved")
+      ]
+    });
+    expect(transitionForStoryStep(loaded, 2)).toEqual(expect.objectContaining({ from: "z", to: null }));
+    expect(transitionForStoryStep(loaded, 3)).toEqual(expect.objectContaining({ from: "a", to: null }));
+    expect(evidencedPath(loaded, 2)).toEqual([0, 2]);
+    expect(evidencedPath(loaded, 3)).toEqual([1, 3]);
+  });
+
+  it("returns no transition when the replay disagrees with a resolved step", () => {
+    const loaded = story({
+      steps: [{ id: "step:0:a", entityKey: "a", kind: "function", resolved: true, label: "statically-resolved", origin: "compiler", confidence: "certain", resolution: "resolved", evidence: [] }],
+      transitions: [{ from: "k-route", to: "b", relation: "routes_to", origin: "compiler", confidence: "certain", resolution: "resolved", resolved: true, evidence: [] }]
+    });
+    expect(transitionForStoryStep(loaded, 0)).toBeNull();
   });
 
   it("claims no path it cannot trace back to the route", () => {
