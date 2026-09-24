@@ -61,7 +61,8 @@ export interface OverviewInput {
   coupling: CouplingState;
 }
 
-function plural(count: number, one: string, many: string): string {
+/** "1 file", "2 files": the count and its correctly inflected noun. */
+export function plural(count: number, one: string, many: string): string {
   return `${String(count)} ${count === 1 ? one : many}`;
 }
 
@@ -247,8 +248,8 @@ export function buildOverview(input: OverviewInput): OverviewSection[] {
       claims: [{
         label: "Extraction diagnostics",
         value: `${plural(diagnostics.total, "diagnostic", "diagnostics")} recorded`
-          + ` (${String(diagnostics.bySeverity.error)} error,`
-          + ` ${String(diagnostics.bySeverity.warning)} warning,`
+          + ` (${plural(diagnostics.bySeverity.error, "error", "errors")},`
+          + ` ${plural(diagnostics.bySeverity.warning, "warning", "warnings")},`
           + ` ${String(diagnostics.bySeverity.info)} info).`
           + " Affected files may appear thinner than they are.",
         basis: "observed",
