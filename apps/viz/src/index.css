@@ -235,6 +235,14 @@ button { min-height: 2rem; }
   grid-template-columns: 5rem minmax(15rem, 19rem) minmax(0, 1fr) minmax(18rem, 23rem);
 }
 
+/* Overview and Interview show no map, so they draw no lens rail and the
+   workspace drops that column at every breakpoint below. */
+.atlas-workspace-lensless { grid-template-columns: minmax(15rem, 19rem) minmax(0, 1fr); }
+
+.app-shell.has-inspector .atlas-workspace-lensless {
+  grid-template-columns: minmax(15rem, 19rem) minmax(0, 1fr) minmax(18rem, 23rem);
+}
+
 .lens-rail {
   z-index: 10;
   display: flex;
@@ -1334,6 +1342,9 @@ button { min-height: 2rem; }
   .atlas-workspace,
   .app-shell.has-inspector .atlas-workspace { grid-template-columns: 3rem minmax(14rem, 17rem) minmax(0, 1fr); }
 
+  .atlas-workspace-lensless,
+  .app-shell.has-inspector .atlas-workspace-lensless { grid-template-columns: minmax(14rem, 17rem) minmax(0, 1fr); }
+
   /* Below 1280px the inspector overlays the stage. It used to do so with no
      visible boundary, starting at the top and covering the context bar's
      level and count indicators exactly when the reader needed them — so the
@@ -1360,6 +1371,9 @@ button { min-height: 2rem; }
   .app-shell.has-inspector .atlas-workspace {
     grid-template-columns: 3rem minmax(11rem, 13rem) minmax(0, 1fr);
   }
+
+  .atlas-workspace-lensless,
+  .app-shell.has-inspector .atlas-workspace-lensless { grid-template-columns: minmax(11rem, 13rem) minmax(0, 1fr); }
 }
 
 @media (max-width: 860px) {
@@ -1399,6 +1413,11 @@ button { min-height: 2rem; }
     pointer-events: auto;
   }
   .atlas-main { grid-column: 2; }
+
+  .atlas-workspace-lensless,
+  .app-shell.has-inspector .atlas-workspace-lensless { grid-template-columns: minmax(0, 1fr); }
+  .atlas-workspace-lensless .atlas-navigation { left: 0; width: min(20rem, 100%); }
+  .atlas-workspace-lensless .atlas-main { grid-column: 1; }
   .spatial-workspace-story { grid-template-columns: 1fr; }
 
   .spatial-workspace-story .app-graph-stage { grid-column: 1; }
