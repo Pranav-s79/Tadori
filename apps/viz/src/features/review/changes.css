@@ -84,6 +84,17 @@
 
 .review-diff-load-more { justify-self: start; }
 
+/* An explanation, not a warning: a plain carved note with no copper or red,
+   overriding the shell's tinted status bar. */
+.review-diff .review-diff-note[role="status"] {
+  margin: 0;
+  border: 1px solid var(--tadori-rule);
+  border-left: 0.2rem solid var(--tadori-ink-muted);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-ground);
+  color: var(--tadori-ink);
+}
+
 .review-diff-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));

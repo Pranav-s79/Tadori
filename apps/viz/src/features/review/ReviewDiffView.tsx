@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
 import type { CoalescedChange, EdgeDiffRow, ReviewDiffKind, ReviewDiffNode } from "./reviewDiffApi.ts";
-import { useReviewDiffStore, type AccumulatedDiff, type ReviewDiffStore } from "./useReviewDiffStore.ts";
+import { NO_SNAPSHOT_PAIR_CODE, useReviewDiffStore, type AccumulatedDiff, type ReviewDiffStore } from "./useReviewDiffStore.ts";
+import { plural } from "../overview/overviewModel.ts";
 import "./changes.css";
 
 /** A flattened, ordered row spanning the three diff sections (added/removed/edges). */
@@ -398,7 +399,7 @@ function CoalescedRow({
  */
 export function diffFailureText(errorCode: string | null): string {
   switch (errorCode) {
-    case "bad_snapshot_ref":
+    case NO_SNAPSHOT_PAIR_CODE:
       return "There is no earlier snapshot to compare against — this repository has been"
         + " indexed once. Choose Working tree or Staged to see uncommitted changes instead.";
     case null:
@@ -408,7 +409,24 @@ export function diffFailureText(errorCode: string | null): string {
   }
 }
 
+/** Why the view opened on Working tree when Snapshot is the default. */
+export const SWITCHED_FROM_SNAPSHOT_TEXT = "Snapshot comparison had no earlier snapshot to compare against,"
+  + " so this compares the working tree with the indexed snapshot.";
+
 function StatusRegion({ store }: { store: ReviewDiffStore }): ReactElement | null {
+  // Information, not a fault: neutral plate, announced politely.
+  if (store.switchedFromSnapshot) {
+    return (
+      <>
+        <p role="status" className="review-diff-status review-diff-note">{SWITCHED_FROM_SNAPSHOT_TEXT}</p>
+        <DiffStatus store={store} />
+      </>
+    );
+  }
+  return <DiffStatus store={store} />;
+}
+
+function DiffStatus({ store }: { store: ReviewDiffStore }): ReactElement | null {
   switch (store.status) {
     case "loading":
       return (
@@ -429,7 +447,12 @@ function StatusRegion({ store }: { store: ReviewDiffStore }): ReactElement | nul
         </div>
       );
     case "failed":
-      return (
+      // No snapshot pair is an ordinary state the user chose, not a fault.
+      return store.errorCode === NO_SNAPSHOT_PAIR_CODE ? (
+        <div role="status" className="review-diff-status review-diff-note">
+          {diffFailureText(store.errorCode)}
+        </div>
+      ) : (
         <div role="alert" className="review-diff-status">
           {diffFailureText(store.errorCode)}
         </div>
@@ -453,13 +476,13 @@ function OmissionNotes({ store }: { store: ReviewDiffStore }): ReactElement | nu
   }
   const notes: string[] = [];
   if (page.nodesAddedOmitted > 0) {
-    notes.push(`+${page.nodesAddedOmitted} added nodes not shown`);
+    notes.push(`+${plural(page.nodesAddedOmitted, "added node", "added nodes")} not shown`);
   }
   if (page.nodesRemovedOmitted > 0) {
-    notes.push(`${page.nodesRemovedOmitted} removed nodes not shown`);
+    notes.push(`${plural(page.nodesRemovedOmitted, "removed node", "removed nodes")} not shown`);
   }
   if (page.edgesOmitted > 0) {
-    notes.push(`${page.edgesOmitted} changed edges not shown`);
+    notes.push(`${plural(page.edgesOmitted, "changed edge", "changed edges")} not shown`);
   }
   if (notes.length === 0) {
     return null;

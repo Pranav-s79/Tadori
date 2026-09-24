@@ -41,6 +41,11 @@ export interface ReviewDiffState {
   status: ReviewDiffStatus;
   errorCode: string | null;
   nextCursor: string | null;
+  /**
+   * True when the opening Snapshot comparison had no snapshot pair and the
+   * store moved to Working tree on its own. Cleared by any kind the user picks.
+   */
+  switchedFromSnapshot: boolean;
 }
 
 export interface ReviewDiffStore extends ReviewDiffState {
@@ -54,6 +59,12 @@ const DEFAULT_LIMIT = 50;
 
 /** 501 codes that mean "this comparison can't be produced here" (honest, not a failure). */
 const UNSUPPORTED_CODES = new Set(["coalesced_unsupported", "git_unavailable"]);
+
+/**
+ * The server's answer to a Snapshot comparison with no base/head pair (the
+ * viz has no snapshot picker, so every Snapshot request gets it).
+ */
+export const NO_SNAPSHOT_PAIR_CODE = "bad_snapshot_ref";
 
 /** Stable id for a node row (per side): entityKey is unique within added/removed. */
 function nodeId(node: ReviewDiffNode): string {
@@ -189,6 +200,7 @@ export function useReviewDiffStore(
   const [status, setStatus] = useState<ReviewDiffStatus>("idle");
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [switchedFromSnapshot, setSwitchedFromSnapshot] = useState(false);
 
   const generationRef = useRef(0);
   const coalescedRef = useRef<boolean>(false);
@@ -215,7 +227,7 @@ export function useReviewDiffStore(
   }, []);
 
   const load = useCallback(
-    (targetKind: ReviewDiffKind, targetCoalesced: boolean) => {
+    (targetKind: ReviewDiffKind, targetCoalesced: boolean, fallBackToWorkingTree = false) => {
       const generation = ++generationRef.current;
       setKindState(targetKind);
       setCoalescedState(targetCoalesced);
@@ -227,7 +239,25 @@ export function useReviewDiffStore(
       setErrorCode(null);
       setStatus("loading");
       loadingMoreRef.current = false;
-      fetchReviewDiff({ kind: targetKind, limit: DEFAULT_LIMIT, coalesce: targetCoalesced }, generation)
+      const request = (kindToFetch: ReviewDiffKind): Promise<ReviewDiffPage> =>
+        fetchReviewDiff({ kind: kindToFetch, limit: DEFAULT_LIMIT, coalesce: targetCoalesced }, generation);
+      request(targetKind)
+        .catch((err: unknown) => {
+          // Same generation, still "loading": the snapshot refusal is never
+          // painted, so nothing flashes or is announced before the switch.
+          if (
+            !fallBackToWorkingTree
+            || generation !== generationRef.current
+            || !(err instanceof ReviewDiffError)
+            || err.code !== NO_SNAPSHOT_PAIR_CODE
+          ) {
+            throw err;
+          }
+          setKindState("working_tree");
+          kindRef.current = "working_tree";
+          setSwitchedFromSnapshot(true);
+          return request("working_tree");
+        })
         .then((result) => {
           if (result.generation !== generationRef.current) {
             return; // stale — a newer kind change superseded this request
@@ -251,6 +281,8 @@ export function useReviewDiffStore(
 
   const setKind = useCallback(
     (next: ReviewDiffKind) => {
+      // A kind the user picks is respected, Snapshot included: no second switch.
+      setSwitchedFromSnapshot(false);
       load(next, coalescedRef.current);
     },
     [load]
@@ -295,12 +327,15 @@ export function useReviewDiffStore(
       });
   }, [applyError]);
 
-  // Initial fetch: default kind = snapshot, once on mount. `load` is stable
-  // (its only dep, applyError, is memoized), so depending on it is a no-op —
-  // the effect still runs exactly once.
+  // Initial fetch: default kind = snapshot, once on mount, moving to Working
+  // tree once if there is no snapshot pair. `load` is stable (its only dep,
+  // applyError, is memoized), so depending on it is a no-op — the effect still
+  // runs exactly once.
   useEffect(() => {
-    load("snapshot", false);
+    load("snapshot", false, true);
   }, [load]);
 
-  return { kind, coalesced, page, status, errorCode, nextCursor, setKind, setCoalesced, loadMore };
+  return {
+    kind, coalesced, page, status, errorCode, nextCursor, switchedFromSnapshot, setKind, setCoalesced, loadMore
+  };
 }

@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ReviewDiffView, diffFailureText } from "../src/features/review/ReviewDiffView.tsx";
+import { ReviewDiffView, SWITCHED_FROM_SNAPSHOT_TEXT, diffFailureText } from "../src/features/review/ReviewDiffView.tsx";
 import type { AccumulatedDiff, ReviewDiffStatus, ReviewDiffStore } from "../src/features/review/useReviewDiffStore.ts";
 import type { EdgeDiffRow, ReviewDiffNode } from "../src/features/review/reviewDiffApi.ts";
 import { mockContext } from "./mockServer.ts";
@@ -70,6 +70,7 @@ function fakeStore(over: Partial<ReviewDiffStore> = {}): ReviewDiffStore {
     status: "idle" as ReviewDiffStatus,
     errorCode: null,
     nextCursor: null,
+    switchedFromSnapshot: false,
     setKind: vi.fn(),
     setCoalesced: vi.fn(),
     loadMore: vi.fn(),
@@ -114,6 +115,32 @@ describe("ReviewDiffView rendering", () => {
   it("renders a failed state via role=alert", () => {
     render(<ReviewDiffView store={fakeStore({ status: "failed", errorCode: "not_a_git_repository" })} />);
     expect(screen.getByRole("alert")).toHaveTextContent(/not_a_git_repository/);
+  });
+
+  it("explains an automatic switch to Working tree as information, not an alert", () => {
+    render(<ReviewDiffView store={fakeStore({ kind: "working_tree", switchedFromSnapshot: true, status: "empty", page: diff() })} />);
+    const statuses = screen.getAllByRole("status").map((el) => el.textContent);
+    expect(statuses).toEqual([SWITCHED_FROM_SNAPSHOT_TEXT, "No changes in this comparison."]);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("radio", { name: "Working tree" })).toBeChecked();
+  });
+
+  it("states a chosen Snapshot with no snapshot pair as status, never as an alert", () => {
+    render(<ReviewDiffView store={fakeStore({ status: "failed", errorCode: "bad_snapshot_ref" })} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/no earlier snapshot/);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("pluralizes omitted counts, including one", () => {
+    render(
+      <ReviewDiffView
+        store={fakeStore({
+          status: "partial",
+          page: diff({ nodesAdded: [node("a")], nodesAddedOmitted: 1, nodesRemovedOmitted: 1, edgesOmitted: 1 })
+        })}
+      />
+    );
+    expect(screen.getByText("+1 added node not shown; 1 removed node not shown; 1 changed edge not shown")).toBeInTheDocument();
   });
 
   it("shows a Load more button only when nextCursor is present", () => {

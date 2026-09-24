@@ -145,6 +145,53 @@ describe("useReviewDiffStore structured error mapping (never silent fallback)", 
   });
 });
 
+describe("useReviewDiffStore no-snapshot-pair fallback", () => {
+  async function refuseSnapshot(): Promise<void> {
+    await waitFor(() => expect(pending.length).toBe(1));
+    expect(pending[0]!.url).toContain("kind=snapshot");
+    await act(async () => pending[0]!.resolve({ error: "x", code: "bad_snapshot_ref" }, 400));
+  }
+
+  it("moves the opening comparison to working_tree once, without painting the refusal", async () => {
+    const { result } = renderHook(() => useReviewDiffStore());
+    await refuseSnapshot();
+    await waitFor(() => expect(pending.length).toBe(2));
+    expect(pending[1]!.url).toContain("kind=working_tree");
+    expect(result.current.status).toBe("loading");
+    expect(result.current.errorCode).toBeNull();
+    expect(result.current.kind).toBe("working_tree");
+    await act(async () => pending[1]!.resolve(pageBody({ nodesAdded: [node("wt")] })));
+    expect(result.current.status).toBe("ok");
+    expect(result.current.switchedFromSnapshot).toBe(true);
+  });
+
+  it("respects a later user choice of Snapshot: no second switch, note cleared", async () => {
+    const { result } = renderHook(() => useReviewDiffStore());
+    await refuseSnapshot();
+    await waitFor(() => expect(pending.length).toBe(2));
+    await act(async () => pending[1]!.resolve(pageBody()));
+
+    act(() => result.current.setKind("snapshot"));
+    await waitFor(() => expect(pending.length).toBe(3));
+    await act(async () => pending[2]!.resolve({ error: "x", code: "bad_snapshot_ref" }, 400));
+    expect(pending).toHaveLength(3);
+    expect(result.current.kind).toBe("snapshot");
+    expect(result.current.status).toBe("failed");
+    expect(result.current.errorCode).toBe("bad_snapshot_ref");
+    expect(result.current.switchedFromSnapshot).toBe(false);
+  });
+
+  it("does not switch for any other snapshot failure", async () => {
+    const { result } = renderHook(() => useReviewDiffStore());
+    await waitFor(() => expect(pending.length).toBe(1));
+    await act(async () => pending[0]!.resolve({ error: "x", code: "unknown_snapshot" }, 404));
+    expect(pending).toHaveLength(1);
+    expect(result.current.kind).toBe("snapshot");
+    expect(result.current.errorCode).toBe("unknown_snapshot");
+    expect(result.current.switchedFromSnapshot).toBe(false);
+  });
+});
+
 describe("useReviewDiffStore stale-response suppression", () => {
   it("discards the earlier kind's late response after a kind switch", async () => {
     const { result } = renderHook(() => useReviewDiffStore());
