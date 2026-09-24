@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
 import type { CoalescedChange, EdgeDiffRow, ReviewDiffKind, ReviewDiffNode } from "./reviewDiffApi.ts";
 import { useReviewDiffStore, type AccumulatedDiff, type ReviewDiffStore } from "./useReviewDiffStore.ts";
+import "./changes.css";
 
 /** A flattened, ordered row spanning the three diff sections (added/removed/edges). */
 type DiffRow =
@@ -52,27 +53,58 @@ function edgeRowLabel(edge: EdgeDiffRow): string {
   return `${edge.change_kind} edge: ${edge.source} --${edge.relation}--> ${edge.destination}, before ${before}, after ${after}`;
 }
 
-/** Flatten the accumulated diff into one ordered, keyboard-navigable row list. */
-function flattenRows(store: ReviewDiffStore): DiffRow[] {
-  const rows: DiffRow[] = [];
-  const page = store.page;
+const EDGE_CHANGE_TEXT: Record<EdgeDiffRow["change_kind"], string> = {
+  added: "added",
+  removed: "removed",
+  resolution_or_provenance_changed: "provenance changed"
+};
+
+/** One tablet: a kind of change, its rows in runs under an optional file caption. */
+interface Tablet {
+  id: "added" | "removed" | "edges";
+  label: string;
+  omitted: number;
+  groups: Array<{ caption: string | null; rows: DiffRow[] }>;
+}
+
+/**
+ * The accumulated diff as tablets, in server order: added, removed, edges.
+ * Node rows are grouped by file in first-appearance order; rows within a file
+ * keep server order, and nothing is re-sorted by name. Edge rows carry
+ * qualified names and no file, so they stay one uncaptioned run.
+ */
+function buildTablets(page: AccumulatedDiff | null): Tablet[] {
   if (page === null) {
-    return rows;
+    return [];
   }
-  for (const node of page.nodesAdded) {
-    rows.push({ rowType: "node", side: "added", id: `added:${node.entityKey}`, node });
-  }
-  for (const node of page.nodesRemoved) {
-    rows.push({ rowType: "node", side: "removed", id: `removed:${node.entityKey}`, node });
-  }
-  for (const edge of page.edges) {
-    rows.push({
-      rowType: "edge",
-      id: `edge:${edge.change_kind}:${edge.source}:${edge.relation}:${edge.destination}`,
-      edge
-    });
-  }
-  return rows;
+  const byFile = (side: "added" | "removed", nodes: ReviewDiffNode[]): Tablet["groups"] => {
+    const files = new Map<string | null, DiffRow[]>();
+    for (const node of nodes) {
+      const rows = files.get(node.file) ?? [];
+      rows.push({ rowType: "node", side, id: `${side}:${node.entityKey}`, node });
+      files.set(node.file, rows);
+    }
+    return [...files].map(([file, rows]) => ({ caption: file ?? "No source file", rows }));
+  };
+  const edges: DiffRow[] = page.edges.map((edge) => ({
+    rowType: "edge",
+    id: `edge:${edge.change_kind}:${edge.source}:${edge.relation}:${edge.destination}`,
+    edge
+  }));
+  const tablets: Tablet[] = [
+    { id: "added", label: "Added", omitted: page.nodesAddedOmitted, groups: byFile("added", page.nodesAdded) },
+    { id: "removed", label: "Removed", omitted: page.nodesRemovedOmitted, groups: byFile("removed", page.nodesRemoved) },
+    { id: "edges", label: "Changed relationships", omitted: page.edgesOmitted, groups: [{ caption: null, rows: edges }] }
+  ];
+  return tablets.filter((tablet) => tablet.groups.some((group) => group.rows.length > 0));
+}
+
+/** The tablet's carved label. States how many are shown when some are omitted. */
+function tabletTitle(tablet: Tablet): string {
+  const shown = tablet.groups.reduce((total, group) => total + group.rows.length, 0);
+  return tablet.omitted > 0
+    ? `${tablet.label} (${shown} of ${shown + tablet.omitted} shown)`
+    : `${tablet.label} (${shown})`;
 }
 
 export function ReviewDiffView({ store: externalStore, onInspect }: ReviewDiffViewProps): ReactElement {
@@ -102,10 +134,13 @@ function ReviewDiffList({
   store: ReviewDiffStore;
   onInspect?: (entityKey: string, entityType: "node") => void;
 }): ReactElement {
-  const rows = flattenRows(store);
+  const tablets = buildTablets(store.page);
+  // DOM order is keyboard order: the rows exactly as the tablets render them.
+  const rows = tablets.flatMap((tablet) => tablet.groups.flatMap((group) => group.rows));
+  const indexOf = new Map(rows.map((row, index) => [row, index]));
 
   const [activeIndex, setActiveIndex] = useState(0);
-  const optionRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     setActiveIndex((i) => (rows.length === 0 ? 0 : Math.min(i, rows.length - 1)));
@@ -140,7 +175,7 @@ function ReviewDiffList({
   );
 
   const onKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLUListElement>) => {
+    (event: KeyboardEvent<HTMLDivElement>) => {
       switch (event.key) {
         case "ArrowDown":
           event.preventDefault();
@@ -176,40 +211,59 @@ function ReviewDiffList({
 
   return (
     <section className="review-diff" aria-label="Review diff">
-      <KindSwitcher kind={store.kind} onChange={store.setKind} />
-      <CoalesceToggle coalesced={store.coalesced} onChange={store.setCoalesced} />
+      <div className="review-diff-controls">
+        <KindSwitcher kind={store.kind} onChange={store.setKind} />
+        <CoalesceToggle coalesced={store.coalesced} onChange={store.setCoalesced} />
+      </div>
 
       <StatusRegion store={store} />
 
       {store.coalesced && store.page !== null && <CoalescedSection page={store.page} />}
 
       {rows.length > 0 && (
-        <ul role="listbox" aria-label="Review diff changes" className="review-diff-list" onKeyDown={onKeyDown}>
-          {rows.map((row, index) => {
-            const active = index === activeIndex;
-            return (
-              <li
-                key={row.id}
-                ref={(el) => {
-                  optionRefs.current[index] = el;
-                }}
-                role="option"
-                aria-selected={active}
-                aria-label={row.rowType === "node" ? nodeRowLabel(row.side, row.node) : edgeRowLabel(row.edge)}
-                tabIndex={active ? 0 : -1}
-                className={
-                  row.rowType === "node" ? `review-diff-node review-diff-${row.side}` : "review-diff-edge"
-                }
-                onClick={() => {
-                  setActiveIndex(index);
-                  inspectRow(row);
-                }}
-              >
-                {row.rowType === "node" ? <NodeRow side={row.side} node={row.node} /> : <EdgeRow edge={row.edge} />}
-              </li>
-            );
-          })}
-        </ul>
+        // One listbox so arrow keys run across every tablet. A listbox may own
+        // only groups and options, so each tablet is a labelled group and its
+        // visible label and file captions are aria-hidden; every option's own
+        // label already names its file.
+        <div role="listbox" aria-label="Review diff changes" className="review-diff-list" onKeyDown={onKeyDown}>
+          {tablets.map((tablet) => (
+            <div key={tablet.id} role="group" aria-label={tabletTitle(tablet)} className={`review-tablet review-tablet-${tablet.id}`}>
+              <div className="review-tablet-label" aria-hidden="true">{tabletTitle(tablet)}</div>
+              {tablet.groups.map((group) => (
+                <Fragment key={group.caption ?? "edges"}>
+                  {group.caption !== null && (
+                    <div className="review-tablet-file" aria-hidden="true">{group.caption}</div>
+                  )}
+                  {group.rows.map((row) => {
+                    const index = indexOf.get(row) ?? 0;
+                    const active = index === activeIndex;
+                    return (
+                      <div
+                        key={row.id}
+                        ref={(el) => {
+                          optionRefs.current[index] = el;
+                        }}
+                        role="option"
+                        aria-selected={active}
+                        aria-label={row.rowType === "node" ? nodeRowLabel(row.side, row.node) : edgeRowLabel(row.edge)}
+                        tabIndex={active ? 0 : -1}
+                        className={
+                          row.rowType === "node" ? `review-diff-node review-diff-${row.side}` : "review-diff-edge"
+                        }
+                        onClick={() => {
+                          setActiveIndex(index);
+                          inspectRow(row);
+                        }}
+                      >
+                        {row.rowType === "node" ? <NodeRow side={row.side} node={row.node} /> : <EdgeRow edge={row.edge} />}
+                      </div>
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </div>
+          ))}
+        </div>
       )}
 
       <OmissionNotes store={store} />
@@ -285,6 +339,7 @@ function CoalescedSection({ page }: { page: AccumulatedDiff }): ReactElement | n
   }
   return (
     <section className="review-diff-coalesced" aria-label="Renames and moves (likely)">
+      <h3 className="review-tablet-label">Renames and moves (likely)</h3>
       <ul className="review-diff-coalesced-list">
         {coalesced.map((change, index) => (
           <CoalescedRow key={`${change.fromKey ?? "?"}:${change.toKey ?? "?"}:${index}`} change={change} edges={page.edges} />
@@ -417,14 +472,19 @@ function OmissionNotes({ store }: { store: ReviewDiffStore }): ReactElement | nu
 }
 
 function NodeRow({ side, node }: { side: "added" | "removed"; node: ReviewDiffNode }): ReactElement {
-  const loc = node.file === null ? null : node.lineStart === null ? node.file : `${node.file}:${node.lineStart}`;
+  // The file is the caption above the run, so the row drops a literal
+  // `<file>.` prefix and adds only the line. The option's label keeps both.
+  const loc = node.lineStart === null ? null : `line ${node.lineStart}`;
+  const name = node.file !== null && node.qualifiedName.startsWith(`${node.file}.`)
+    ? node.qualifiedName.slice(node.file.length + 1)
+    : node.qualifiedName;
   return (
     <>
       <span className="review-diff-marker" aria-hidden="true">
         {side === "added" ? "+" : "−"}
       </span>
       <span className="review-diff-kind-tag">{node.kind}</span>
-      <span className="review-diff-name">{node.qualifiedName}</span>
+      <span className="review-diff-name">{name}</span>
       {loc !== null && <span className="review-diff-loc">{loc}</span>}
       {node.stale ? (
         <span className="review-diff-freshness" aria-hidden="true">
@@ -445,6 +505,7 @@ function EdgeRow({ edge }: { edge: EdgeDiffRow }): ReactElement {
       <span className="review-diff-marker" aria-hidden="true">
         {edge.change_kind === "added" ? "+" : edge.change_kind === "removed" ? "−" : "~"}
       </span>
+      <span className="review-diff-change">{EDGE_CHANGE_TEXT[edge.change_kind]}</span>
       <span className="review-diff-edge-endpoints">
         {`${edge.source} --${edge.relation}--> ${edge.destination}`}
       </span>

@@ -4,6 +4,7 @@ import {
   type FileObservationOverlay,
   type ReviewObservationsOverlay
 } from "./observationOverlayApi.ts";
+import "./changes.css";
 
 interface ObservationOverlayBadgesProps {
   /** Bump to refetch after a snapshot rotation (same pattern as the diff store). */

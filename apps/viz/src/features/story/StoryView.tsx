@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from "react";
 import { EvidenceList } from "../inspect/EvidenceList.tsx";
 import {
   fetchRouteStory,
@@ -9,6 +9,7 @@ import {
   type StoryTransition
 } from "./storyApi.ts";
 import { resolveStepNames, type StepName } from "./stepNames.ts";
+import "./story.css";
 
 /** Stable identity so the resolve effect cannot re-fire on a fresh empty map. */
 const EMPTY_STEP_NAMES: ReadonlyMap<string, StepName> = new Map();
@@ -73,25 +74,48 @@ type StoryState =
  * let alone recalled. `name` is resolved separately through the entity endpoint;
  * until it arrives, or when the snapshot genuinely cannot name the entity, the
  * row says so instead of showing the digest as if it were a name.
+ *
+ * Each step is a stepping-stone plate. `hop` sets how far down the descent it
+ * sits and is always stated in words; a step whose chain back to the route the
+ * DTO does not prove has no hop and sits flat rather than at a guessed depth.
  */
 function StepRow({
   step,
+  index,
+  hop,
+  onPath,
   repoRoot,
   name,
   onInspect,
   active
 }: {
   step: StoryStep;
+  index: number;
+  hop: number | null;
+  onPath: boolean;
   repoRoot: string | null;
   name: StepName | undefined;
   onInspect?: (entityKey: string) => void;
   active: boolean;
 }): ReactElement {
+  const ref = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    // Optional call: jsdom has no scrollIntoView. Instant, so nothing animates.
+    if (active) ref.current?.scrollIntoView?.({ block: "nearest" });
+  }, [active]);
   const heading = name === undefined
     ? "Resolving name…"
     : name.displayName ?? "Name unavailable in this snapshot";
+  const reach = hop === null ? "" : `${hop} hop${hop === 1 ? "" : "s"} from the route · `;
   return (
-    <li className={`story-step story-step-${step.label}${active ? " story-step-active" : ""}`} aria-current={active ? "step" : undefined}>
+    <li
+      ref={ref}
+      className={`story-step story-step-${step.label}${active ? " story-step-active" : ""}`}
+      aria-current={active ? "step" : undefined}
+      data-on-path={onPath ? "true" : undefined}
+      style={{ "--story-descent": hop === null ? 0 : Math.min(hop - 1, 4) } as CSSProperties}
+    >
+      <span className="story-step-stone" aria-hidden="true">{index + 1}</span>
       <div className="story-step-head">
         <span className="story-step-kind">{step.kind}</span>
         {step.entityKey !== null ? (
@@ -107,7 +131,7 @@ function StepRow({
         <p className="story-step-qualified">{name.qualifiedName}</p>
       )}
       <div className="story-step-provenance">
-        {`${step.origin} · ${step.confidence} · ${step.resolution}`}
+        {`${reach}${step.origin} · ${step.confidence} · ${step.resolution}`}
       </div>
       <EvidenceList evidence={step.evidence} omittedCount={0} repoRoot={repoRoot} />
     </li>
@@ -127,6 +151,54 @@ export function transitionForStoryStep(story: BehaviorStory, stepIndex: number):
 }
 
 /**
+ * Indices of the steps on the evidenced path from the route to `stepIndex`,
+ * inclusive and in descent order, or null when the DTO does not prove a chain
+ * back to the route. Steps arrive in BFS order, so consecutive steps are NOT a
+ * call chain; this walks the same predecessor rule the map uses to draw the
+ * active path (the first resolved transition into a key). An unresolved wall
+ * has no destination, so its path runs back from the source it hangs off.
+ */
+export function evidencedPath(story: BehaviorStory, stepIndex: number): number[] | null {
+  const step = story.steps[stepIndex];
+  if (step === undefined) return null;
+  const indexByKey = new Map<string, number>();
+  story.steps.forEach((candidate, index) => {
+    if (candidate.entityKey !== null && !indexByKey.has(candidate.entityKey)) indexByKey.set(candidate.entityKey, index);
+  });
+  const path = [stepIndex];
+  let cursor = step.entityKey ?? transitionForStoryStep(story, stepIndex)?.from ?? null;
+  if (cursor === null) return null;
+  if (step.entityKey === null && cursor !== story.entryPoint) {
+    const source = indexByKey.get(cursor);
+    if (source === undefined) return null;
+    path.push(source);
+  }
+  const seen = new Set<string>();
+  while (cursor !== story.entryPoint) {
+    if (seen.has(cursor)) return null;
+    seen.add(cursor);
+    const key: string = cursor;
+    const predecessor = story.transitions.find((transition) =>
+      transition.resolved && transition.resolution !== "unresolved" && transition.to === key);
+    if (predecessor === undefined) return null;
+    cursor = predecessor.from;
+    if (cursor !== story.entryPoint) {
+      const parent = indexByKey.get(cursor);
+      if (parent === undefined) return null;
+      path.push(parent);
+    }
+  }
+  return path.reverse();
+}
+
+/** The active path in words: the text equivalent of the copper rail. */
+function evidencedPathText(story: BehaviorStory, path: readonly number[]): string {
+  const stops = path.map((index) =>
+    story.steps[index]?.entityKey === null ? `step ${index + 1} (destination unknown)` : `step ${index + 1}`);
+  return `Evidenced path: ${["route", ...stops].join(" → ")}`;
+}
+
+/**
  * BehaviorStory view (08-07A frontend). Renders the STATIC behavior story for a
  * route: an ordered list of reached steps with their honesty labels and
  * evidence, the explicit unresolved walls (dynamic dispatch that dead-ends —
@@ -139,6 +211,12 @@ export function StoryView({ entityKey, repoRoot = null, onInspect, onClose, onPl
   const [state, setState] = useState<StoryState>({ status: "loading" });
   const [activeStepIndex, setActiveStepIndex] = useState(-1);
   const [stepNames, setStepNames] = useState<ReadonlyMap<string, StepName>>(EMPTY_STEP_NAMES);
+  // ponytail: O(steps²) walk; fine for route stories, index transitions by key if they reach thousands.
+  const paths = useMemo(
+    () => state.status === "ready" ? state.story.steps.map((_, index) => evidencedPath(state.story, index)) : [],
+    [state]
+  );
+  const activePath = paths[activeStepIndex] ?? null;
 
   useEffect(() => {
     if (entityKey === null) {
@@ -231,9 +309,12 @@ export function StoryView({ entityKey, repoRoot = null, onInspect, onClose, onPl
 
       {state.status === "ready" && (
         <div className="story-body">
-          <h3 className="story-title">{state.story.title}</h3>
-          <p className="story-trigger">{`Trigger: ${state.story.trigger}`}</p>
-          <p className="story-confidence">{`Overall confidence: ${state.story.confidence}`}</p>
+          {/* The landing plate: the route the descent starts from. */}
+          <div className="story-landing">
+            <h3 className="story-title">{state.story.title}</h3>
+            <p className="story-trigger">{`Trigger: ${state.story.trigger}`}</p>
+            <p className="story-confidence">{`Overall confidence: ${state.story.confidence}`}</p>
+          </div>
 
           {state.story.steps.length > 0 && (
             <nav className="story-transport" aria-label="Story step transport">
@@ -246,13 +327,24 @@ export function StoryView({ entityKey, repoRoot = null, onInspect, onClose, onPl
               </button>
             </nav>
           )}
+          {activePath !== null && <p className="story-path">{evidencedPathText(state.story, activePath)}</p>}
 
           {state.story.steps.length === 0 ? (
             <p role="status">No reachable steps from this route in the snapshot.</p>
           ) : (
             <ol className="story-steps" aria-label="Story steps">
               {state.story.steps.map((step, index) => (
-                <StepRow key={step.id} step={step} repoRoot={repoRoot} name={stepNames.get(step.entityKey ?? "")} onInspect={onInspect} active={index === activeStepIndex} />
+                <StepRow
+                  key={step.id}
+                  step={step}
+                  index={index}
+                  hop={paths[index]?.length ?? null}
+                  onPath={activePath?.includes(index) ?? false}
+                  repoRoot={repoRoot}
+                  name={stepNames.get(step.entityKey ?? "")}
+                  onInspect={onInspect}
+                  active={index === activeStepIndex}
+                />
               ))}
             </ol>
           )}

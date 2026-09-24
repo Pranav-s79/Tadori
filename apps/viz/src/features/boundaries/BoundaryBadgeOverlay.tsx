@@ -2,6 +2,7 @@ import { useMemo, type ReactElement } from "react";
 import type { ApiNode } from "../../api/types.ts";
 import type { BoundaryViolation } from "./boundariesApi.ts";
 import { violationFilePath } from "./boundariesApi.ts";
+import "./boundaries.css";
 
 /** A Sigma graph coordinate projected into the current viewport. */
 export interface BadgePosition {
