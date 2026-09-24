@@ -1,0 +1,90 @@
+/* Interview: finds trays. Each question group is a tray sunk into the ground,
+   and each question a tablet resting in it. Tablets are numbered once across
+   the whole interview so a candidate can say "question four". Plate and model
+   primitives come from ../overview/overview.css. */
+.interview-panel {
+  counter-reset: tadori-tablet;
+  gap: 0;
+  max-width: 76rem;
+  padding: var(--tadori-space-8) var(--tadori-space-6);
+}
+
+.interview-intro { margin-bottom: var(--tadori-space-8); }
+/* A deck's tablets are separate plates, so the gap between them shows. */
+.interview-intro .orientation-stack { --plate: 2rem; --step: 0.55rem; }
+
+.interview-decks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+  gap: var(--tadori-space-8) var(--tadori-space-6);
+  align-items: start;
+}
+
+.interview-group h3 {
+  margin: 0 0 var(--tadori-space-2);
+  padding: 0;
+  border-bottom: 0;
+  color: var(--tadori-ink-muted); /* 5.46:1 on the ground */
+  font: 600 var(--tadori-text-xs) / 1.3 var(--tadori-font-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* The tray: below the surface, so its shadow falls inward. No text sits on it
+   directly — ink-muted would miss AA on ground-deep. */
+.interview-questions {
+  gap: var(--tadori-space-4);
+  padding: var(--tadori-space-3) var(--tadori-space-3) var(--tadori-space-4);
+  list-style: none;
+  border-radius: var(--tadori-radius-md);
+  background: var(--tadori-ground-deep);
+  box-shadow: inset 1px 2px 4px rgb(41 42 40 / 22%), inset -1px -1px 0 rgb(255 255 255 / 35%);
+}
+
+.interview-tablet {
+  counter-increment: tadori-tablet;
+  padding: var(--tadori-space-4) var(--tadori-space-4) var(--tadori-space-4) 3.25rem;
+}
+
+/* Decorative numeral; the list itself carries position for assistive tech. */
+.interview-tablet::before {
+  content: counter(tadori-tablet, decimal-leading-zero);
+  content: counter(tadori-tablet, decimal-leading-zero) / "";
+  position: absolute;
+  top: var(--tadori-space-4);
+  left: var(--tadori-space-4);
+  color: var(--tadori-ink-muted);
+  font: 600 var(--tadori-text-lg) / 1.1 var(--tadori-font-label);
+}
+
+/* An inferred or unknown question must not rest on the same solid tablet as an
+   observed one. The outline repeats the badge's own dashed/dotted vocabulary;
+   the badge text remains the signal. */
+.interview-tablet[data-basis="inferred"] { border: 1px dashed var(--tadori-ink-muted); }
+.interview-tablet[data-basis="unknown"] { border: 1px dotted var(--tadori-ink-muted); }
+
+.interview-question-head { row-gap: var(--tadori-space-1); }
+.interview-question-text {
+  flex-basis: 100%;
+  color: var(--tadori-ink);
+  font-size: var(--tadori-text-md);
+  line-height: 1.4;
+}
+
+.interview-tablet details { margin-top: var(--tadori-space-3); font-size: var(--tadori-text-sm); }
+.interview-tablet summary { cursor: pointer; }
+/* Evidence links keep their 2rem target height; centring them on the label
+   and dropping the row gap stops a wrapped list reading as separate lines. */
+.interview-evidence { margin-top: var(--tadori-space-2); align-items: center; row-gap: 0; }
+.interview-evidence code { overflow-wrap: anywhere; }
+
+@media (max-width: 48rem) {
+  .interview-panel { padding: var(--tadori-space-6) var(--tadori-space-4); }
+  .interview-questions { padding: var(--tadori-space-2); }
+  .interview-tablet { padding: var(--tadori-space-3) var(--tadori-space-3) var(--tadori-space-3) 2.5rem; }
+  .interview-tablet::before { top: var(--tadori-space-3); left: var(--tadori-space-3); font-size: var(--tadori-text-sm); }
+}
+
+@media (forced-colors: active) {
+  .interview-questions { border: 1px solid CanvasText; }
+}

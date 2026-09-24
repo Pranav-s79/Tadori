@@ -62,6 +62,38 @@ describe("InterviewPanel", () => {
     expect(screen.queryByRole("button", { name: "src/api.ts" })).not.toBeInTheDocument();
   });
 
+  it("stacks one decorative tablet per question and keeps each tablet's basis in words", async () => {
+    const { container } = render(
+      <InterviewPanel
+        subjectEntityKey="fn:handle"
+        routes={{ status: "ready", routes: [] }}
+        analysis={null}
+        onSelectEntity={vi.fn()}
+      />
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: /Interview preparation — handle/u })).toBeInTheDocument()
+    );
+
+    // One stack per group, one plate per question: the model counts, it does
+    // not rank, and it stays out of the accessibility tree.
+    const model = container.querySelector(".orientation-model");
+    const tablets = [...container.querySelectorAll<HTMLElement>(".interview-tablet")];
+    expect(model).toHaveAttribute("aria-hidden", "true");
+    expect(model?.querySelectorAll(".orientation-stack")).toHaveLength(
+      container.querySelectorAll(".interview-group").length
+    );
+    expect(model?.querySelectorAll("span")).toHaveLength(tablets.length);
+
+    // The tablet's outline follows its basis, so the two must never disagree;
+    // the badge text is what a reader actually relies on.
+    for (const tablet of tablets) {
+      const badge = tablet.querySelector(".claim-badge");
+      expect(badge?.textContent?.toLowerCase()).toBe(tablet.dataset.basis);
+    }
+    expect(tablets.some((tablet) => tablet.dataset.basis === "inferred")).toBe(true);
+  });
+
   it("runs a whole-repository interview when nothing is selected", async () => {
     render(
       <InterviewPanel
