@@ -441,10 +441,10 @@ export function App(): ReactElement {
 
       <div className="atlas-workspace">
         <nav className="lens-rail" aria-label="Map lenses">
-          <LensButton active={lenses.boundaries} label="Boundaries" symbol="B" onClick={() => toggleLens("boundaries")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
-          <LensButton active={lenses.changes} label="Changes" symbol="Δ" onClick={() => toggleLens("changes")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
-          <LensButton active={lenses.observations} label="Agent review" symbol="A" onClick={() => toggleLens("observations")} />
-          <LensButton active={lenses.provenance} label="Provenance" symbol="P" onClick={() => toggleLens("provenance")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
+          <LensButton active={lenses.boundaries} label="Boundaries" onClick={() => toggleLens("boundaries")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
+          <LensButton active={lenses.changes} label="Changes" onClick={() => toggleLens("changes")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
+          <LensButton active={lenses.observations} label="Agent review" onClick={() => toggleLens("observations")} />
+          <LensButton active={lenses.provenance} label="Provenance" onClick={() => toggleLens("provenance")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
         </nav>
 
         <aside ref={navigationFocus.drawerRef} id="atlas-navigation" className="atlas-navigation" data-open={navigationOpen} aria-label="Repository navigation" aria-hidden={!navigationOpen} inert={!navigationOpen} tabIndex={-1} onKeyDown={navigationFocus.onDrawerKeyDown}>

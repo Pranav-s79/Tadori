@@ -47,10 +47,24 @@ describe("LensButton", () => {
    * screen-reader users.
    */
   it("names the lens in visible text, not only in its accessible name", () => {
-    render(<LensButton active={false} label="Boundaries" symbol="B" onClick={() => undefined} />);
+    render(<LensButton active={false} label="Boundaries" onClick={() => undefined} />);
 
     expect(screen.getByText("Boundaries")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Boundaries lens" })).toBeInTheDocument();
+  });
+
+  /**
+   * The narrow rail swapped the word for that letter again. The word is now
+   * the only visible text at every width, so it is always contained in the
+   * accessible name (WCAG 2.5.3), and the pressed state is a real attribute
+   * rather than only a raised or sunken look.
+   */
+  it("shows only the word, and exposes the pressed state", () => {
+    render(<LensButton active label="Provenance" onClick={() => undefined} />);
+
+    const button = screen.getByRole("button", { name: "Provenance lens" });
+    expect(button).toHaveTextContent(/^Provenance$/);
+    expect(button).toHaveAttribute("aria-pressed", "true");
   });
 
   it("still names a disabled lens and says why it is unavailable", () => {
@@ -58,7 +72,6 @@ describe("LensButton", () => {
       <LensButton
         active={false}
         label="Changes"
-        symbol="Δ"
         onClick={() => undefined}
         disabledReason="Available in map-based views, not Table mode."
       />

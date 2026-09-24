@@ -45,8 +45,8 @@ describe("shell accessibility", () => {
     const agentAction = vi.fn();
     render(
       <>
-        <LensButton active label="Boundaries" symbol="B" onClick={mapAction} disabledReason="Available in map-based views, not Table mode." />
-        <LensButton active={false} label="Agent review" symbol="A" onClick={agentAction} />
+        <LensButton active label="Boundaries" onClick={mapAction} disabledReason="Available in map-based views, not Table mode." />
+        <LensButton active={false} label="Agent review" onClick={agentAction} />
       </>
     );
     const boundaries = screen.getByRole("button", { name: /Boundaries lens unavailable/ });

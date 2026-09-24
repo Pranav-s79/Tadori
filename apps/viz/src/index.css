@@ -224,7 +224,7 @@ button { min-height: 2rem; }
   position: relative;
   grid-row: 3;
   display: grid;
-  grid-template-columns: 4.75rem minmax(15rem, 19rem) minmax(0, 1fr);
+  grid-template-columns: 5rem minmax(15rem, 19rem) minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
 }
@@ -232,7 +232,7 @@ button { min-height: 2rem; }
 .stale-state { grid-row: 2; }
 
 .app-shell.has-inspector .atlas-workspace {
-  grid-template-columns: 4.75rem minmax(15rem, 19rem) minmax(0, 1fr) minmax(18rem, 23rem);
+  grid-template-columns: 5rem minmax(15rem, 19rem) minmax(0, 1fr) minmax(18rem, 23rem);
 }
 
 .lens-rail {
@@ -241,57 +241,72 @@ button { min-height: 2rem; }
   flex-direction: column;
   align-items: center;
   gap: var(--tadori-space-2);
+  min-height: 0;
   padding: var(--tadori-space-3) var(--tadori-space-1);
+  overflow-y: auto;
   border-right: 1px solid var(--tadori-rule);
   background: var(--tadori-panel);
 }
 
-/* Lenses are keys on the rail: flush when off, a raised plate when on. */
+/* Every lens is a key. Off, it stands proud of the rail with a hollow lamp and
+   a muted word; on, it is set down into the rail with a lit copper lamp and a
+   full-ink bold word. Shape, lamp fill and weight each carry the state, so it
+   never rests on colour alone. The old rail inverted this: an off lens was
+   bare text that did not read as clickable at all. */
 .lens-button {
   display: grid;
   width: 100%;
   min-height: 2.75rem;
-  gap: 0.1rem;
-  padding: var(--tadori-space-1) 0;
+  gap: var(--tadori-space-1);
+  padding: var(--tadori-space-1) 2px;
   place-items: center;
-  border: 1px solid transparent;
+  border: 1px solid var(--tadori-rule);
   border-radius: var(--tadori-radius-sm);
-  background: transparent;
+  background: var(--tadori-panel-raised);
+  box-shadow: var(--tadori-lift-1);
   color: var(--tadori-ink-muted);
   cursor: pointer;
-  font-family: var(--tadori-font-mono);
-  font-size: var(--tadori-text-xs);
-  font-weight: 700;
+  font: 400 0.6875rem / 1.1 var(--tadori-font-ui);
   transition:
     transform var(--tadori-motion-fast) ease,
     box-shadow var(--tadori-motion-fast) ease,
     background-color var(--tadori-motion-fast) ease;
 }
 
-.lens-button:not(:disabled):hover { border-color: var(--tadori-rule); background: var(--tadori-panel-raised); }
-.lens-button:disabled { cursor: not-allowed; }
-
-/* Word or symbol, never both. Showing both makes the button's visible text
-   read "BBoundaries", which is not contained in its accessible name
-   "Boundaries lens" — a WCAG 2.5.3 Label in Name failure, and axe reports it.
-   The word is the control wherever the rail can carry it. */
-.lens-button-symbol { display: none; font-size: var(--tadori-text-sm); line-height: 1; }
-
-.lens-button-label {
-  font-family: var(--tadori-font-ui);
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1;
-}
+.lens-button:not(:disabled):hover { border-color: var(--tadori-copper); color: var(--tadori-ink); }
+.lens-button:not(:disabled):active { box-shadow: none; transform: translateY(1px); }
 
 .lens-button[aria-pressed="true"] {
-  border-color: var(--tadori-copper);
-  background: color-mix(in srgb, var(--tadori-copper) 12%, var(--tadori-panel-raised));
-  box-shadow: var(--tadori-lift-1);
+  border-color: var(--tadori-bronze);
+  background: var(--tadori-ground);
+  box-shadow: inset 0 2px 3px rgb(41 42 40 / 28%);
   color: var(--tadori-ink);
-  transform: translateY(-1px);
+  font-weight: 700;
+  transform: translateY(1px);
 }
+
+/* Unavailable in Table mode: flat and dashed, neither proud nor set. The lamp
+   still shows whether the lens will be on when a map returns. */
+.lens-button:disabled {
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* A border, not a fill, lights the lamp: forced colours repaint backgrounds
+   but keep borders, so filled versus hollow survives there too. */
+.lens-button-lamp {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--tadori-ink-muted);
+  border-radius: 50%;
+}
+
+.lens-button[aria-pressed="true"] .lens-button-lamp { border: 0.25rem solid var(--tadori-copper); }
+
+.lens-button-label { text-align: center; }
 
 /* Side slabs framing the dig site. Each column stands above the map and the
    face turned toward it shows the slab's thickness: --tadori-lift-2 laid on
@@ -1310,12 +1325,11 @@ button { min-height: 2rem; }
   .atlas-brand > small,
   .atlas-snapshot > span:not(.freshness) { display: none; }
 
-  /* The rail narrows here, so the word gives way to the symbol. The symbol is
-     aria-hidden and the button keeps its aria-label and title, so the lens is
-     still named for assistive technology and on hover — just not in ink. */
-  .lens-button-label { display: none; }
-  .lens-button-symbol { display: block; }
-  .lens-button { min-height: 2rem; }
+  /* The rail narrows here. The word used to give way to a single letter; it
+     now turns on its side and reads bottom to top, like the spine of a boxed
+     tray, so the visible label is still the whole word in the lens's name. */
+  .lens-button { padding: var(--tadori-space-2) 0; }
+  .lens-button-label { writing-mode: vertical-rl; transform: rotate(180deg); }
 
   .atlas-workspace,
   .app-shell.has-inspector .atlas-workspace { grid-template-columns: 3rem minmax(14rem, 17rem) minmax(0, 1fr); }
