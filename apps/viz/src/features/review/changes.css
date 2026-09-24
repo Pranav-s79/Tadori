@@ -291,7 +291,8 @@
 }
 
 .spatial-workspace-changes:has(.diff-badge-caption[data-settled="true"]) {
-  grid-template-rows: minmax(8rem, 28%) minmax(12rem, 1fr);
+  /* Not lower: the boundary panel shares this map and scrolls below ~40%. */
+  grid-template-rows: minmax(14rem, 40%) minmax(12rem, 1fr);
 }
 .diff-badge-unplaced ul { display: grid; gap: var(--tadori-space-1); margin: 0; padding: 0; list-style: none; }
 .diff-badge-unplaced-item { width: 100%; border-left: 4px solid var(--badge-accent); }
