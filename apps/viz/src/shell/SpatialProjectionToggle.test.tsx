@@ -13,6 +13,17 @@ describe("SpatialProjectionToggle", () => {
     expect(onChange).toHaveBeenCalledWith("relief");
   });
 
+  it("offers Tilt between Plan and Relief as a named, pressable projection", () => {
+    const onChange = vi.fn();
+    render(<SpatialProjectionToggle active="tilt" onChange={onChange} />);
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.map((button) => button.textContent)).toEqual(["Plan", "Tilt", "Relief"]);
+    expect(screen.getByRole("button", { name: "Tilt" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Plan" })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Plan" }));
+    expect(onChange).toHaveBeenCalledWith("plan");
+  });
+
   it("announces the controlled Relief selection and keeps both native buttons operable", () => {
     const onChange = vi.fn();
     render(<SpatialProjectionToggle active="relief" onChange={onChange} />);

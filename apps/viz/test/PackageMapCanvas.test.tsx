@@ -13,9 +13,12 @@ import {
   projectRenderedNodePositions,
   projectedPackagePlates,
   renderedGraphSnapshot,
-  truncateLabel
+  truncateLabel,
+  type RenderedGraphSnapshot
 } from "../src/graph/PackageMapCanvas.tsx";
 import { defaultFilters } from "../src/features/search/filterState.ts";
+import { applyAtlasProjection } from "../src/graph/atlasTilt.ts";
+import { ISOMETRIC_TILT_RADIANS } from "../src/render/fixedTiltProjection.ts";
 
 // jsdom has no WebGL implementation, and sigma's real constructor calls
 // gl.blendFunc(...) unconditionally on the context it gets back from
@@ -29,6 +32,7 @@ const killMock = vi.fn();
 const sigmaConstructorMock = vi.fn();
 const cameraAnimateMock = vi.fn();
 const cameraSetStateMock = vi.fn();
+const setSettingMock = vi.fn();
 const cameraHandlers = new Map<string, () => void>();
 const rendererHandlers = new Map<string, () => void>();
 let viewportOffset = 0;
@@ -42,6 +46,9 @@ vi.mock("sigma", () => ({
     }
     off(event: string) {
       rendererHandlers.delete(event);
+    }
+    setSetting(key: string, value: unknown) {
+      setSettingMock(key, value);
     }
     refresh() {
       // redraw request is a no-op without a real WebGL renderer
@@ -76,10 +83,12 @@ afterEach(() => {
   sigmaConstructorMock.mockClear();
   cameraAnimateMock.mockClear();
   cameraSetStateMock.mockClear();
+  setSettingMock.mockClear();
   cameraHandlers.clear();
   rendererHandlers.clear();
   viewportOffset = 0;
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 const nodes: ApiNode[] = [
@@ -340,5 +349,93 @@ describe("camera focus and render-only filters", () => {
     expect(graph.getNodeAttribute("ts", "filterDimmed")).toBe(true);
     expect(graph.getEdgeAttribute("edge", "filterDimmed")).toBe(false);
     expect(graph.getNodeAttribute("ts", "hidden")).toBe(false);
+  });
+});
+
+describe("fixed tilt projection (blueprint 10-01)", () => {
+  const GROUND = Math.cos(ISOMETRIC_TILT_RADIANS);
+
+  // jsdom has no WebGL, so the capability probe's answer is chosen per test.
+  function webgl(available: boolean): void {
+    const context = { getExtension: () => null };
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockImplementation((() => (available ? context : null)) as never);
+  }
+
+  function sigmaSettings(): { enableCameraRotation: boolean } {
+    return sigmaConstructorMock.mock.calls[0]?.[2] as { enableCameraRotation: boolean };
+  }
+
+  it("tilts the coordinates handed to Sigma, never the canvas, and locks rotation", () => {
+    webgl(true);
+    let graph: Graph | null = null;
+    render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} tilt onGraphReady={(ready) => { graph = ready; }} />);
+    expect(sigmaSettings().enableCameraRotation).toBe(false);
+    // pkg:b is served at (10, 10) and is package level, so it sits on the ground plane.
+    expect(graph!.getNodeAttribute("pkg:b", "x")).toBe(10);
+    expect(graph!.getNodeAttribute("pkg:b", "y")).toBeCloseTo(10 * GROUND, 10);
+    const canvas = screen.getByRole("application");
+    expect(canvas).toHaveAttribute("data-projection", "tilt");
+    expect(canvas.style.transform).toBe("");
+    expect(canvas.getAttribute("aria-label")).toMatch(/^Tilted package map, height shows package, file or symbol level;/);
+    expect(screen.queryByText(/Tilt needs WebGL/)).toBeNull();
+  });
+
+  it("publishes the served layout, not the tilted draw coordinates", () => {
+    webgl(true);
+    const snapshots: RenderedGraphSnapshot[] = [];
+    render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} tilt onRenderedGraphChange={(next) => snapshots.push(next)} />);
+    expect(snapshots.at(-1)?.positions).toEqual(positions);
+  });
+
+  it("stays flat, whole, and says so when WebGL is unavailable", () => {
+    webgl(false);
+    let graph: Graph | null = null;
+    render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} tilt onGraphReady={(ready) => { graph = ready; }} />);
+    expect(screen.getByText("Tilt needs WebGL, which this browser does not provide. Showing the flat plan."))
+      .toHaveAttribute("role", "status");
+    expect(graph!.getNodeAttribute("pkg:b", "y")).toBe(10);
+    expect(screen.getByRole("application")).toHaveAttribute("data-projection", "plan");
+    expect(sigmaSettings().enableCameraRotation).toBe(true);
+  });
+
+  it("switches projection in place: same renderer, same graph, exact Plan on return", () => {
+    webgl(true);
+    let graph: Graph | null = null;
+    const onGraphReady = (ready: Graph) => { graph = ready; };
+    const { rerender } = render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} onGraphReady={onGraphReady} />);
+    const built = graph;
+
+    rerender(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} tilt onGraphReady={onGraphReady} />);
+    expect(sigmaConstructorMock).toHaveBeenCalledTimes(1);
+    expect(graph).toBe(built);
+    expect(graph!.getNodeAttribute("pkg:b", "y")).toBeCloseTo(10 * GROUND, 10);
+    expect(cameraSetStateMock).toHaveBeenCalledWith({ angle: 0 });
+    expect(setSettingMock).toHaveBeenLastCalledWith("enableCameraRotation", false);
+
+    rerender(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} onGraphReady={onGraphReady} />);
+    expect(graph!.getNodeAttribute("pkg:b", "y")).toBe(10);
+    expect(graph!.hasNodeAttribute("pkg:b", "layoutY")).toBe(false);
+    expect(setSettingMock).toHaveBeenLastCalledWith("enableCameraRotation", true);
+  });
+
+  it("gives a tilted package plate a solid edge exactly as deep as its members' lift", () => {
+    const graph = new Graph();
+    const pkg: ApiNode = { entityKey: "pkg:known", kind: "package", qualifiedName: "known", displayName: "known", file: null, exported: true, fanIn: 0 };
+    graph.addNode(pkg.entityKey, { apiNode: pkg, kind: "package", packageMembershipKnown: true, x: 0, y: 0 });
+    for (const [key, x, y] of [["file:a", 0, 0], ["file:b", 10, 0], ["file:c", 0, 10]] as const) {
+      const file: ApiNode = { entityKey: key, kind: "file", qualifiedName: key, displayName: key, file: `${key}.ts`, exported: true, fanIn: 0 };
+      graph.addNode(key, { apiNode: file, kind: "file", expandedFrom: pkg.entityKey, x, y });
+    }
+    // Sigma's graph y grows upward; the viewport's grows downward.
+    const renderer = { graphToViewport: ({ x, y }: { x: number; y: number }) => ({ x, y: -y }) };
+    expect(projectedPackagePlates(renderer, graph)[0]?.lift).toBeUndefined();
+
+    applyAtlasProjection(graph, true);
+    const lift = projectedPackagePlates(renderer, graph)[0]?.lift;
+    const fileA = graph.getNodeAttributes("file:a");
+    expect(lift?.x).toBe(0);
+    expect(lift?.y).toBeGreaterThan(0);
+    expect(lift?.y).toBeCloseTo(Number(fileA.y) - Number(fileA.groundY), 10);
   });
 });

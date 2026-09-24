@@ -30,6 +30,11 @@ describe("readUrlState", () => {
     });
   });
 
+  it("restores and writes the Tilt projection", () => {
+    expect(readUrlState("?view=tilt", defaults).projection).toBe("tilt");
+    expect(writeUrlState({ ...defaults, projection: "tilt" }, defaults)).toBe("?view=tilt");
+  });
+
   it("keeps defaults when no parameters are present", () => {
     expect(readUrlState("", defaults)).toEqual(defaults);
   });

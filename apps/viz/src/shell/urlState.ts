@@ -26,7 +26,7 @@ export interface UrlState {
 const MODES: readonly WorkspaceMode[] = [
   "overview", "atlas", "interview", "story", "changes", "table"
 ];
-const PROJECTIONS: readonly SpatialProjection[] = ["plan", "relief"];
+const PROJECTIONS: readonly SpatialProjection[] = ["plan", "tilt", "relief"];
 const LENS_NAMES = ["boundaries", "changes", "observations", "provenance"] as const;
 
 type LensName = (typeof LENS_NAMES)[number];
