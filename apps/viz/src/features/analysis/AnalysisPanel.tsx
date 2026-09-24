@@ -136,7 +136,10 @@ export function AnalysisPanel({ analysis }: { analysis: UseAnalysisResult }): Re
   return (
     <div className="analysis-panel">
       <ObservedLanguages analysis={analysis.data} />
-      <h3 className="analysis-subheading">Extraction diagnostics</h3>
+      {/* h2, like the other navigation headings ("Likely relevant tests"): as
+          an h3 directly under the page's h1 it skipped a level, and
+          Lighthouse failed heading-order whenever this section was open. */}
+      <h2 className="analysis-subheading">Extraction diagnostics</h2>
       <DiagnosticList analysis={analysis.data} />
       <p className="analysis-analyzer">
         Analyzer <code>{analysis.data.analyzerVersion}</code>
