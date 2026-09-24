@@ -67,6 +67,18 @@
   --tadori-focus-ring: 0 0 0 3px rgb(49 95 140 / 35%);
   --tadori-motion-fast: 120ms;
   --tadori-motion-camera: 280ms;
+
+  /* Depth. Every surface is a stone plate lit from the upper left: its
+     thickness is the solid lower edge, its lift is the soft cast shadow. These
+     encode surface hierarchy only. Depth on the map binds to abstraction_level
+     (blueprint 10-01) and never to these tokens. */
+  --tadori-plate-edge: #b3a78f;
+  --tadori-lift-1: 0 1px 0 var(--tadori-plate-edge), 0 2px 4px rgb(41 42 40 / 12%);
+  --tadori-lift-2: 0 3px 0 var(--tadori-plate-edge), 0 6px 12px rgb(41 42 40 / 16%);
+  --tadori-lift-3: 0 6px 0 var(--tadori-plate-edge), 0 14px 28px rgb(41 42 40 / 20%);
+  --tadori-perspective: 1200px;
+  /* atan(1/sqrt(2)): the one fixed isometric tilt, shared with 10-01. */
+  --tadori-tilt: 35.264deg;
 }
 
 .tadori-visually-hidden {
