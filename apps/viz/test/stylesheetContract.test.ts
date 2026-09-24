@@ -104,6 +104,15 @@ describe("component stylesheet coverage", () => {
    * the visible label at every breakpoint, set on its side where the rail is
    * narrow.
    */
+  /**
+   * "Extraction diagnostics: 4 warnings" inherited the mono face meant for the
+   * snapshot id beside it, and read like a line of code.
+   */
+  it("keeps the header diagnostics sentence out of the mono identifier rule", () => {
+    const mono = /\.atlas-snapshot > span(:not\([^)]*\))?\s*\{[^}]*--tadori-font-mono/.exec(stylesheet("index.css"));
+    expect(mono?.[1]).toContain(".atlas-diagnostics-summary");
+  });
+
   it("keeps the lens word visible at every breakpoint", () => {
     const css = stylesheet("index.css");
     expect(css).not.toMatch(/\.lens-button-label\s*\{[^}]*display:\s*none/);

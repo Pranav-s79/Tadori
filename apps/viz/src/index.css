@@ -114,7 +114,9 @@ button { min-height: 2rem; }
   white-space: nowrap;
 }
 
-.atlas-snapshot > span:not(.freshness) {
+/* The snapshot id and kind are identifiers, so they are set in mono. The
+   diagnostics summary beside them is a sentence and keeps the UI face. */
+.atlas-snapshot > span:not(.freshness, .atlas-diagnostics-summary) {
   color: var(--tadori-ink-muted);
   font-family: var(--tadori-font-mono);
   font-size: var(--tadori-text-xs);
