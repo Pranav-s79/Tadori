@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type ReactElement } from "react";
+import { useRef, useState, type KeyboardEvent, type ReactElement } from "react";
 import { DocumentsPanel } from "./DocumentsPanel.tsx";
 import { LikelyTests } from "./LikelyTests.tsx";
 import { PathFinder } from "./PathFinder.tsx";
@@ -23,10 +23,13 @@ const TABS: { id: ExploreTab; label: string }[] = [
  * The Explore panel: Path / Routes / Tests / Docs as MUTUALLY EXCLUSIVE tabs
  * (only the active view is mounted — never four panels at once, per the
  * no-dual-dashboard rule). Standard ARIA tabs keyboard pattern: arrows move
- * between tabs, each panel is labelled by its tab.
+ * between tabs and focus follows the selection, as in ModeTabs — selecting
+ * without moving focus left the roving tab stop on a tab that was no longer
+ * focusable. Each panel is labelled by its tab.
  */
 export function ExploreTabs({ onInspect, onShowStory }: ExploreTabsProps): ReactElement {
   const [active, setActive] = useState<ExploreTab>("path");
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   function onTabKeyDown(event: KeyboardEvent, index: number): void {
     if (
@@ -49,6 +52,7 @@ export function ExploreTabs({ onInspect, onShowStory }: ExploreTabsProps): React
       next = TABS.length - 1;
     }
     setActive(TABS[next]!.id);
+    tabRefs.current[next]?.focus();
   }
 
   return (
@@ -57,6 +61,7 @@ export function ExploreTabs({ onInspect, onShowStory }: ExploreTabsProps): React
         {TABS.map((tab, index) => (
           <button
             key={tab.id}
+            ref={(element) => { tabRefs.current[index] = element; }}
             type="button"
             role="tab"
             id={`explore-tab-${tab.id}`}

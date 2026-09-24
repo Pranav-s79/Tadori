@@ -178,4 +178,30 @@ describe("ExploreTabs", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Routes" }));
     await waitFor(() => expect(screen.queryByLabelText("Path finder")).toBeNull());
   });
+
+  /**
+   * Arrow keys changed the selected tab but left focus on the old one, which
+   * the roving tab stop had just made unfocusable — unlike ModeTabs.
+   */
+  it("moves focus with the selection on arrow, Home and End keys", async () => {
+    stubFetch({ routes: [], observed: false, tests: [], docs: [] });
+    render(<ExploreTabs />);
+    const path = screen.getByRole("tab", { name: "Path" });
+    path.focus();
+
+    fireEvent.keyDown(path, { key: "ArrowRight" });
+    const routes = screen.getByRole("tab", { name: "Routes" });
+    expect(routes).toHaveAttribute("aria-selected", "true");
+    expect(routes).toHaveFocus();
+
+    fireEvent.keyDown(routes, { key: "End" });
+    expect(screen.getByRole("tab", { name: "Docs" })).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Docs" }), { key: "Home" });
+    expect(path).toHaveFocus();
+
+    fireEvent.keyDown(path, { key: "ArrowLeft" });
+    expect(screen.getByRole("tab", { name: "Docs" })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Docs" })).toHaveAttribute("tabindex", "0"));
+  });
 });
