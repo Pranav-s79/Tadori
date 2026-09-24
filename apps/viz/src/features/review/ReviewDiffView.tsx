@@ -1,6 +1,13 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
-import type { CoalescedChange, EdgeDiffRow, ReviewDiffKind, ReviewDiffNode } from "./reviewDiffApi.ts";
-import { NO_SNAPSHOT_PAIR_CODE, useReviewDiffStore, type AccumulatedDiff, type ReviewDiffStore } from "./useReviewDiffStore.ts";
+import type {
+  CoalescedChange,
+  EdgeDiffRow,
+  NoEarlierSnapshotReason,
+  ReviewDiffKind,
+  ReviewDiffNode,
+  SnapshotPair
+} from "./reviewDiffApi.ts";
+import { useReviewDiffStore, type AccumulatedDiff, type ReviewDiffStore } from "./useReviewDiffStore.ts";
 import { plural } from "../overview/overviewModel.ts";
 import "./changes.css";
 
@@ -390,40 +397,50 @@ function CoalescedRow({
 }
 
 /**
- * A raw server code is not an error message. `bad_snapshot_ref` in particular
- * is the ordinary state of a freshly indexed repository — there is no earlier
- * snapshot to compare against — and rendering the bare code made a normal
- * condition look like a fault with no way forward. The code is still shown for
- * anything unrecognised, so an unexpected failure is never disguised as a
- * handled one.
+ * A failed load names its code. Snapshot now always sends a real base/head
+ * pair, so a refusal such as `bad_snapshot_ref` or `unknown_snapshot` is a
+ * genuine fault and is never reworded into an ordinary state.
  */
 export function diffFailureText(errorCode: string | null): string {
-  switch (errorCode) {
-    case NO_SNAPSHOT_PAIR_CODE:
-      return "There is no earlier snapshot to compare against — this repository has been"
-        + " indexed once. Choose Working tree or Staged to see uncommitted changes instead.";
-    case null:
-      return "Could not load the diff.";
-    default:
-      return `Could not load the diff (${errorCode}).`;
-  }
+  return errorCode === null ? "Could not load the diff." : `Could not load the diff (${errorCode}).`;
 }
 
-/** Why the view opened on Working tree when Snapshot is the default. */
-export const SWITCHED_FROM_SNAPSHOT_TEXT = "Snapshot comparison had no earlier snapshot to compare against,"
-  + " so this compares the working tree with the indexed snapshot.";
+/**
+ * Why Snapshot has nothing to diff — said only once the snapshot listing
+ * proves it. `switched`: the opening load moved to Working tree on its own.
+ */
+export function noEarlierSnapshotText(reason: NoEarlierSnapshotReason, switched: boolean): string {
+  if (reason === "only_one") {
+    return switched
+      ? "Only one snapshot has been indexed, so this compares the working tree with it."
+      : "Only one snapshot has been indexed, so there is no earlier snapshot to compare it with.";
+  }
+  return switched
+    ? "No snapshot older than the served one is retained, so this compares the working tree with the served snapshot."
+    : "No snapshot older than the served one is retained, so there is nothing earlier to compare it with.";
+}
+
+/** The compared pair in words, e.g. "Snapshot #3 → #4 (served)". */
+export function snapshotPairText(pair: SnapshotPair): string {
+  return `Snapshot #${String(pair.base)} → #${String(pair.head)} (served)`;
+}
 
 function StatusRegion({ store }: { store: ReviewDiffStore }): ReactElement | null {
-  // Information, not a fault: neutral plate, announced politely.
-  if (store.switchedFromSnapshot) {
-    return (
-      <>
-        <p role="status" className="review-diff-status review-diff-note">{SWITCHED_FROM_SNAPSHOT_TEXT}</p>
-        <DiffStatus store={store} />
-      </>
-    );
-  }
-  return <DiffStatus store={store} />;
+  const switched = store.noEarlierSnapshot !== null && store.kind !== "snapshot";
+  return (
+    <>
+      {store.kind === "snapshot" && store.snapshotPair !== null && (
+        <p className="review-diff-pair">{snapshotPairText(store.snapshotPair)}</p>
+      )}
+      {/* Information, not a fault: neutral plate, announced politely. */}
+      {switched && store.noEarlierSnapshot !== null && (
+        <p role="status" className="review-diff-status review-diff-note">
+          {noEarlierSnapshotText(store.noEarlierSnapshot, true)}
+        </p>
+      )}
+      <DiffStatus store={store} />
+    </>
+  );
 }
 
 function DiffStatus({ store }: { store: ReviewDiffStore }): ReactElement | null {
@@ -446,13 +463,14 @@ function DiffStatus({ store }: { store: ReviewDiffStore }): ReactElement | null 
           {`This comparison is not available here${store.errorCode !== null ? ` (${store.errorCode})` : ""}.`}
         </div>
       );
-    case "failed":
-      // No snapshot pair is an ordinary state the user chose, not a fault.
-      return store.errorCode === NO_SNAPSHOT_PAIR_CODE ? (
+    case "no_earlier_snapshot":
+      return (
         <div role="status" className="review-diff-status review-diff-note">
-          {diffFailureText(store.errorCode)}
+          {noEarlierSnapshotText(store.noEarlierSnapshot ?? "none_earlier", false)}
         </div>
-      ) : (
+      );
+    case "failed":
+      return (
         <div role="alert" className="review-diff-status">
           {diffFailureText(store.errorCode)}
         </div>
