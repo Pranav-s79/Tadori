@@ -311,7 +311,8 @@ export function App(): ReactElement {
       filters={searchFilters}
       focusRequest={focusRequest}
       active={mode !== "table" && mode !== "overview" && mode !== "interview"
-        && spatialProjection === "plan"}
+        && spatialProjection !== "relief"}
+      tilt={spatialProjection === "tilt"}
       onRendererError={() => {
         setRendererError(true);
         setMode("table");
@@ -344,7 +345,7 @@ export function App(): ReactElement {
         </div>
       ) : (
         <>
-          <div className="atlas-plan-layer" hidden={spatialProjection !== "plan"}>
+          <div className="atlas-plan-layer" hidden={spatialProjection === "relief"}>
             {isRefreshing ? <RefreshingBanner>{graphView}</RefreshingBanner> : graphView}
           </div>
           {spatialProjection === "relief" && renderedGraph !== null && (
@@ -484,7 +485,7 @@ export function App(): ReactElement {
             <span>{
               mode === "overview" ? "Repository overview"
                 : mode === "interview" ? "Interview preparation"
-                : mode === "atlas" ? (spatialProjection === "relief" ? "Repository relief" : "Repository map")
+                : mode === "atlas" ? (spatialProjection === "relief" ? "Repository relief" : spatialProjection === "tilt" ? "Tilted repository map" : "Repository map")
                 : mode === "story" ? "Static behavior"
                 : mode === "changes" ? "Change review"
                 : "Structured graph"

@@ -19,6 +19,9 @@ import { ATLAS_NODE_PROGRAMS } from "./AtlasNodeProgram.ts";
 import { ATLAS_EDGE_PROGRAMS } from "./ProvenanceEdgeProgram.ts";
 import { atlasEdgeVisual, atlasNodeVisual } from "./atlasVisuals.ts";
 import { visibleLabelEntityKeys } from "../lod/budgets.ts";
+import { applyAtlasProjection } from "./atlasTilt.ts";
+import { probeWebglSupport } from "../render/webglCapability.ts";
+import "./atlas-depth.css";
 
 const LABEL_MAX_LENGTH = 24;
 /** Breathing room around a fitted graph, as a multiple of its own extent. */
@@ -83,6 +86,12 @@ export interface PackagePlate {
   attribution: "repository-derived package boundary";
   shape: ReturnType<typeof convexHull>;
   labelPosition: ViewportPosition;
+  /**
+   * Tilt only: the viewport offset from the plate's top face down to the ground
+   * plane, i.e. its members' abstraction-level lift. Drawn as the plate's solid
+   * lower edge, so its thickness is data, not decoration.
+   */
+  lift?: ViewportPosition;
 }
 
 
@@ -102,10 +111,11 @@ export function renderedGraphSnapshot(graph: Graph): RenderedGraphSnapshot {
     if (!nodeByCanonicalKey.has(node.entityKey)) {
       nodeByCanonicalKey.set(node.entityKey, { ...node });
       const attrs = graph.getNodeAttributes(graphKey);
+      // The served layout position, never the tilted one Sigma is drawing.
       positionByCanonicalKey.set(node.entityKey, {
         entityKey: node.entityKey,
-        x: Number(attrs.x),
-        y: Number(attrs.y),
+        x: Number(attrs.layoutX ?? attrs.x),
+        y: Number(attrs.layoutY ?? attrs.y),
         z: Number(attrs.z ?? 0),
         pinned: attrs.pinned === true
       });
@@ -202,13 +212,22 @@ export function projectedPackagePlates(
   for (const packageKey of graph.nodes().sort()) {
     if (graph.getNodeAttribute(packageKey, "kind") !== "package"
       || graph.getNodeAttribute(packageKey, "packageMembershipKnown") !== true) continue;
-    const memberPoints = graph.nodes()
+    const members = graph.nodes()
       .filter((nodeKey) => graph.getNodeAttribute(nodeKey, "expandedFrom") === packageKey)
       .sort()
-      .map((nodeKey) => graph.getNodeAttributes(nodeKey))
+      .map((nodeKey) => graph.getNodeAttributes(nodeKey));
+    const memberPoints = members
       .map((attrs) => renderer.graphToViewport({ x: Number(attrs.x), y: Number(attrs.y) }))
       .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
     if (memberPoints.length === 0) continue;
+    // Every member is at the file level, so one member's lift is the plate's.
+    const first = members[0];
+    let lift: ViewportPosition | undefined;
+    if (first !== undefined && typeof first.groundY === "number") {
+      const top = renderer.graphToViewport({ x: Number(first.x), y: Number(first.y) });
+      const ground = renderer.graphToViewport({ x: Number(first.x), y: first.groundY });
+      lift = { x: ground.x - top.x, y: ground.y - top.y };
+    }
     const shape = convexHull(memberPoints);
     const labelPosition = shape.kind === "circle"
       ? shape.center
@@ -222,10 +241,40 @@ export function projectedPackagePlates(
       label: packageNode.displayName,
       attribution: "repository-derived package boundary",
       shape,
-      labelPosition
+      labelPosition,
+      ...(lift === undefined ? {} : { lift })
     });
   }
   return plates;
+}
+
+/**
+ * The solid lower edge of a tilted plate: its top face swept down to the ground
+ * plane. For a polygon that silhouette is the hull of both faces; a circular
+ * plate sweeps into a stadium, drawn as a round-capped stroke.
+ */
+function PlateEdge({ plate }: { plate: PackagePlate }) {
+  const lift = plate.lift;
+  if (lift === undefined) return null;
+  const { shape } = plate;
+  if (shape.kind === "circle") {
+    return (
+      <line
+        className="package-plate-edge"
+        x1={shape.center.x}
+        y1={shape.center.y}
+        x2={shape.center.x + lift.x}
+        y2={shape.center.y + lift.y}
+        strokeWidth={2 * Math.max(12, shape.radius)}
+      />
+    );
+  }
+  const swept = convexHull([
+    ...shape.points,
+    ...shape.points.map((point) => ({ x: point.x + lift.x, y: point.y + lift.y }))
+  ]);
+  if (swept.kind !== "hull") return null;
+  return <polygon className="package-plate-edge" points={swept.points.map((point) => `${point.x},${point.y}`).join(" ")} />;
 }
 
 export function applyStoryGraphEmphasis(graph: Graph, emphasis: StoryMapEmphasis | null): void {
@@ -501,6 +550,12 @@ export interface PackageMapCanvasProps {
   active?: boolean;
   /** Evidence-backed Story path mapped to currently rendered representatives. */
   storyEmphasis?: StoryMapEmphasis | null;
+  /**
+   * Fixed isometric tilt with depth bound to abstraction level (blueprint
+   * 10-01). Same nodes, edges, layout and interactions as Plan. Without WebGL
+   * the map stays flat and says so.
+   */
+  tilt?: boolean;
 }
 
 export function PartialLodNotice({
@@ -540,8 +595,15 @@ export function PackageMapCanvas({
   filters = NO_FILTERS,
   focusRequest = null,
   active = true,
-  storyEmphasis = null
+  storyEmphasis = null,
+  tilt = false
 }: PackageMapCanvasProps) {
+  // Probed once, the first time a tilt is asked for, so the map either tilts
+  // whole or stays flat.
+  const webglRef = useRef<boolean | null>(null);
+  if (tilt && webglRef.current === null) webglRef.current = probeWebglSupport() !== null;
+  const tilted = tilt && webglRef.current === true;
+  const tiltedRef = useRef(tilted);
   const containerRef = useRef<HTMLDivElement>(null);
   const sigmaRef = useRef<Sigma | null>(null);
   const graphRef = useRef<Graph | null>(null);
@@ -593,6 +655,7 @@ export function PackageMapCanvas({
       restoredFiles.add(fileKey);
     }
     applyAtlasGraphStyles(graph);
+    applyAtlasProjection(graph, tiltedRef.current);
 
     graphRef.current = graph;
     prevExpandedRef.current = restoredPackages;
@@ -601,6 +664,9 @@ export function PackageMapCanvas({
     try {
       renderer = new Sigma(graph, container, {
         allowInvalidContainer: true,
+        // The tilt is fixed: a rotated camera would spin the tilted ground plane
+        // into a view that is no longer isometric. Zoom and pan only.
+        enableCameraRotation: !tiltedRef.current,
         nodeProgramClasses: { ...ATLAS_NODE_PROGRAMS },
         nodeHoverProgramClasses: { ...ATLAS_NODE_PROGRAMS },
         edgeProgramClasses: { ...ATLAS_EDGE_PROGRAMS }
@@ -842,6 +908,7 @@ export function PackageMapCanvas({
     }
     prevExpandedRef.current = expandedPackages;
     applyAtlasGraphStyles(graph);
+    applyAtlasProjection(graph, tiltedRef.current);
     applyFiltersToCanvasGraph(graph, filters);
     applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
     const renderer = sigmaRef.current;
@@ -878,6 +945,7 @@ export function PackageMapCanvas({
     }
     prevExpandedFilesRef.current = expandedFiles;
     applyAtlasGraphStyles(graph);
+    applyAtlasProjection(graph, tiltedRef.current);
     applyFiltersToCanvasGraph(graph, filters);
     applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
     const renderer = sigmaRef.current;
@@ -904,6 +972,25 @@ export function PackageMapCanvas({
     renderer.refresh();
     publishRef.current?.();
   }, [storyEmphasis]);
+
+  // Switching projection rewrites only the coordinates Sigma draws; the graph,
+  // its expansion state and the selection are untouched. Refit so the whole
+  // reading stays in view, as a descent does.
+  useEffect(() => {
+    if (tiltedRef.current === tilted) return;
+    tiltedRef.current = tilted;
+    const graph = graphRef.current;
+    const renderer = sigmaRef.current;
+    if (graph === null || renderer === null) return;
+    // Level the camera before locking rotation; once locked, Sigma ignores any
+    // angle it is given, so a rotation carried over from Plan could never be undone.
+    if (tilted) renderer.getCamera().setState({ angle: 0 });
+    renderer.setSetting("enableCameraRotation", !tilted);
+    applyAtlasProjection(graph, tilted);
+    renderer.refresh();
+    fitCameraToVisibleNodes(renderer, graph, prefersReducedMotion());
+    publishRef.current?.();
+  }, [tilted]);
 
   useEffect(() => {
     const renderer = sigmaRef.current;
@@ -955,10 +1042,21 @@ export function PackageMapCanvas({
   return (
     <>
       <PartialLodNotice scopes={partialScopes} />
-      <svg className="package-plate-overlay" role="img" aria-label="Repository-derived package boundaries">
+      {tilt && !tilted && (
+        <p className="atlas-tilt-notice" role="status">
+          Tilt needs WebGL, which this browser does not provide. Showing the flat plan.
+        </p>
+      )}
+      <svg
+        className="package-plate-overlay"
+        data-projection={tilted ? "tilt" : "plan"}
+        role="img"
+        aria-label="Repository-derived package boundaries"
+      >
         {packagePlates.map((plate) => (
           <g key={plate.packageEntityKey} role="group" aria-label={`${plate.attribution}: ${plate.label}`}>
             <title>{`${plate.attribution}: ${plate.label}`}</title>
+            <PlateEdge plate={plate} />
             {plate.shape.kind === "hull" ? (
               <polygon points={plate.shape.points.map((point) => `${point.x},${point.y}`).join(" ")} />
             ) : (
@@ -996,9 +1094,10 @@ export function PackageMapCanvas({
       <div
         ref={containerRef}
         className="package-map-canvas"
+        data-projection={tilted ? "tilt" : "plan"}
         tabIndex={0}
         role="application"
-        aria-label="Package map; arrows move focus or pan, Enter descends or inspects, Escape ascends, plus and minus zoom, zero resets"
+        aria-label={`${tilted ? "Tilted package map, height shows package, file or symbol level" : "Package map"}; arrows move focus or pan, Enter descends or inspects, Escape ascends, plus and minus zoom, zero resets`}
         style={{ width: "100%", height: "100%" }}
       />
     </>
