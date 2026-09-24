@@ -21,6 +21,7 @@ function statusText(
   total: number | null,
   shown: number
 ): string {
+  const count = `${shown} of ${total ?? shown} ${(total ?? shown) === 1 ? "result" : "results"}`;
   switch (status) {
     case "idle":
       return "Type to search the graph by name, signature, or path.";
@@ -29,9 +30,9 @@ function statusText(
     case "empty":
       return "No matches. Try a different term or broaden your query.";
     case "ambiguous_adjacent":
-      return `Multiple exact matches — refine your query to narrow further. Showing ${shown} of ${total ?? shown} results.`;
+      return `Multiple exact matches — refine your query to narrow further. Showing ${count}.`;
     case "ok":
-      return `Showing ${shown} of ${total ?? shown} results.`;
+      return `Showing ${count}.`;
     case "error":
       return "Search failed. Check the connection and retry.";
     default:

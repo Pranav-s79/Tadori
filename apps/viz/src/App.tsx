@@ -83,10 +83,10 @@ function useForcedColors(): boolean {
   return active;
 }
 
-/** "1 nodes and 0 relations" was the shell's own copy defect. */
-function countLabel(count: number | undefined, noun: string): string {
+/** "1 nodes and 0 relations" and "1 entities" were the shell's own copy defects. */
+function countLabel(count: number | undefined, noun: string, plural = `${noun}s`): string {
   const value = count ?? 0;
-  return `${String(value)} ${noun}${value === 1 ? "" : "s"}`;
+  return `${String(value)} ${value === 1 ? noun : plural}`;
 }
 
 function wsUrl(): string {
@@ -336,7 +336,7 @@ export function App(): ReactElement {
       <div className="atlas-ground" aria-hidden="true" />
       {data?.bounded !== undefined && (data.bounded.omittedNodes > 0 || data.bounded.omittedEdges > 0) && (
         <p className="bounded-notice" role="status">
-          Bounded package view: {data.bounded.omittedNodes} nodes and {data.bounded.omittedEdges} relations omitted.
+          {`Bounded package view: ${countLabel(data.bounded.omittedNodes, "node")} and ${countLabel(data.bounded.omittedEdges, "relation")} omitted.`}
         </p>
       )}
       {graphError !== null ? (
@@ -456,7 +456,7 @@ export function App(): ReactElement {
         <aside ref={navigationFocus.drawerRef} id="atlas-navigation" className="atlas-navigation" data-open={navigationOpen} aria-label="Repository navigation" aria-hidden={!navigationOpen} inert={!navigationOpen} tabIndex={-1} onKeyDown={navigationFocus.onDrawerKeyDown}>
           <div className="navigation-heading">
             <p>Explore</p>
-            <span>{data === null ? "No graph" : `${data.nodes.length} entities · ${data.edges.length} relations`}</span>
+            <span>{data === null ? "No graph" : `${countLabel(data.nodes.length, "entity", "entities")} · ${countLabel(data.edges.length, "relation")}`}</span>
           </div>
           <details className="navigation-section" open>
             <summary>Search and filter</summary>

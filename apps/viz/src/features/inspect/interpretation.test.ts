@@ -75,4 +75,11 @@ describe("inferredRisks", () => {
   it("reports nothing when no concrete signal is present", () => {
     expect(inferredRisks(node({ fanIn: 1 }))).toEqual([]);
   });
+
+  it("agrees the unresolved-relation risk with its count", () => {
+    expect(inferredRisks(node({ outEdges: [edge("unresolved")] })))
+      .toContain("1 unresolved relation means parts of its behaviour were not extracted.");
+    expect(inferredRisks(node({ outEdges: [edge("unresolved"), edge("unresolved")] })))
+      .toContain("2 unresolved relations mean parts of its behaviour were not extracted.");
+  });
 });

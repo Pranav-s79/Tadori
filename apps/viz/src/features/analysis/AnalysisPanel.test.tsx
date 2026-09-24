@@ -88,6 +88,32 @@ describe("AnalysisPanel", () => {
     expect(screen.getByText("error")).toBeInTheDocument();
   });
 
+  it("does not call a single diagnostic 'all 1 diagnostics'", () => {
+    const analysis = result({
+      data: analysisDto({
+        diagnostics: {
+          items: [{
+            code: "parse-failed",
+            severity: "warning",
+            message: "Tree-sitter could not parse this file",
+            file: "src/broken.py",
+            language: "python",
+            extractorId: "tadori-tree-sitter",
+            extractorVersion: "1",
+            lineStart: 4,
+            lineEnd: 4
+          }],
+          total: 1,
+          omittedCount: 0,
+          nextCursor: null,
+          bySeverity: { info: 0, warning: 1, error: 0 }
+        }
+      })
+    });
+    render(<AnalysisPanel analysis={analysis} />);
+    expect(screen.getByText("Showing the only diagnostic.")).toBeInTheDocument();
+  });
+
   it("surfaces an unavailable analysis as an alert, never as a clean result", () => {
     render(<AnalysisPanel analysis={result({ data: null, error: new Error("offline") })} />);
     const alert = screen.getByRole("alert");

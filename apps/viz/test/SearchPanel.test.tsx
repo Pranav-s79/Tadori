@@ -50,6 +50,13 @@ describe("SearchPanel states", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/Showing 2 of 2/i);
   });
 
+  it("counts a single hit in the singular", async () => {
+    installSearchFetch(() => ({ matches: [row("fn:a")], total: 1 }));
+    render(<SearchPanel />);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "foo" } });
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Showing 1 of 1 result."));
+  });
+
   it("zero-result query shows explicit no-match copy distinct from idle", async () => {
     installSearchFetch(() => ({ matches: [], total: 0 }));
     render(<SearchPanel />);

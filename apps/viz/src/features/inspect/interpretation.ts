@@ -119,7 +119,7 @@ export function inferredRisks(node: NodeDetail): string[] {
     risks.push(`It depends on ${String(node.outEdges.length)} other entities, widening what can break it.`);
   }
   if (unresolved > 0) {
-    risks.push(`${String(unresolved)} unresolved relation(s) mean parts of its behaviour were not extracted.`);
+    risks.push(`${String(unresolved)} unresolved ${unresolved === 1 ? "relation means" : "relations mean"} parts of its behaviour were not extracted.`);
   }
   if (node.kind === "external_dep") {
     risks.push("It is an external dependency, so its behaviour is outside this repository.");

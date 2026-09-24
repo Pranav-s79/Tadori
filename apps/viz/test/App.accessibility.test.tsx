@@ -181,6 +181,11 @@ describe("App focus ownership", () => {
     expect(screen.queryByText(/level$/)).not.toBeInTheDocument();
   });
 
+  it("counts a single entity in the singular", () => {
+    render(<App />);
+    expect(screen.getByText("1 entity · 0 relations")).toBeInTheDocument();
+  });
+
   it("disables map-only lenses in Table mode but leaves Agent Review actionable", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("tab", { name: "Table" }));
