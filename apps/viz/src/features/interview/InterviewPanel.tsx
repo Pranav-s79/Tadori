@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { ClaimBadge } from "../../design/ClaimBadge.tsx";
 import { fetchNodeDetail, type NodeDetail } from "../inspect/inspectApi.ts";
 import { fetchLikelyTests } from "../explore/exploreApi.ts";
@@ -6,6 +6,9 @@ import {
   buildInterviewQuestions, groupQuestions,
   type InterviewInput, type TestsState
 } from "./interviewModel.ts";
+// The plate and model primitives are shared with the Overview.
+import "../overview/overview.css";
+import "./interview.css";
 
 export interface InterviewPanelProps extends Omit<InterviewInput, "subject" | "tests"> {
   /** Entity to interview about; null runs a whole-repository interview. */
@@ -130,53 +133,73 @@ export function InterviewPanel({
 
   return (
     <div className="interview-panel">
-      <header className="interview-intro">
-        <h2>Interview preparation — {subjectName}</h2>
-        <p>
-          Every question below names something this snapshot actually contains.
-          Nothing here is a generic question bank; if the repository cannot
-          support a question, it is not asked.
-        </p>
+      <header className="interview-intro orientation-intro">
+        <div>
+          <h2>Interview preparation — {subjectName}</h2>
+          <p>
+            Every question below names something this snapshot actually contains.
+            Nothing here is a generic question bank; if the repository cannot
+            support a question, it is not asked.
+          </p>
+        </div>
+        {/* The shape of this interview: one stack per group, one tablet per
+            question. It counts questions and nothing else. */}
+        <div className="orientation-model" aria-hidden="true">
+          {grouped.map(({ group, questions }) => (
+            <div key={group} className="orientation-stack">
+              {questions.map((_, index) => (
+                <span key={index} style={{ "--z": questions.length - 1 - index } as CSSProperties} />
+              ))}
+            </div>
+          ))}
+        </div>
       </header>
-      {grouped.map(({ group, questions }) => (
-        <section key={group} className="interview-group" aria-labelledby={`interview-${group}`}>
-          <h3 id={`interview-${group}`}>{group}</h3>
-          <ol className="interview-questions">
-            {questions.map((item, index) => (
-              <li key={`${group}:${String(index)}`} data-difficulty={item.difficulty}>
-                <div className="interview-question-head">
-                  <p className="interview-question-text">{withCodeSpans(item.question)}</p>
-                  <span className="interview-difficulty">{item.difficulty}</span>
-                  <ClaimBadge basis={item.basis} />
-                </div>
-                <details>
-                  <summary>What a strong answer covers</summary>
-                  <ul className="interview-answer">
-                    {item.strongAnswer.map((point) => <li key={point}>{point}</li>)}
-                  </ul>
-                </details>
-                {item.evidence.length > 0 && (
-                  <p className="interview-evidence">
-                    Inspect first:{" "}
-                    {item.evidence.map(({ label, entityKey }) => entityKey === null ? (
-                      <code key={label}>{label}</code>
-                    ) : (
-                      <button
-                        key={label}
-                        type="button"
-                        className="interview-evidence-link"
-                        onClick={() => { onSelectEntity(entityKey); }}
-                      >
-                        <code>{label}</code>
-                      </button>
-                    ))}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ol>
-        </section>
-      ))}
+      <div className="interview-decks">
+        {grouped.map(({ group, questions }) => (
+          <section key={group} className="interview-group" aria-labelledby={`interview-${group}`}>
+            <h3 id={`interview-${group}`}>{group}</h3>
+            <ol className="interview-questions">
+              {questions.map((item, index) => (
+                <li
+                  key={`${group}:${String(index)}`}
+                  className="interview-tablet orientation-plate"
+                  data-difficulty={item.difficulty}
+                  data-basis={item.basis}
+                >
+                  <div className="interview-question-head">
+                    <p className="interview-question-text">{withCodeSpans(item.question)}</p>
+                    <span className="interview-difficulty">{item.difficulty}</span>
+                    <ClaimBadge basis={item.basis} />
+                  </div>
+                  <details>
+                    <summary>What a strong answer covers</summary>
+                    <ul className="interview-answer">
+                      {item.strongAnswer.map((point) => <li key={point}>{point}</li>)}
+                    </ul>
+                  </details>
+                  {item.evidence.length > 0 && (
+                    <p className="interview-evidence">
+                      Inspect first:{" "}
+                      {item.evidence.map(({ label, entityKey }) => entityKey === null ? (
+                        <code key={label}>{label}</code>
+                      ) : (
+                        <button
+                          key={label}
+                          type="button"
+                          className="interview-evidence-link"
+                          onClick={() => { onSelectEntity(entityKey); }}
+                        >
+                          <code>{label}</code>
+                        </button>
+                      ))}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

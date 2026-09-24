@@ -1,6 +1,7 @@
-import type { ReactElement } from "react";
+import type { CSSProperties, ReactElement } from "react";
 import { ClaimBadge } from "../../design/ClaimBadge.tsx";
 import { buildOverview, type OverviewInput } from "./overviewModel.ts";
+import "./overview.css";
 
 export interface OverviewPanelProps extends OverviewInput {
   loading: boolean;
@@ -43,13 +44,25 @@ export function OverviewPanel({
   const sections = buildOverview(input);
   return (
     <div className="overview-panel">
-      <header className="overview-intro">
-        <h2>Understanding this repository</h2>
-        <p>
-          Every statement below carries how it is supported. Assembled from the
-          served snapshot — <code>/api/v1/overview</code> is not implemented, so
-          nothing here is a served summary and nothing is inferred silently.
-        </p>
+      <header className="overview-intro orientation-intro">
+        <div>
+          <h2>Understanding this repository</h2>
+          <p>
+            Every statement below carries how it is supported. Assembled from the
+            served snapshot — <code>/api/v1/overview</code> is not implemented, so
+            nothing here is a served summary and nothing is inferred silently.
+          </p>
+        </div>
+        {/* The shape of this page: one plate per question, first on top. It
+            counts sections and nothing else — no plate is thicker or higher
+            because its answer matters more or is more certain. */}
+        <div className="orientation-model" aria-hidden="true">
+          <div className="orientation-stack">
+            {sections.map((section, index) => (
+              <span key={section.id} style={{ "--z": sections.length - 1 - index } as CSSProperties} />
+            ))}
+          </div>
+        </div>
       </header>
       {sections.map((section) => (
         <section
@@ -57,34 +70,36 @@ export function OverviewPanel({
           className="overview-section"
           aria-labelledby={`overview-${section.id}`}
         >
-          <h3 id={`overview-${section.id}`}>{section.heading}</h3>
-          <p className="overview-question">{section.question}</p>
-          <ul className="overview-claims">
-            {section.claims.map((claim, index) => (
-              <li key={`${section.id}:${claim.label}:${String(index)}`}>
-                <div className="overview-claim-head">
-                  {claim.entityKey === undefined ? (
-                    <strong>{claim.label}</strong>
-                  ) : (
-                    <button
-                      type="button"
-                      className="overview-claim-link"
-                      onClick={() => { onSelectEntity(claim.entityKey ?? ""); }}
-                    >
-                      {claim.label}
-                    </button>
+          <div className="overview-plate orientation-plate">
+            <h3 id={`overview-${section.id}`}>{section.heading}</h3>
+            <p className="overview-question">{section.question}</p>
+            <ul className="overview-claims">
+              {section.claims.map((claim, index) => (
+                <li key={`${section.id}:${claim.label}:${String(index)}`}>
+                  <div className="overview-claim-head">
+                    {claim.entityKey === undefined ? (
+                      <strong>{claim.label}</strong>
+                    ) : (
+                      <button
+                        type="button"
+                        className="overview-claim-link"
+                        onClick={() => { onSelectEntity(claim.entityKey ?? ""); }}
+                      >
+                        {claim.label}
+                      </button>
+                    )}
+                    <ClaimBadge basis={claim.basis} />
+                  </div>
+                  <p className="overview-claim-value">{claim.value}</p>
+                  {claim.evidence.length > 0 && (
+                    <p className="overview-claim-evidence">
+                      Evidence: {claim.evidence.map((item) => <code key={item}>{item}</code>)}
+                    </p>
                   )}
-                  <ClaimBadge basis={claim.basis} />
-                </div>
-                <p className="overview-claim-value">{claim.value}</p>
-                {claim.evidence.length > 0 && (
-                  <p className="overview-claim-evidence">
-                    Evidence: {claim.evidence.map((item) => <code key={item}>{item}</code>)}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
       ))}
     </div>
