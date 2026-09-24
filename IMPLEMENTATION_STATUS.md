@@ -278,6 +278,43 @@ external resources and zero browser errors. Lighthouse accessibility is 100, up
 from 97: the `color-contrast` failure on the Overview entity links and the
 `label-content-name-mismatch` failure on search rows are both closed.
 
+Depth design pass (2026-09-24 UTC, PRs #71 and #73–#76): one "excavation plate"
+language across every workspace, built from shared tokens in
+`apps/viz/src/design/tokens.css` (plate edge, three lift levels, the fixed
+`atan(1/√2)` tilt). CSS 3D only; no dependency added. Depth encodes surface
+hierarchy and never importance or certainty. Basis stays text plus `data-basis`,
+and Table mode stays flat as the accessibility peer.
+
+- 10-01 is built in-app (#73): Atlas gains a third projection, Tilt
+  (`?view=tilt`). Sigma coordinates are rewritten, not CSS-transformed, so
+  hit-testing stays exact. Depth binds only to the fetched abstraction level
+  (package 0, file 1, symbol 2) and never reads the server `z`. The unit is 8%
+  of the layout span, not the blueprint's fixed 40, because layout coordinates
+  have no fixed scale. Rotation is locked, and Plan restores every attribute
+  exactly. Without WebGL the map stays flat and says so. Deferred: slice C, the
+  CLI `--mode 2.5d` flag (frozen CLI contract), and a Tilt step in
+  `verify:viz:e2e`.
+- Overview is a core sample and Interview a set of finds trays (#74). Story is a
+  descent of plates with hop counts and an "Evidenced path" line, and walls are
+  cracked plates, never links. Changes shows file-grouped tablets inside the one
+  listbox (#76). The shell and side panels (#75) also fixed four layout defects:
+  inspector horizontal scroll, squeezed inspector values, six tabs overflowing
+  at ≤570px, and the navigation drawer opening beneath the inspector at ≤860px.
+- Pre-existing Story defect closed (#77): a wall was paired with the k-th entry
+  of `unresolvedTransitions`, which the server sorts by key and which repeats
+  edges into walls already reached. With two or more walls, each could hang off
+  the wrong source on both the map and the path line. Steps now pair by
+  replaying `transitions` in emission order, and a replay that disagrees with a
+  resolved step returns null.
+- `pnpm audit --prod` began failing every PR after new fast-uri, hono,
+  ip-address, qs and fastify advisories (24, 11 high). #72 patched them within
+  their majors.
+
+Combined-tree validation after all four merges: viz typecheck, root lint, 64
+files / 511 viz tests (serial), production build, `git diff --check`, and
+`verify:viz:e2e` in real Chrome all pass, with zero axe violations, browser
+errors and external resources. Each PR passed all six CI jobs.
+
 Opus backend review result (2026-07-30 UTC): queue items 1-3 executed against
 the working tree. Item 1 passes — `assertCapture` is a real trust boundary
 consumed by the external validation runner, `manifestHashes` carries omission

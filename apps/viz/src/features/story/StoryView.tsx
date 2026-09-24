@@ -138,16 +138,28 @@ function StepRow({
   );
 }
 
+/**
+ * The transition that reached a step. The server emits step k at the k-th
+ * transition into a key it has not yet visited (BFS from the entry point), so
+ * replaying `transitions` in order pairs every step, walls included, with its
+ * own transition. `unresolvedTransitions` cannot: it is sorted by key, not
+ * emission order, and repeats edges into walls already reached. A replay that
+ * disagrees with a resolved step's key returns null rather than a wrong pairing.
+ */
 export function transitionForStoryStep(story: BehaviorStory, stepIndex: number): StoryTransition | null {
   const step = story.steps[stepIndex];
   if (step === undefined) return null;
-  if (step.entityKey !== null) {
-    return story.transitions.find((transition) => transition.to === step.entityKey) ?? null;
+  const visited = new Set<string>([story.entryPoint]);
+  let reached = -1;
+  for (const transition of story.transitions) {
+    if (transition.to === null || visited.has(transition.to)) continue;
+    visited.add(transition.to);
+    reached += 1;
+    if (reached < stepIndex) continue;
+    if (step.entityKey !== null) return transition.to === step.entityKey ? transition : null;
+    return { ...transition, to: null, resolved: false, resolution: "unresolved" };
   }
-  const unresolvedIndex = story.steps.slice(0, stepIndex + 1)
-    .filter((candidate) => candidate.entityKey === null).length - 1;
-  const transition = story.unresolvedTransitions[unresolvedIndex] ?? null;
-  return transition === null ? null : { ...transition, to: null, resolved: false, resolution: "unresolved" };
+  return null;
 }
 
 /**
