@@ -92,6 +92,20 @@ describe("DiffBadgeOverlay placement (positions read verbatim)", () => {
     expect(onInspect).toHaveBeenCalledWith("a", "node");
   });
 
+  it("captions an empty map, marking whether a comparison has loaded", () => {
+    const { container, rerender } = render(<DiffBadgeOverlay page={null} positions={new Map()} />);
+    const caption = (): Element | null => container.querySelector(".diff-badge-caption");
+    expect(caption()?.textContent).toBe("No changed node is placed on the map.");
+    expect(caption()?.getAttribute("data-settled")).toBe("false");
+    // Edge-only diffs carry no placeable key either.
+    rerender(<DiffBadgeOverlay page={diff({ edges: [] })} positions={new Map()} />);
+    expect(caption()?.getAttribute("data-settled")).toBe("true");
+    rerender(<DiffBadgeOverlay page={diff({ nodesAdded: [node("a")] })} positions={new Map([["a", { x: 1, y: 1 }]])} />);
+    expect(caption()).toBeNull();
+    rerender(<DiffBadgeOverlay page={diff({ nodesAdded: [node("a")] })} positions={new Map()} />);
+    expect(caption()).toBeNull();
+  });
+
   it("selecting an unplaced badge inspects its entityKey too", () => {
     const onInspect = vi.fn();
     render(<DiffBadgeOverlay page={diff({ nodesRemoved: [node("gone")] })} positions={new Map()} onInspect={onInspect} />);

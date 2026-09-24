@@ -116,6 +116,15 @@ export function DiffBadgeOverlay({ page, positions, onInspect }: DiffBadgeOverla
         ))}
       </div>
 
+      {/* An empty map says why. `data-settled` marks a loaded comparison, so
+          the Changes layout can hand the list the room without jumping while
+          a load is still in flight. */}
+      {placed.length === 0 && unplaced.length === 0 && (
+        <p className="diff-badge-caption" data-settled={page !== null}>
+          No changed node is placed on the map.
+        </p>
+      )}
+
       {unplaced.length > 0 && (
         <div className="diff-badge-unplaced" role="status" aria-label="Unplaced diff badges" tabIndex={0}>
           <p>{`${unplaced.length} changed node${unplaced.length === 1 ? "" : "s"} not currently rendered on the map:`}</p>
