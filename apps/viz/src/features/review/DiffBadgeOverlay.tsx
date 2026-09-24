@@ -1,5 +1,6 @@
 import { useMemo, type ReactElement } from "react";
 import type { AccumulatedDiff } from "./useReviewDiffStore.ts";
+import "./changes.css";
 
 /** A Sigma graph coordinate projected into the current viewport. */
 export interface BadgePosition {

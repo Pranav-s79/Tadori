@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { StoryView, storyStepLabelText, transitionForStoryStep } from "./StoryView.tsx";
+import { StoryView, evidencedPath, storyStepLabelText, transitionForStoryStep } from "./StoryView.tsx";
 import type { BehaviorStory, StoryStepLabel } from "./storyApi.ts";
 
 /**
@@ -253,6 +253,77 @@ describe("StoryView", () => {
       unresolvedTransitions: [{ from: "a", to: "unresolved:synthetic", relation: "calls", origin: "heuristic", confidence: "inferred", resolution: "unresolved", resolved: false, evidence: [] }]
     });
     expect(transitionForStoryStep(loaded, 0)).toEqual(expect.objectContaining({ from: "a", to: null, resolved: false }));
+  });
+
+  /**
+   * Steps arrive in BFS order, so step 2 following step 1 says nothing about
+   * whether one reached the other. The descent and the copper path must come
+   * from the transitions, never from list adjacency.
+   */
+  it("derives hops and the evidenced path from transitions, not list order", () => {
+    const loaded = story({
+      steps: [
+        { id: "step:0:a", entityKey: "a", kind: "function", resolved: true, label: "statically-resolved", origin: "compiler", confidence: "certain", resolution: "resolved", evidence: [] },
+        { id: "step:1:b", entityKey: "b", kind: "function", resolved: true, label: "statically-resolved", origin: "compiler", confidence: "certain", resolution: "resolved", evidence: [] },
+        { id: "step:2:c", entityKey: "c", kind: "function", resolved: true, label: "inferred", origin: "heuristic", confidence: "inferred", resolution: "resolved", evidence: [] },
+        { id: "step:3:unresolved", entityKey: null, kind: "unresolved", resolved: false, label: "unresolved", origin: "heuristic", confidence: "inferred", resolution: "unresolved", evidence: [] }
+      ],
+      transitions: [
+        { from: "k-route", to: "a", relation: "routes_to", origin: "compiler", confidence: "certain", resolution: "resolved", resolved: true, evidence: [] },
+        { from: "k-route", to: "b", relation: "routes_to", origin: "compiler", confidence: "certain", resolution: "resolved", resolved: true, evidence: [] },
+        { from: "a", to: "c", relation: "calls", origin: "heuristic", confidence: "inferred", resolution: "resolved", resolved: true, evidence: [] },
+        { from: "c", to: "unresolved:x", relation: "calls", origin: "heuristic", confidence: "inferred", resolution: "unresolved", resolved: false, evidence: [] }
+      ],
+      unresolvedTransitions: [
+        { from: "c", to: "unresolved:x", relation: "calls", origin: "heuristic", confidence: "inferred", resolution: "unresolved", resolved: false, evidence: [] }
+      ]
+    });
+    expect(evidencedPath(loaded, 0)).toEqual([0]);
+    expect(evidencedPath(loaded, 1)).toEqual([1]);
+    // c sits under a, not under b, although b is the step listed before it.
+    expect(evidencedPath(loaded, 2)).toEqual([0, 2]);
+    // The wall hangs off its known source and has no destination of its own.
+    expect(evidencedPath(loaded, 3)).toEqual([0, 2, 3]);
+  });
+
+  it("claims no path it cannot trace back to the route", () => {
+    const loaded = story({
+      steps: [{ id: "step:0:a", entityKey: "a", kind: "function", resolved: true, label: "statically-resolved", origin: "compiler", confidence: "certain", resolution: "resolved", evidence: [] }],
+      transitions: []
+    });
+    expect(evidencedPath(loaded, 0)).toBeNull();
+  });
+
+  it("states each step's hop count and the active path in words", async () => {
+    stubFetch(story({
+      steps: [
+        { id: "step:0:a", entityKey: "a", kind: "function", resolved: true, label: "statically-resolved", origin: "compiler", confidence: "certain", resolution: "resolved", evidence: [] },
+        { id: "step:1:b", entityKey: "b", kind: "function", resolved: true, label: "statically-resolved", origin: "compiler", confidence: "certain", resolution: "resolved", evidence: [] },
+        { id: "step:2:unresolved", entityKey: null, kind: "unresolved", resolved: false, label: "unresolved", origin: "heuristic", confidence: "inferred", resolution: "unresolved", evidence: [] }
+      ],
+      transitions: [
+        { from: "k-route", to: "a", relation: "routes_to", origin: "compiler", confidence: "certain", resolution: "resolved", resolved: true, evidence: [] },
+        { from: "a", to: "b", relation: "calls", origin: "compiler", confidence: "certain", resolution: "resolved", resolved: true, evidence: [] },
+        { from: "b", to: "unresolved:x", relation: "calls", origin: "heuristic", confidence: "inferred", resolution: "unresolved", resolved: false, evidence: [] }
+      ],
+      unresolvedTransitions: [
+        { from: "b", to: "unresolved:x", relation: "calls", origin: "heuristic", confidence: "inferred", resolution: "unresolved", resolved: false, evidence: [] }
+      ]
+    }));
+    render(<StoryView entityKey="k-route" />);
+    await waitFor(() => expect(screen.getByText("Evidenced path: route → step 1")).toBeTruthy());
+    expect(screen.getByText(/^1 hop from the route · compiler/)).toBeTruthy();
+    expect(screen.getByText(/^2 hops from the route · compiler/)).toBeTruthy();
+    expect(screen.getByText(/^3 hops from the route · heuristic/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next evidenced step" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next evidenced step" }));
+    expect(screen.getByText("Evidenced path: route → step 1 → step 2 → step 3 (destination unknown)")).toBeTruthy();
+    // The wall is on the path but is still not a link.
+    const wall = screen.getByText("Unresolved wall (dynamic dispatch)");
+    expect(wall.closest("button")).toBeNull();
+    expect(wall.closest("li")).toHaveAttribute("aria-current", "step");
+    expect(wall.closest("li")).toHaveAttribute("data-on-path", "true");
   });
 
   it("explains a not-a-route refusal instead of a generic error", async () => {

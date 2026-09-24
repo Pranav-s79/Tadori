@@ -1,0 +1,316 @@
+/* Changes: tablets of stone.
+   Added, removed and changed relationships are each a raised tablet with a
+   carved text label and count; node rows sit in runs under their file. The
+   tablet accent colour repeats what the label says and is never the only
+   signal. The selected row lifts off its tablet. */
+
+.review-diff {
+  display: grid;
+  min-height: 100%;
+  align-content: start;
+  gap: var(--tadori-space-3);
+  padding: var(--tadori-space-3);
+  background: var(--tadori-panel);
+}
+
+.review-diff-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tadori-space-2) var(--tadori-space-4);
+}
+
+/* The comparison kinds are a channel cut into the surface; the chosen one is a
+   plate sitting in it, with its radio checked and its word in bold. */
+.review-diff-kinds {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-ground);
+  box-shadow: inset 0 1px 3px rgb(41 42 40 / 16%);
+}
+
+.review-diff-kind-option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tadori-space-1);
+  min-height: 2rem;
+  padding: 0 var(--tadori-space-2);
+  border-radius: 3px;
+  color: var(--tadori-ink);
+  cursor: pointer;
+  font-size: var(--tadori-text-sm);
+}
+
+.review-diff-kind-option input { margin: 0; accent-color: var(--tadori-copper); }
+
+.review-diff-kind-option:has(input:checked) {
+  background: var(--tadori-panel-raised);
+  box-shadow: var(--tadori-lift-1);
+  font-weight: 650;
+}
+
+.review-diff-coalesce-toggle,
+.review-diff-load-more,
+.review-diff-coalesced-row > button,
+.diff-badge-unplaced-item,
+.observation-overlay-file > button {
+  min-height: 2rem;
+  padding: var(--tadori-space-1) var(--tadori-space-3);
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-panel-raised);
+  box-shadow: var(--tadori-lift-1);
+  color: var(--tadori-ink);
+  cursor: pointer;
+  font: 600 var(--tadori-text-xs) / 1.3 var(--tadori-font-ui);
+  overflow-wrap: anywhere;
+  text-align: left;
+  transition: transform var(--tadori-motion-fast) ease, box-shadow var(--tadori-motion-fast) ease;
+}
+
+.review-diff-coalesce-toggle[aria-pressed="true"],
+.review-diff-coalesce-toggle:active,
+.review-diff-load-more:active,
+.review-diff-coalesced-row > button:active,
+.diff-badge-unplaced-item:active,
+.observation-overlay-file > button:active {
+  box-shadow: inset 0 2px 3px rgb(41 42 40 / 18%);
+  transform: translateY(1px);
+}
+
+.review-diff-load-more { justify-self: start; }
+
+.review-diff-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  align-items: start;
+  gap: var(--tadori-space-4);
+  margin: 0;
+  padding: 0 0 var(--tadori-space-2);
+  list-style: none;
+}
+
+.review-tablet,
+.review-diff-coalesced {
+  min-width: 0;
+  padding: var(--tadori-space-2) var(--tadori-space-3) var(--tadori-space-3);
+  border: 1px solid var(--tadori-rule);
+  border-top: 4px solid var(--tablet-accent);
+  border-radius: var(--tadori-radius-md);
+  background: var(--tadori-panel-raised);
+  box-shadow: var(--tadori-lift-2);
+}
+
+.review-tablet-added { --tablet-accent: var(--tadori-verdigris); --tablet-text: var(--tadori-verdigris-text); }
+.review-tablet-removed { --tablet-accent: var(--tadori-danger); --tablet-text: var(--tadori-danger); }
+.review-tablet-edges { --tablet-accent: var(--tadori-copper); --tablet-text: var(--tadori-copper-text); }
+.review-diff-coalesced { --tablet-accent: var(--tadori-bronze); --tablet-text: var(--tadori-bronze); }
+
+.review-tablet-label {
+  margin: 0 0 var(--tadori-space-1);
+  color: var(--tablet-text, var(--tadori-ink));
+  font: 700 var(--tadori-text-sm) / 1.3 var(--tadori-font-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.review-tablet-file {
+  margin: var(--tadori-space-2) 0 var(--tadori-space-1);
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--tadori-rule);
+  color: var(--tadori-ink-muted);
+  font: var(--tadori-text-xs) / 1.4 var(--tadori-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.review-diff-list .review-diff-node,
+.review-diff-list .review-diff-edge,
+.review-diff-coalesced-raw .review-diff-edge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--tadori-space-2);
+  margin-top: var(--tadori-space-1);
+  padding: var(--tadori-space-1) var(--tadori-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--tadori-radius-sm);
+}
+
+.review-diff-list [role="option"] {
+  cursor: pointer;
+  transition: transform var(--tadori-motion-fast) ease, box-shadow var(--tadori-motion-fast) ease;
+}
+
+.review-diff-list [role="option"]:hover { border-color: var(--tadori-rule); }
+
+.review-diff-list [role="option"][aria-selected="true"] {
+  border-color: var(--tadori-rule);
+  box-shadow: var(--tadori-lift-2);
+  transform: translateY(-1px);
+}
+
+/* The +, − or ~ is carved on a small extruded block. */
+.review-diff-marker {
+  display: inline-grid;
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  align-self: center;
+  place-items: center;
+  border-radius: 3px;
+  background: var(--tablet-accent, var(--tadori-copper));
+  box-shadow: 0 2px 0 var(--tadori-plate-edge);
+  color: var(--tadori-panel-raised);
+  font: 700 var(--tadori-text-sm) / 1 var(--tadori-font-mono);
+}
+
+.review-diff-kind-tag,
+.review-diff-change,
+.review-diff-freshness {
+  padding: 0 0.3rem;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  color: var(--tadori-ink-muted);
+  font-size: var(--tadori-text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.review-diff-freshness { border-style: dashed; }
+
+.review-diff-name,
+.review-diff-edge-endpoints {
+  min-width: 0;
+  color: var(--tadori-ink);
+  font: var(--tadori-text-sm) / 1.4 var(--tadori-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.review-diff-loc,
+.review-diff-edge-provenance { color: var(--tadori-ink-muted); font-size: var(--tadori-text-xs); }
+
+.review-diff-coalesced-list,
+.review-diff-ambiguous-list,
+.review-diff-coalesced-raw {
+  display: grid;
+  gap: var(--tadori-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-diff-ambiguous-list { margin-top: var(--tadori-space-2); }
+.review-diff-coalesced-raw { margin: var(--tadori-space-1) 0 0 var(--tadori-space-4); }
+
+/* Ambiguous groups stay raw: a dashed outline, never a solid resolved plate. */
+.review-diff-ambiguous {
+  padding: var(--tadori-space-1) var(--tadori-space-2);
+  border: 1px dashed var(--tadori-ink-muted);
+  border-radius: var(--tadori-radius-sm);
+  font-size: var(--tadori-text-xs);
+}
+
+/* Map badges: an isometric stone at the shared tilt, drawn behind the glyph.
+   Only size and paint change here; placement stays in the overlay's inline
+   left/top and the shared translate(-50%, -50%). */
+.diff-badge {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  place-items: center;
+  isolation: isolate;
+  border: 0;
+  background: transparent;
+  color: var(--tadori-panel-raised);
+  cursor: pointer;
+  font: 700 var(--tadori-text-sm) / 1 var(--tadori-font-mono);
+}
+
+.diff-badge-added { --badge-accent: var(--tadori-verdigris); }
+.diff-badge-removed { --badge-accent: var(--tadori-danger); }
+.diff-badge-changed-relationship { --badge-accent: var(--tadori-copper); }
+
+.diff-badge::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0.2rem;
+  border: 1px solid var(--tadori-panel-raised);
+  background: var(--badge-accent);
+  box-shadow: 2px 2px 0 var(--tadori-plate-edge), 4px 4px 6px rgb(41 42 40 / 28%);
+  content: "";
+  transform: scaleY(0.577) rotate(45deg);
+  transform: scaleY(sin(var(--tadori-tilt))) rotate(45deg);
+}
+
+/* The boundary panel holds the upper right at the same offset, and with both
+   lenses on this one covered it. The lower left of the map is free. */
+.diff-badge-unplaced {
+  top: auto;
+  right: auto;
+  bottom: var(--tadori-space-3);
+  left: var(--tadori-space-3);
+  padding: var(--tadori-space-2) var(--tadori-space-3);
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-md);
+  box-shadow: var(--tadori-lift-2);
+}
+
+.diff-badge-unplaced p { margin: 0 0 var(--tadori-space-2); font-size: var(--tadori-text-xs); }
+.diff-badge-unplaced ul { display: grid; gap: var(--tadori-space-1); margin: 0; padding: 0; list-style: none; }
+.diff-badge-unplaced-item { width: 100%; border-left: 4px solid var(--badge-accent); }
+
+/* Agent-change review: a plate in the navigation, one line per flagged file. */
+.observation-overlay {
+  margin: var(--tadori-space-3);
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-md);
+  background: var(--tadori-panel-raised);
+  box-shadow: var(--tadori-lift-1);
+}
+
+.observation-overlay h3 { margin: 0 0 var(--tadori-space-2); font: 700 var(--tadori-text-sm) / 1.3 var(--tadori-font-label); }
+.observation-overlay ul { display: grid; gap: var(--tadori-space-2); margin: 0; padding: 0; list-style: none; }
+
+.observation-overlay-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tadori-space-1);
+  overflow-wrap: anywhere;
+}
+
+.observation-overlay-flag {
+  padding: 0 0.3rem;
+  border: 1px solid currentcolor;
+  border-radius: var(--tadori-radius-sm);
+  color: var(--tadori-danger);
+  font-size: var(--tadori-text-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .review-diff-list [role="option"],
+  .review-diff-coalesce-toggle,
+  .review-diff-load-more,
+  .review-diff-coalesced-row > button,
+  .diff-badge-unplaced-item,
+  .observation-overlay-file > button { transition: none; }
+}
+
+/* Forced colours drop shadows and fills: tablets and rows keep real borders,
+   the selected row an outline, and the badge stone its edge. */
+@media (forced-colors: active) {
+  .review-tablet,
+  .review-diff-coalesced,
+  .diff-badge-unplaced,
+  .observation-overlay { border: 1px solid CanvasText; border-top-width: 4px; }
+
+  .review-diff-list [role="option"][aria-selected="true"] { outline: 2px solid Highlight; outline-offset: 1px; }
+  .review-diff-kind-option:has(input:checked) { outline: 1px solid CanvasText; }
+  .review-diff-marker { border: 1px solid CanvasText; }
+  .diff-badge::before { border: 2px solid CanvasText; }
+}

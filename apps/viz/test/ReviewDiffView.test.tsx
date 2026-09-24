@@ -220,6 +220,52 @@ describe("ReviewDiffView keyboard navigation + inspect", () => {
   });
 });
 
+describe("ReviewDiffView tablets", () => {
+  /**
+   * Nodes arrive ordered by entityKey, a digest, so one file's changes are
+   * scattered through the list. Each kind is a labelled tablet whose rows are
+   * grouped by file in first-appearance order, without re-sorting by name, and
+   * the keyboard walks the rows in exactly the order they are drawn.
+   */
+  it("groups each kind by file without re-sorting, and keys walk the drawn order", () => {
+    const store = fakeStore({
+      status: "ok",
+      page: diff({
+        nodesAdded: [node("z", { file: "src/b.ts" }), node("a", { file: "src/a.ts" }), node("m", { file: "src/b.ts" })],
+        nodesRemoved: [node("gone", { file: null })],
+        edges: [edge()]
+      })
+    });
+    render(<ReviewDiffView store={store} />);
+
+    const groups = screen.getAllByRole("group");
+    expect(groups.map((group) => group.getAttribute("aria-label"))).toEqual([
+      "Added (3)",
+      "Removed (1)",
+      "Changed relationships (1)"
+    ]);
+    const labels = screen.getAllByRole("option").map((option) => option.getAttribute("aria-label") ?? "");
+    expect(labels.map((label) => /: (\w+)/.exec(label)?.[1])).toEqual(["z", "m", "a", "gone", "mod"]);
+    expect(screen.getByText("provenance changed")).toBeInTheDocument();
+
+    const list = screen.getByRole("listbox");
+    fireEvent.keyDown(list, { key: "ArrowDown" });
+    expect(screen.getAllByRole("option")[1]).toHaveAttribute("aria-label", expect.stringContaining("added function: m"));
+  });
+
+  it("shows the name under its file caption without repeating the file", () => {
+    render(<ReviewDiffView store={fakeStore({ status: "ok", page: diff({ nodesAdded: [node("src/x.ts.Report.format")] }) })} />);
+    const option = screen.getByRole("option");
+    expect(option.querySelector(".review-diff-name")).toHaveTextContent(/^Report\.format$/);
+    expect(option).toHaveAttribute("aria-label", expect.stringContaining("src/x.ts.Report.format, src/x.ts:1"));
+  });
+
+  it("says how many of a kind are shown when the server omitted some", () => {
+    render(<ReviewDiffView store={fakeStore({ status: "partial", page: diff({ nodesAdded: [node("a")], nodesAddedOmitted: 4 }) })} />);
+    expect(screen.getByRole("group", { name: "Added (1 of 5 shown)" })).toBeInTheDocument();
+  });
+});
+
 describe("ReviewDiffView determinism", () => {
   it("renders the same fixture in the same DOM order every time (no re-sort)", () => {
     const page = diff({ nodesAdded: [node("z"), node("a"), node("m")] });
