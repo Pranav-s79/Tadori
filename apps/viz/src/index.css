@@ -522,7 +522,7 @@ button { min-height: 2rem; }
 
 .atlas-context-bar > span { flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0.06em; text-transform: uppercase; }
 .atlas-context-bar > .atlas-count { flex: 0 1 auto; min-width: 0; margin-left: auto; }
-.atlas-context-bar nav { flex: 1 1 auto; min-width: 0; letter-spacing: 0.06em; text-transform: uppercase; }
+.atlas-context-bar nav { flex: 1 1 8rem; min-width: 0; letter-spacing: 0.06em; text-transform: uppercase; }
 .atlas-context-bar ol {
   display: flex;
   gap: var(--tadori-space-1);
