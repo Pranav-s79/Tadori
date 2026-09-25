@@ -167,6 +167,15 @@ describe("App focus ownership", () => {
     expect(screen.getByRole("tab", { name: "Atlas" })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("closes a narrow-screen panel when the screen widens", async () => {
+    const media = installNavigationMediaQuery(true);
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(document.querySelector("#atlas-search")).toHaveAttribute("data-open", "true");
+    act(() => media.setMatches(false));
+    await waitFor(() => expect(document.querySelector("#atlas-search")).toHaveAttribute("data-open", "false"));
+  });
+
   it("keeps the wide-screen search in the header, where Escape does not hide it", () => {
     installNavigationMediaQuery(false);
     render(<App />);
