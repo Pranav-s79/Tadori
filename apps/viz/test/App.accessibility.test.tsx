@@ -160,6 +160,32 @@ describe("App focus ownership", () => {
     expect(navigation).toHaveAttribute("aria-hidden", "false");
   });
 
+  /**
+   * Overview and Interview showed the lens rail and "Showing N nodes" although
+   * neither draws a map, and the Atlas bar read "Repository" beside
+   * "Repository level". The count keeps announcing refreshes off-map; it is
+   * only no longer drawn there.
+   */
+  it("draws map chrome only in the modes that show a map", () => {
+    render(<App />);
+    expect(screen.queryByRole("navigation", { name: "Map lenses" })).not.toBeInTheDocument();
+    expect(screen.getByText(/^Showing \d+ nodes? and/)).toHaveClass("tadori-visually-hidden");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Interview" }));
+    expect(screen.queryByRole("navigation", { name: "Map lenses" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Atlas" }));
+    expect(screen.getByRole("navigation", { name: "Map lenses" })).toBeInTheDocument();
+    expect(screen.getByText(/^Showing \d+ nodes? and/)).not.toHaveClass("tadori-visually-hidden");
+    expect(screen.getByRole("navigation", { name: "Atlas location" })).toHaveTextContent("Repository");
+    expect(screen.queryByText(/level$/)).not.toBeInTheDocument();
+  });
+
+  it("counts a single entity in the singular", () => {
+    render(<App />);
+    expect(screen.getByText("1 entity · 0 relations")).toBeInTheDocument();
+  });
+
   it("disables map-only lenses in Table mode but leaves Agent Review actionable", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("tab", { name: "Table" }));

@@ -97,11 +97,25 @@ describe("component stylesheet coverage", () => {
   });
 
   /**
-   * Showing the lens symbol and its word together makes the visible text read
+   * Showing the lens symbol and its word together made the visible text read
    * "BBoundaries", which is not contained in the accessible name "Boundaries
-   * lens" — WCAG 2.5.3 Label in Name, and axe reports it.
+   * lens" — WCAG 2.5.3 Label in Name, and axe reports it. The narrow rail then
+   * hid the word and showed only the letter. The symbol is gone: the word is
+   * the visible label at every breakpoint, set on its side where the rail is
+   * narrow.
    */
-  it("never displays the lens symbol and its word at the same breakpoint", () => {
-    expect(stylesheet("index.css")).toMatch(/\.lens-button-symbol\s*\{[^}]*display:\s*none/);
+  /**
+   * "Extraction diagnostics: 4 warnings" inherited the mono face meant for the
+   * snapshot id beside it, and read like a line of code.
+   */
+  it("keeps the header diagnostics sentence out of the mono identifier rule", () => {
+    const mono = /\.atlas-snapshot > span(:not\([^)]*\))?\s*\{[^}]*--tadori-font-mono/.exec(stylesheet("index.css"));
+    expect(mono?.[1]).toContain(".atlas-diagnostics-summary");
+  });
+
+  it("keeps the lens word visible at every breakpoint", () => {
+    const css = stylesheet("index.css");
+    expect(css).not.toMatch(/\.lens-button-label\s*\{[^}]*display:\s*none/);
+    expect(css).not.toMatch(/\.lens-button-symbol/);
   });
 });

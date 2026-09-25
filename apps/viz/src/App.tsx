@@ -83,10 +83,10 @@ function useForcedColors(): boolean {
   return active;
 }
 
-/** "1 nodes and 0 relations" was the shell's own copy defect. */
-function countLabel(count: number | undefined, noun: string): string {
+/** "1 nodes and 0 relations" and "1 entities" were the shell's own copy defects. */
+function countLabel(count: number | undefined, noun: string, plural = `${noun}s`): string {
   const value = count ?? 0;
-  return `${String(value)} ${noun}${value === 1 ? "" : "s"}`;
+  return `${String(value)} ${value === 1 ? noun : plural}`;
 }
 
 function wsUrl(): string {
@@ -328,13 +328,15 @@ export function App(): ReactElement {
   const showBoundaries = lenses.boundaries;
   const visibleNodeCount = renderedGraph?.nodes.length ?? data?.nodes.length;
   const visibleEdgeCount = renderedGraph?.edges.length ?? data?.edges.length;
+  const mapChrome = mode !== "overview" && mode !== "interview";
+  const lodLevel = renderedGraph?.lodLevel ?? "repository";
 
   const mapSurface = (
     <div className="app-graph-stage" role="region" aria-label="Repository atlas">
       <div className="atlas-ground" aria-hidden="true" />
       {data?.bounded !== undefined && (data.bounded.omittedNodes > 0 || data.bounded.omittedEdges > 0) && (
         <p className="bounded-notice" role="status">
-          Bounded package view: {data.bounded.omittedNodes} nodes and {data.bounded.omittedEdges} relations omitted.
+          {`Bounded package view: ${countLabel(data.bounded.omittedNodes, "node")} and ${countLabel(data.bounded.omittedEdges, "relation")} omitted.`}
         </p>
       )}
       {graphError !== null ? (
@@ -439,18 +441,22 @@ export function App(): ReactElement {
 
       {snapshot?.stale === true && <StaleState staleReason={snapshot.staleReason} />}
 
-      <div className="atlas-workspace">
-        <nav className="lens-rail" aria-label="Map lenses">
-          <LensButton active={lenses.boundaries} label="Boundaries" symbol="B" onClick={() => toggleLens("boundaries")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
-          <LensButton active={lenses.changes} label="Changes" symbol="Δ" onClick={() => toggleLens("changes")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
-          <LensButton active={lenses.observations} label="Agent review" symbol="A" onClick={() => toggleLens("observations")} />
-          <LensButton active={lenses.provenance} label="Provenance" symbol="P" onClick={() => toggleLens("provenance")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
-        </nav>
+      {/* Lenses, the breadcrumb and the node count describe a map. Overview and
+          Interview show none, so they carry none of that chrome. */}
+      <div className={`atlas-workspace${mapChrome ? "" : " atlas-workspace-lensless"}`}>
+        {mapChrome && (
+          <nav className="lens-rail" aria-label="Map lenses">
+            <LensButton active={lenses.boundaries} label="Boundaries" onClick={() => toggleLens("boundaries")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
+            <LensButton active={lenses.changes} label="Changes" onClick={() => toggleLens("changes")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
+            <LensButton active={lenses.observations} label="Agent review" onClick={() => toggleLens("observations")} />
+            <LensButton active={lenses.provenance} label="Provenance" onClick={() => toggleLens("provenance")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
+          </nav>
+        )}
 
         <aside ref={navigationFocus.drawerRef} id="atlas-navigation" className="atlas-navigation" data-open={navigationOpen} aria-label="Repository navigation" aria-hidden={!navigationOpen} inert={!navigationOpen} tabIndex={-1} onKeyDown={navigationFocus.onDrawerKeyDown}>
           <div className="navigation-heading">
             <p>Explore</p>
-            <span>{data === null ? "No graph" : `${data.nodes.length} entities · ${data.edges.length} relations`}</span>
+            <span>{data === null ? "No graph" : `${countLabel(data.nodes.length, "entity", "entities")} · ${countLabel(data.edges.length, "relation")}`}</span>
           </div>
           <details className="navigation-section" open>
             <summary>Search and filter</summary>
@@ -494,11 +500,10 @@ export function App(): ReactElement {
                 Overview and Interview there is no map, so they described
                 nothing — and they were what truncated the bar to ellipses
                 ("REPOSITOR…", "FILE L…") the moment the inspector opened.
-                The count stays in every mode: it is the live region that
-                announces graph refreshes, and silencing it in the landing mode
-                would take that announcement away from exactly the reader who
-                arrives while indexing is still settling. */}
-            {mode !== "overview" && mode !== "interview" && (
+                The level is shown only below the repository: there it names
+                what the breadcrumb does not, while at the top the bar read
+                "Repository" and "Repository level" side by side. */}
+            {mapChrome && (
               <>
                 {mode !== "table" && <SpatialProjectionToggle active={spatialProjection} onChange={setSpatialProjection} />}
                 <nav aria-label="Atlas location">
@@ -508,10 +513,15 @@ export function App(): ReactElement {
                     ))}
                   </ol>
                 </nav>
-                <span>{`${renderedGraph?.lodLevel ?? "repository"} level`}</span>
+                {lodLevel !== "repository" && <span>{`${lodLevel} level`}</span>}
               </>
             )}
-            <span role="status" aria-live="polite" aria-atomic="true">{data === null ? "Graph unavailable" : `Showing ${countLabel(visibleNodeCount, "node")} and ${countLabel(visibleEdgeCount, "relation")}`}</span>
+            {/* The count is map chrome too, so it is not drawn without a map.
+                It stays in the accessibility tree as the live region that
+                announces graph refreshes: silencing it in the landing mode
+                would take that announcement away from exactly the reader who
+                arrives while indexing is still settling. */}
+            <span role="status" aria-live="polite" aria-atomic="true" className={mapChrome ? undefined : "tadori-visually-hidden"}>{data === null ? "Graph unavailable" : `Showing ${countLabel(visibleNodeCount, "node")} and ${countLabel(visibleEdgeCount, "relation")}`}</span>
           </div>
 
           {focusUnavailable !== null && (

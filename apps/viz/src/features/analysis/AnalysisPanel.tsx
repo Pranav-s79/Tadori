@@ -84,8 +84,8 @@ function DiagnosticList({ analysis }: { analysis: SnapshotAnalysisDto }): ReactE
     <>
       <p className="analysis-budget" role="status">
         {omittedCount === 0
-          ? `Showing all ${String(total)} diagnostics.`
-          : `Showing ${String(items.length)} of ${String(total)} diagnostics; ${String(omittedCount)} not shown.`}
+          ? total === 1 ? "Showing the only diagnostic." : `Showing all ${String(total)} diagnostics.`
+          : `Showing ${String(items.length)} of ${String(total)} ${total === 1 ? "diagnostic" : "diagnostics"}; ${String(omittedCount)} not shown.`}
       </p>
       <ul className="analysis-diagnostics">
         {items.map((diagnostic, index) => (
