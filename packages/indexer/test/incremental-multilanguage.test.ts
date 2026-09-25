@@ -19,7 +19,7 @@ import {
   type Database
 } from "@tadori/store";
 
-const MIXED_FIXTURE = path.resolve("packages/bench/fixtures/mixed-oracle");
+const MIXED_FIXTURE = path.resolve("packages/fixtures/mixed-oracle");
 
 let container: string | null = null;
 let db: Database | null = null;

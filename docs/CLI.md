@@ -1,8 +1,6 @@
-# Tadori CLI compatibility contract
+# Tadori CLI reference
 
-This document records the implemented compatibility contract for Tadori's
-normal local visualization command. Language scope and graph semantics are
-governed by `docs/Specs/Tadori-Multilanguage-Transition.md`.
+This document records the behaviour of Tadori's local visualization command.
 
 ## The normal command
 

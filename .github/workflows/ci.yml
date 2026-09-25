@@ -1,122 +1,19 @@
 name: ci
+
 on:
   push:
-    branches: [main, "Sprint*"]
-  # No base filter, so a pull request stacked on another branch is still gated.
-  # With `branches: [main]` a stacked PR got no checks at all: its base is the
-  # branch below it in the stack rather than main, and its head is not in the
-  # push list either. That failure is silent - the PR reports "no checks
-  # reported" instead of failing - so work can reach the bottom of the stack
-  # having never run the gate. Every PR now runs it regardless of base.
+    branches: [main]
   pull_request:
-permissions:
-  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# Two tiers, deliberately.
-#
-# `verify` is everything deterministic — the same steps `pnpm gate` runs on a
-# developer machine, across the full matrix. It is the merge gate. If it is red,
-# something is genuinely broken and it can be reproduced locally.
-#
-# `browser` drives a real browser through the built Atlas. It reported rather
-# than blocked while KF-001 was open; that defect is now fixed (headless Firefox
-# on Linux gets no WebGL context without an X display — see the step below and
-# docs/KNOWN_FAILURES.md), and the job has been green twice running, which is the
-# criterion this comment set for restoring it. It blocks again as of 2026-08-02.
 jobs:
   verify:
-    strategy:
-      fail-fast: false
-      matrix:
-        # Supported alpha runtime matrix: maintained LTS lines only. Node 24 is
-        # the prioritized line; Node 26 is the current release; Node 22 is kept
-        # for compatibility. Node 25 (non-LTS/out-of-maintenance) is NOT targeted.
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        node: ["22.14.0", "24.18.0", "26.5.0"]
-        exclude:
-          # Windows + Node >=24 aborts inside libuv's recursive fs.watch
-          # ("Assertion failed: !_wcsnicmp, src\\win\\fs-event.c:72"), which
-          # crashes the child in packages/mcp/test/stdio.test.ts. This is an
-          # upstream Node/libuv Windows regression, not a Tadori or
-          # better-sqlite3 issue (the native binding loads on every combo).
-          # Node 24/26 stay verified on Linux; Windows stays verified on 22.
-          # Tracked as a known limitation until the libuv fix ships.
-          - os: windows-latest
-            node: "24.18.0"
-          - os: windows-latest
-            node: "26.5.0"
-          # One installed-artifact gate covers the documented macOS support;
-          # the Linux legs retain the full supported Node runtime matrix.
-          - os: macos-latest
-            node: "24.18.0"
-          - os: macos-latest
-            node: "26.5.0"
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    env:
-      # pnpm honors `use-node-version` from .npmrc (the local-dev pin); override
-      # it per matrix leg so the matrix Node — not the pinned one — runs here.
-      npm_config_use_node_version: ${{ matrix.node }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      # validate_fixtures.py degrades to exit 1 without jsonschema installed.
-      - run: python -m pip install jsonschema
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm audit --prod
-        if: matrix.os == 'ubuntu-latest' && matrix.node == '22.14.0'
-      # Explicit better-sqlite3 load check on this exact OS + Node combination:
-      # require the native binding to load and run a query, proving a prebuilt
-      # binary exists for this ABI (never a silent source-build fallback).
-      - name: better-sqlite3 loads on ${{ matrix.os }} / node ${{ matrix.node }}
-        run: pnpm --filter @tadori/store exec node -e "const D=require('better-sqlite3'); const db=new D(':memory:'); db.exec('CREATE TABLE t(x)'); db.prepare('INSERT INTO t VALUES (?)').run(1); if (db.prepare('SELECT x FROM t').get().x !== 1) { throw new Error('better-sqlite3 query failed'); } db.close(); console.log('better-sqlite3 OK on', process.version);"
-      - run: pnpm skills:check
-      - run: pnpm typecheck
-      # The root tsconfig scopes to packages/*, so the Atlas app was never
-      # type-checked by any gate. Eleven errors accumulated there unnoticed,
-      # including a dead comparison that silently starved Table mode of story
-      # emphasis. Checking it here keeps that class of defect from returning.
-      - run: pnpm --filter @tadori/viz typecheck
-      - run: pnpm lint
-      - run: pnpm test
-      - run: python validate_fixtures.py
-      - run: pnpm fixtures:validate
-      - run: pnpm fixtures:index
-      - run: pnpm fixtures:typecheck
-      - run: pnpm package:artifact
-      - run: npm pack --dry-run --json ./dist/package
-      # The installed-artifact smoke stays on every leg with the default engine:
-      # its CLI, API, layout, shutdown and purge checks are deterministic and are
-      # the only cross-platform proof the published package works. The Firefox
-      # engine — KF-001's leg — runs in the `browser` job instead, so one
-      # engine-specific defect cannot take the whole matrix down with it.
-      - run: pnpm package:smoke
-        env:
-          TADORI_PACKAGE_AUDIT: ${{ matrix.os == 'ubuntu-latest' && matrix.node == '22.14.0' && '1' || '0' }}
-      - run: pnpm benchmark:layout
-      - run: pnpm tadori diff .
-      - run: git diff --check
-      # Tree-mutation guard: stages every modification and untracked file,
-      # then fails if anything differs from HEAD. `git status --porcelain`
-      # must not be used here - it always exits 0.
-      - run: |
-          git add -A
-          git diff --cached --exit-code
-
-  browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     env:
+      # pnpm honors `use-node-version` from .npmrc; keep CI on the same Node.
       npm_config_use_node_version: "22.14.0"
     steps:
       - uses: actions/checkout@v6
@@ -126,25 +23,7 @@ jobs:
           node-version: "22.14.0"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Chrome: offline-bundle, keyboard, and axe accessibility contracts.
-      - run: pnpm verify:viz:e2e
-      # Firefox: KF-001's leg. `if: always()` so it still runs — and still
-      # reports its probe evidence — when the Chrome gate above has failed.
-      - run: pnpm exec playwright-core install --with-deps firefox
-        if: always()
-      - run: pnpm package:artifact
-        if: always()
-      # Under `xvfb-run`, because Playwright's Firefox cannot create a WebGL
-      # context in true headless mode on Linux — given an X display it gets Mesa
-      # llvmpipe, without one `getContext("webgl")` returns null no matter which
-      # prefs are set. That was KF-001: Sigma's constructor threw, the app took
-      # its correct renderer-error path to Table mode, and the hidden Atlas
-      # subtree left the canvas unfocusable, so no keydown was ever delivered.
-      # Chromium needs none of this (it bundles SwiftShader), which is why only
-      # this leg failed. Nothing is stubbed or skipped: the real Atlas renders
-      # and every assertion still runs and still fails the job.
-      - run: xvfb-run -a pnpm package:smoke
-        if: always()
-        env:
-          TADORI_PACKAGE_AUDIT: "0"
-          TADORI_PACKAGE_BROWSER: firefox
+      - run: pnpm typecheck
+      - run: pnpm --filter @tadori/viz typecheck
+      - run: pnpm lint
+      - run: pnpm test

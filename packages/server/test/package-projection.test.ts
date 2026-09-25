@@ -168,7 +168,7 @@ describe("server package projection", () => {
   });
 
   it("projects and expands the checked-in no-package.json mixed-language oracle", () => {
-    const fixtureRoot = fileURLToPath(new URL("../../bench/fixtures/mixed-oracle", import.meta.url));
+    const fixtureRoot = fileURLToPath(new URL("../../fixtures/mixed-oracle", import.meta.url));
     const indexed = indexRepository(fixtureRoot, { kind: "working_tree" });
     const projection = projectSnapshotPackages(indexed.graph);
     const rootPackage = projection.nodes.find((item) => item.qualifiedName === "mixed-oracle");

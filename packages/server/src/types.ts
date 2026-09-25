@@ -186,7 +186,7 @@ export interface BoundariesDto {
   violations: BoundaryViolation[];
 }
 
-// --- BehaviorStory (08-07A, frozen contract blueprints/09-behavior-story-contract.md) ---
+// --- BehaviorStory (08-07A) ---
 // Static behavior story only: runtimeObserved is always false, no coverage claim.
 
 export type StoryStepLabel =
