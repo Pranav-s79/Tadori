@@ -329,6 +329,25 @@ describe("camera focus and render-only filters", () => {
     }));
   });
 
+  it("draws the boundary around the core members and tethers a far-off member instead of spiking to it", () => {
+    const graph = new Graph();
+    const pkg: ApiNode = { entityKey: "pkg", kind: "package", qualifiedName: "pkg", displayName: "pkg", file: null, exported: true, fanIn: 0 };
+    graph.addNode("pkg", { apiNode: pkg, kind: "package", packageMembershipKnown: true, x: 0, y: 0 });
+    const served = [[0, 0], [10, 0], [0, 10], [10, 10], [5, 12], [5, 400]] as const;
+    served.forEach(([x, y], index) => {
+      const file: ApiNode = { entityKey: `f${index}`, kind: "file", qualifiedName: `f${index}`, displayName: `f${index}`, file: `f${index}.ts`, exported: true, fanIn: 0 };
+      graph.addNode(`f${index}`, { apiNode: file, kind: "file", expandedFrom: "pkg", x, y });
+    });
+    const [plate] = projectedPackagePlates({ graphToViewport: (point) => point }, graph);
+    expect(plate?.shape.kind).toBe("hull");
+    const hullYs = plate?.shape.kind === "hull" ? plate.shape.points.map((point) => point.y) : [];
+    expect(Math.max(...hullYs)).toBe(12);
+    expect(plate?.tethers).toHaveLength(1);
+    expect(plate?.tethers[0]?.from).toEqual({ x: 5, y: 400 });
+    // The member is not moved, only drawn outside the boundary.
+    expect(graph.getNodeAttribute("f5", "y")).toBe(400);
+  });
+
   it("dims unrelated marks and uses copper only for the evidenced Story path", () => {
     const graph = new Graph({ multi: true, type: "directed" });
     const apiNodes = ["a", "b", "other"].map((entityKey) => ({ entityKey, kind: "package", qualifiedName: entityKey, displayName: entityKey, file: null, exported: true, fanIn: 0 } satisfies ApiNode));

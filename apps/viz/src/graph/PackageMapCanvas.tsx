@@ -13,7 +13,7 @@ import {
   diffExpandedNodes,
   truncate
 } from "./expansion.ts";
-import { convexHull, type Point } from "./convexHull.ts";
+import { convexHull, nearestPoint, partitionOutliers, type Point } from "./convexHull.ts";
 import { defaultFilters, edgeMatchesFilters, nodeMatchesFilters, type SearchFilters } from "../features/search/filterState.ts";
 import { ATLAS_NODE_PROGRAMS } from "./AtlasNodeProgram.ts";
 import { ATLAS_EDGE_PROGRAMS } from "./ProvenanceEdgeProgram.ts";
@@ -28,6 +28,8 @@ const LABEL_MAX_LENGTH = 24;
 /** Breathing room around a fitted graph, as a multiple of its own extent. */
 const FIT_PADDING = 1.15;
 const NO_FILTERS = defaultFilters();
+/** Same face and fallbacks as --tadori-font-label. */
+const MAP_LABEL_FONT = '"IBM Plex Sans Condensed", "Arial Narrow", sans-serif';
 
 interface CameraLike {
   animate(state: Partial<CameraState>, options: { duration: number }): void;
@@ -85,8 +87,15 @@ export interface PackagePlate {
   packageEntityKey: string;
   label: string;
   attribution: "repository-derived package boundary";
+  /** The boundary around the package's core members. */
   shape: ReturnType<typeof convexHull>;
   labelPosition: ViewportPosition;
+  /**
+   * Members served far from the rest, left outside the drawn boundary so one
+   * of them cannot stretch it into a spike. Each is tethered to its nearest
+   * boundary point: still a member, never moved.
+   */
+  tethers: { from: ViewportPosition; to: ViewportPosition }[];
 }
 
 
@@ -213,7 +222,8 @@ export function projectedPackagePlates(
       .map((attrs) => renderer.graphToViewport({ x: Number(attrs.x), y: Number(attrs.y) }))
       .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
     if (memberPoints.length === 0) continue;
-    const shape = convexHull(memberPoints);
+    const { core, outliers } = partitionOutliers(memberPoints);
+    const shape = convexHull(core);
     const labelPosition = shape.kind === "circle"
       ? shape.center
       : {
@@ -226,10 +236,20 @@ export function projectedPackagePlates(
       label: packageNode.displayName,
       attribution: "repository-derived package boundary",
       shape,
-      labelPosition
+      labelPosition,
+      tethers: outliers.map((from) => ({
+        from,
+        to: shape.kind === "hull" ? nearestPoint(shape.points, from) ?? from : shape.center
+      }))
     });
   }
   return plates;
+}
+
+function plateDescription(plate: PackagePlate): string {
+  const far = plate.tethers.length;
+  return `${plate.attribution}: ${plate.label}${far === 0 ? ""
+    : `; ${far === 1 ? "1 member is" : `${String(far)} members are`} served far from the rest and tethered to it`}`;
 }
 
 export function applyStoryGraphEmphasis(graph: Graph, emphasis: StoryMapEmphasis | null): void {
@@ -703,6 +723,9 @@ export function PackageMapCanvas({
       renderer = new Sigma(graph, container, {
         allowInvalidContainer: true,
         defaultDrawNodeLabel: labels.draw,
+        // The app's label face; only its 600 weight is self-hosted.
+        labelFont: MAP_LABEL_FONT,
+        labelWeight: "600",
         nodeProgramClasses: { ...ATLAS_NODE_PROGRAMS },
         nodeHoverProgramClasses: { ...ATLAS_NODE_PROGRAMS },
         edgeProgramClasses: { ...ATLAS_EDGE_PROGRAMS }
@@ -715,6 +738,12 @@ export function PackageMapCanvas({
       return;
     }
     sigmaRef.current = renderer;
+    // Canvas text does not wait for a web font: labels drawn before it loads
+    // stay in the fallback until the next frame, so redraw once it is ready.
+    let alive = true;
+    void document.fonts?.load(`600 12px ${MAP_LABEL_FONT}`).then(() => {
+      if (alive) renderer.refresh();
+    }, () => undefined);
     renderer.on("beforeRender", labels.reset);
     renderer.on("afterRender", labels.flush);
 
@@ -916,6 +945,7 @@ export function PackageMapCanvas({
     setLiveGraph(graph);
 
     return () => {
+      alive = false;
       carriedSelectionRef.current = graph.findNode((_key, attrs) => attrs.selected === true) ?? null;
       setLiveGraph(null);
       stageActionsRef.current = null;
@@ -1114,8 +1144,19 @@ export function PackageMapCanvas({
         aria-label="Repository-derived package boundaries"
       >
         {packagePlates.map((plate) => (
-          <g key={plate.packageEntityKey} role="group" aria-label={`${plate.attribution}: ${plate.label}`}>
-            <title>{`${plate.attribution}: ${plate.label}`}</title>
+          <g key={plate.packageEntityKey} role="group" aria-label={plateDescription(plate)}>
+            <title>{plateDescription(plate)}</title>
+            {plate.tethers.map((tether) => (
+              <line
+                key={`${tether.from.x},${tether.from.y}`}
+                className="package-plate-tether"
+                x1={tether.from.x}
+                y1={tether.from.y}
+                x2={tether.to.x}
+                y2={tether.to.y}
+                style={{ stroke: "color-mix(in srgb, var(--tadori-copper) 58%, var(--tadori-panel))", strokeWidth: 1.25, strokeDasharray: "2 4" }}
+              />
+            ))}
             {plate.shape.kind === "hull" ? (
               <polygon points={plate.shape.points.map((point) => `${point.x},${point.y}`).join(" ")} />
             ) : (

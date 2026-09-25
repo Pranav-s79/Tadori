@@ -1,7 +1,14 @@
 import Graph from "graphology";
 import { describe, expect, it } from "vitest";
 import type { ApiNode, NodeKind } from "../api/types.ts";
-import { LEVEL_HEIGHT, PLATE_THICKNESS, WORLD_SPAN, buildAtlasScene, nodeAbstractionLevel } from "./sceneModel.ts";
+import {
+  EXPANDED_PLATE_THICKNESS,
+  LEVEL_HEIGHT,
+  PLATE_THICKNESS,
+  WORLD_SPAN,
+  buildAtlasScene,
+  nodeAbstractionLevel
+} from "./sceneModel.ts";
 
 function apiNode(entityKey: string, kind: NodeKind): ApiNode {
   return { entityKey, kind, qualifiedName: entityKey, displayName: entityKey, file: null, exported: true, fanIn: 0 };
@@ -83,7 +90,28 @@ describe("buildAtlasScene", () => {
     lone.addNode("solo", { kind: "package", x: 5, y: 5 });
     const [plate] = buildAtlasScene(lone).plates;
     expect(plate!.outline).toHaveLength(4);
+    expect(plate!.top).toBe(PLATE_THICKNESS);
     expect(buildAtlasScene(lone).nodes[0]!.anchor[1]).toBe(PLATE_THICKNESS);
+  });
+
+  it("keeps an expanded slab under a collapsed one that overlaps it", () => {
+    const scene = buildAtlasScene(layeredGraph());
+    const expanded = scene.plates.find((plate) => plate.key === "pkg")!;
+    expect(expanded.top).toBeCloseTo(EXPANDED_PLATE_THICKNESS, 1);
+    expect(expanded.top).toBeLessThan(PLATE_THICKNESS);
+  });
+
+  it("tethers a far-off file to its slab instead of stretching the slab to it", () => {
+    const graph = new Graph();
+    graph.addNode("pkg", { kind: "package", x: 0, y: 0, packageMembershipKnown: true });
+    const served = [[0, 0], [10, 0], [0, 10], [10, 10], [5, 12], [5, 400]] as const;
+    served.forEach(([x, y], index) => graph.addNode(`pkg::f${index}`, { kind: "file", expandedFrom: "pkg", x, y }));
+    const scene = buildAtlasScene(graph);
+    const [plate] = scene.plates;
+    const far = scene.nodes.find((node) => node.key === "pkg::f5")!;
+    expect(plate!.tethers).toHaveLength(1);
+    expect(plate!.tethers[0]!.from).toEqual({ x: far.ground[0], y: far.ground[2] });
+    expect(plate!.outline.every((point) => point.y > far.ground[2])).toBe(true);
   });
 
   it("is deterministic and never fabricates entities", () => {

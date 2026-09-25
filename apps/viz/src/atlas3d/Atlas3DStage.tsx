@@ -17,6 +17,7 @@ import {
   LineDashedMaterial,
   LineLoop,
   LineSegments,
+  type Material,
   Matrix4,
   Mesh,
   MeshLambertMaterial,
@@ -40,7 +41,7 @@ import { plural } from "../features/overview/overviewModel.ts";
 import type { AtlasEdgePattern } from "../graph/atlasVisuals.ts";
 import type { ViewportPosition } from "../graph/PackageMapCanvas.tsx";
 import { placeLabels, type LabelObstacle, type LabelRequest, type LabelSlot } from "../lod/labelCollisions.ts";
-import { PLATE_THICKNESS, buildAtlasScene, type AtlasSceneModel, type SceneNode, type Vec3 } from "./sceneModel.ts";
+import { buildAtlasScene, type AtlasSceneModel, type SceneNode, type Vec3 } from "./sceneModel.ts";
 
 /** What the map around the stage can ask of its camera. */
 export interface Atlas3DHandle {
@@ -198,12 +199,20 @@ function createWorld(host: HTMLElement, callbacks: { current: Callbacks }): Worl
   const symbolMaterial = new MeshLambertMaterial({ fog: false });
   const stemMaterial = new LineBasicMaterial({ color: colours.ink, transparent: true, opacity: 0.32, fog: false });
   const rimMaterial = new LineBasicMaterial({ color: colours.copper, transparent: true, opacity: 0.75, fog: false });
+  const selectedRimMaterial = new LineBasicMaterial({ color: colours.focus, fog: false });
+  const tetherMaterial = new LineDashedMaterial({ color: colours.copper, transparent: true, opacity: 0.7, fog: false, dashSize: 0.5, gapSize: 0.9 });
   const markerMaterial = new MeshLambertMaterial({ color: colours.focus, transparent: true, opacity: 0.85, fog: false });
   const edgeMaterials: Record<AtlasEdgePattern, LineBasicMaterial> = {
     solid: new LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.9, fog: false }),
     dashed: new LineDashedMaterial({ vertexColors: true, transparent: true, opacity: 0.9, fog: false, dashSize: 1.1, gapSize: 0.55 }),
     dotted: new LineDashedMaterial({ vertexColors: true, transparent: true, opacity: 0.9, fog: false, dashSize: 0.22, gapSize: 0.5 })
   };
+
+  /** Materials that live as long as the world, not one rebuild. */
+  const sharedMaterials: readonly Material[] = [
+    fileMaterial, symbolMaterial, stemMaterial, rimMaterial, selectedRimMaterial, tetherMaterial, markerMaterial,
+    ...Object.values(edgeMaterials)
+  ];
 
   const content = new Group();
   const labelLayer = new Group();
@@ -218,7 +227,11 @@ function createWorld(host: HTMLElement, callbacks: { current: Callbacks }): Worl
   const textWidths = new Map<string, number>();
   const measure = document.createElement("canvas").getContext("2d");
   const labelFont = styles.getPropertyValue("--tadori-font-label").trim() || "sans-serif";
-  const uiFont = styles.getPropertyValue("--tadori-font-ui").trim() || "sans-serif";
+  // Widths measured before the face loads are the fallback's; measure again.
+  void document.fonts?.load(`600 ${String(LABEL_SIZE_PX)}px ${labelFont}`).then(() => {
+    textWidths.clear();
+    viewDirty = true;
+  }, () => undefined);
 
   let hovered: string | null = null;
   let pointer: Vector2 | null = null;
@@ -237,11 +250,7 @@ function createWorld(host: HTMLElement, callbacks: { current: Callbacks }): Worl
       if (object instanceof Mesh || object instanceof LineSegments || object instanceof LineLoop) {
         if (object.geometry !== blockGeometry) object.geometry.dispose();
         const materials = Array.isArray(object.material) ? object.material : [object.material];
-        for (const material of materials) {
-          if (material !== fileMaterial && material !== symbolMaterial && material !== stemMaterial
-            && material !== rimMaterial && material !== markerMaterial
-            && !Object.values(edgeMaterials).includes(material as LineBasicMaterial)) material.dispose();
-        }
+        for (const material of materials) if (!sharedMaterials.includes(material)) material.dispose();
       }
     });
     content.clear();
@@ -254,13 +263,16 @@ function createWorld(host: HTMLElement, callbacks: { current: Callbacks }): Worl
     : colours.panel.clone().lerp(new Color(node.color), 0.62);
 
   const buildPlates = (): void => {
+    const tethers: number[] = [];
     for (const plate of model.plates) {
       const shape = new Shape(plate.outline.map((point) => new Vector2(point.x, -point.y)));
-      const geometry = new ExtrudeGeometry(shape, { depth: PLATE_THICKNESS, bevelEnabled: false });
+      const geometry = new ExtrudeGeometry(shape, { depth: plate.top, bevelEnabled: false });
       geometry.rotateX(-Math.PI / 2);
+      // A selected slab keeps its stone and says so with a focus-blue rim and
+      // a faint wash: an expanded package's slab is too large to paint blue.
       const tint = new Color(plate.color);
-      const cap = new MeshLambertMaterial({ color: colours.panel.clone().lerp(tint, plate.selected ? 0.6 : 0.3), fog: false });
-      const side = new MeshLambertMaterial({ color: colours.plateEdge.clone().lerp(tint, 0.35), fog: false });
+      const cap = new MeshLambertMaterial({ color: colours.panel.clone().lerp(tint, plate.selected ? 0.16 : 0.3), fog: false });
+      const side = new MeshLambertMaterial({ color: colours.plateEdge.clone().lerp(tint, plate.selected ? 0.2 : 0.35), fog: false });
       const slab = new Mesh(geometry, [cap, side]);
       slab.castShadow = true;
       slab.receiveShadow = true;
@@ -270,10 +282,18 @@ function createWorld(host: HTMLElement, callbacks: { current: Callbacks }): Worl
       const base = cap.color.clone();
       paint.set(plate.key, { base, apply: (color) => cap.color.copy(color) });
       const rim = new LineLoop(
-        new BufferGeometry().setFromPoints(plate.outline.map((point) => new Vector3(point.x, PLATE_THICKNESS + 0.04, point.y))),
-        rimMaterial
+        new BufferGeometry().setFromPoints(plate.outline.map((point) => new Vector3(point.x, plate.top + 0.04, point.y))),
+        plate.selected ? selectedRimMaterial : rimMaterial
       );
       content.add(rim);
+      for (const { from, to } of plate.tethers) tethers.push(from.x, 0.05, from.y, to.x, 0.05, to.y);
+    }
+    if (tethers.length > 0) {
+      const geometry = new BufferGeometry();
+      geometry.setAttribute("position", new Float32BufferAttribute(tethers, 3));
+      const lines = new LineSegments(geometry, tetherMaterial);
+      lines.computeLineDistances();
+      content.add(lines);
     }
   };
 
@@ -351,7 +371,7 @@ function createWorld(host: HTMLElement, callbacks: { current: Callbacks }): Worl
       const radius = Math.max(selected.size[0], selected.size[2]) * 0.9 + 0.6;
       const marker = new Mesh(new RingGeometry(radius, radius + 0.45, 40), markerMaterial);
       marker.rotation.x = -Math.PI / 2;
-      marker.position.set(selected.ground[0], selected.level === "package" ? PLATE_THICKNESS + 0.06 : 0.06, selected.ground[2]);
+      marker.position.set(selected.ground[0], selected.level === "package" ? selected.anchor[1] + 0.06 : 0.06, selected.ground[2]);
       content.add(marker);
     }
   };
@@ -382,11 +402,7 @@ function createWorld(host: HTMLElement, callbacks: { current: Callbacks }): Worl
     const cacheKey = `${node.level}\u0000${node.label}`;
     let width = textWidths.get(cacheKey);
     if (width === undefined) {
-      if (measure !== null) {
-        measure.font = node.level === "package"
-          ? `600 ${String(LABEL_SIZE_PX)}px ${labelFont}`
-          : `400 ${String(LABEL_SIZE_PX)}px ${uiFont}`;
-      }
+      if (measure !== null) measure.font = `600 ${String(LABEL_SIZE_PX)}px ${labelFont}`;
       // A package label is a small plaque: its padding is part of its box.
       width = (measure?.measureText(node.label).width ?? node.label.length * 6.5) + (node.level === "package" ? 14 : 0);
       textWidths.set(cacheKey, width);
@@ -762,9 +778,7 @@ function createWorld(host: HTMLElement, callbacks: { current: Callbacks }): Worl
         (grid.material as LineBasicMaterial).dispose();
       }
       ground.geometry.dispose();
-      for (const material of [groundMaterial, fileMaterial, symbolMaterial, stemMaterial, rimMaterial, markerMaterial, ...Object.values(edgeMaterials)]) {
-        material.dispose();
-      }
+      for (const material of [groundMaterial, ...sharedMaterials]) material.dispose();
       blockGeometry.dispose();
       renderer.dispose();
       renderer.forceContextLoss();

@@ -1,6 +1,6 @@
 import type Graph from "graphology";
 import type { ApiNode, NodeKind } from "../api/types.ts";
-import { convexHull, type Point } from "../graph/convexHull.ts";
+import { convexHull, nearestPoint, partitionOutliers, type Point } from "../graph/convexHull.ts";
 import type { AtlasEdgePattern } from "../graph/atlasVisuals.ts";
 import { truncate } from "../graph/expansion.ts";
 import { depthOffsetForLevel, type AbstractionLevel } from "../render/depthBinding.ts";
@@ -21,8 +21,15 @@ import { depthOffsetForLevel, type AbstractionLevel } from "../render/depthBindi
 export const WORLD_SPAN = 100;
 /** Height of one abstraction level, in world units. */
 export const LEVEL_HEIGHT = 9;
-/** Thickness of a package's stone slab. */
-export const PLATE_THICKNESS = 1.2;
+/** Thickness of a collapsed package's stone slab. */
+export const PLATE_THICKNESS = 1.5;
+/**
+ * An expanded package's slab is thinner, so a collapsed package lying over it
+ * (file layouts can overlap other packages) stands proud instead of sharing a
+ * top face and flickering. Each slab also rises by a hair per package.
+ */
+export const EXPANDED_PLATE_THICKNESS = 0.6;
+const PLATE_STEP = 0.004;
 /** Stone kept around an expanded package's members. */
 const PLATE_PADDING = 3;
 const LABEL_MAX = 24;
@@ -52,8 +59,16 @@ export interface SceneNode {
 export interface ScenePlate {
   /** The package node's graph key. */
   key: string;
-  /** Slab footprint on the ground, counter-clockwise in world X/Z. */
+  /** Slab footprint on the ground, in world X/Z. */
   outline: Point[];
+  /** Height of the slab's top face. */
+  top: number;
+  /**
+   * Members served far from the rest, left off the slab so one of them cannot
+   * stretch it into a spike, each tethered on the ground to the slab's
+   * nearest corner. Still members; never moved.
+   */
+  tethers: { from: Point; to: Point }[];
   color: string;
   selected: boolean;
   dimmed: boolean;
@@ -90,7 +105,7 @@ export function nodeAbstractionLevel(attrs: Attributes): AbstractionLevel {
 /** Block dimensions per level, grown with the size Plan gives the node. */
 function blockSize(level: AbstractionLevel, baseSize: number): Vec3 {
   if (level === "package") {
-    const side = 5 * (baseSize / 13);
+    const side = 5.5 * (baseSize / 13);
     return [side, PLATE_THICKNESS, side];
   }
   if (level === "file") {
@@ -124,24 +139,30 @@ function circleOutline(centre: Point, radius: number, sides: number): Point[] {
 
 /**
  * The slab under a package. Collapsed, it is a square stone of the package's
- * own size. Expanded, it is the package's members' footprint (the same convex
- * hull Plan draws as its package boundary) plus the package's own point,
- * padded, so every file tablet stands over its package's stone.
+ * own size. Expanded, it is its members' footprint (the same boundary Plan
+ * draws: the convex hull of the core members, far-off members tethered) plus
+ * the package's own point, padded, so the tablets stand over their stone.
  */
-function plateOutline(packageNode: SceneNode, members: readonly SceneNode[]): Point[] {
+function plateFootprint(packageNode: SceneNode, members: readonly SceneNode[]): Pick<ScenePlate, "outline" | "tethers"> {
   const own = { x: packageNode.ground[0], y: packageNode.ground[2] };
   if (members.length === 0) {
     const half = packageNode.size[0] / 2;
-    return [
-      { x: own.x - half, y: own.y - half },
-      { x: own.x + half, y: own.y - half },
-      { x: own.x + half, y: own.y + half },
-      { x: own.x - half, y: own.y + half }
-    ];
+    return {
+      outline: [
+        { x: own.x - half, y: own.y - half },
+        { x: own.x + half, y: own.y - half },
+        { x: own.x + half, y: own.y + half },
+        { x: own.x - half, y: own.y + half }
+      ],
+      tethers: []
+    };
   }
-  const shape = convexHull([own, ...members.map((member) => ({ x: member.ground[0], y: member.ground[2] }))]);
-  if (shape.kind === "circle") return circleOutline(shape.center, shape.radius + PLATE_PADDING, 16);
-  return padOutline(shape.points, PLATE_PADDING);
+  const { core, outliers } = partitionOutliers(members.map((member) => ({ x: member.ground[0], y: member.ground[2] })));
+  const shape = convexHull([own, ...core]);
+  const outline = shape.kind === "circle"
+    ? circleOutline(shape.center, shape.radius + PLATE_PADDING, 16)
+    : padOutline(shape.points, PLATE_PADDING);
+  return { outline, tethers: outliers.map((from) => ({ from, to: nearestPoint(outline, from) ?? from })) };
 }
 
 /**
@@ -169,11 +190,15 @@ export function buildAtlasScene(graph: Graph): AtlasSceneModel {
   const centreX = keys.length === 0 ? 0 : (minX + maxX) / 2;
   const centreY = keys.length === 0 ? 0 : (minY + maxY) / 2;
 
-  const nodes: SceneNode[] = keys.map((key) => {
+  const nodes: SceneNode[] = keys.map((key, index) => {
     const attrs = graph.getNodeAttributes(key);
     const apiNode = attrs.apiNode as ApiNode | undefined;
     const level = nodeAbstractionLevel(attrs);
-    const size = blockSize(level, Number(attrs.baseSize ?? attrs.size ?? 10));
+    const block = blockSize(level, Number(attrs.baseSize ?? attrs.size ?? 10));
+    // A package's block is its slab, so its height is the slab's top face.
+    const size: Vec3 = level === "package"
+      ? [block[0], (attrs.packageMembershipKnown === true ? EXPANDED_PLATE_THICKNESS : PLATE_THICKNESS) + index * PLATE_STEP, block[2]]
+      : block;
     const x = (Number(attrs.x) - centreX) * scale;
     const z = -(Number(attrs.y) - centreY) * scale;
     const height = level === "package" ? 0 : depthOffsetForLevel(level, LEVEL_HEIGHT);
@@ -198,8 +223,9 @@ export function buildAtlasScene(graph: Graph): AtlasSceneModel {
     .filter((node) => node.level === "package")
     .map((node) => ({
       key: node.key,
-      outline: plateOutline(node, nodes.filter((member) =>
+      ...plateFootprint(node, nodes.filter((member) =>
         graph.getNodeAttribute(member.key, "expandedFrom") === node.key)),
+      top: node.size[1],
       color: node.color,
       selected: node.selected,
       dimmed: node.dimmed
