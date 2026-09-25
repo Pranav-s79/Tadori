@@ -12,7 +12,7 @@ export type ParseServeFlagsResult =
   | { ok: true; flags: ServeFlags }
   | { ok: false; error: string };
 
-/** Parses the five frozen `tadori serve` flags (docs/CLI_CONTRACT.md). */
+/** Parses the five `tadori serve` flags (docs/CLI.md). */
 export function parseServeFlags(argv: readonly string[]): ParseServeFlagsResult {
   const flags: ServeFlags = {
     port: null,

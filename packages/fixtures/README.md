@@ -14,13 +14,12 @@ or language-support authority.
 - `packages/fixtures/02-express-routes` — Express routing fixture
 - `packages/fixtures/03-next-routes` — Next.js routing fixture
 - `packages/fixtures/04-diff-coalescing` — before/after diff micro-fixture
-- `validate_fixtures.py` — validates schemas, hashes, endpoints, and evidence anchors
 
 ## Validate the artifact
 
-```bash
-python validate_fixtures.py
-```
+`pnpm test` runs the harness suite, which validates the fixture schemas, hashes
+and evidence anchors and compares each indexed fixture against its expected
+graph.
 
 Type-check the synthetic repositories:
 

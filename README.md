@@ -105,11 +105,11 @@ Workspace packages:
 
 | Package | Purpose |
 |---|---|
-| `packages/core` | Frozen enums, Zod graph schemas, canonical pipe-delimited identities, SHA-256 entity keys |
-| `packages/store` | SQLite store: frozen migrations, transactional snapshots, integrity validation, three-way diff, pruning, orphan GC |
+| `packages/core` | Enums, Zod graph schemas, canonical pipe-delimited identities, SHA-256 entity keys |
+| `packages/store` | SQLite store: migrations, transactional snapshots, integrity validation, three-way diff, pruning, orphan GC |
 | `packages/indexer` | Language registry and adapters: TS/JS semantics, pinned WASM structural parsing, repository/interface extraction, incremental refresh |
-| `packages/harness` | Golden-fixture validation, indexing comparison, and fixture typecheck CLIs |
-| `packages/mcp` | The frozen six-tool MCP interface: snapshot queries, FTS5 search, explainable ranking, budgeting, stdio transport |
+| `packages/harness` | Golden-fixture validation and indexing comparison (run by `pnpm test`) |
+| `packages/mcp` | Six-tool MCP interface: snapshot queries, FTS5 search, explainable ranking, budgeting, stdio transport |
 | `packages/server` | `127.0.0.1`-only HTTP/WebSocket product surface: graph, layout, search, source, inspection, and review-diff APIs |
 | `packages/cli` | `tadori` CLI: `diff` (snapshot + edge diff), `serve` (local server), and `purge` (confined local-index deletion) |
 | `apps/viz` | Local 2D visualization app consuming the server over HTTP/WS (no `@tadori/*` import; offline bundle) |
@@ -117,22 +117,6 @@ Workspace packages:
 `packages/fixtures/` is the golden-fixture corpus — it is a fixture data
 directory, not a workspace package (absent from `pnpm-workspace.yaml`); see
 `packages/fixtures/README.md`.
-
-`packages/bench` contains deterministic mixed-language and external-validation manifests.
-
-## Active contracts
-
-- Exactly six MCP tools: `repo_overview`, `find_symbol`, `symbol_context`,
-  `find_tests`, `impact`, `path`. No seventh tool.
-- Legacy golden fixtures remain byte-stable compatibility checks.
-- The sole governing specification is
-  `docs/Specs/Tadori-Multilanguage-Transition.md`; superseded contracts are not
-  product, schema, or scope authorities.
-
-## Roadmap
-
-Remaining work is tracked in `BACKLOG.md` (phase backlog) and
-`blueprints/INDEX.md` (per-item build blueprints).
 
 ## Development
 
@@ -142,14 +126,7 @@ Remaining work is tracked in `BACKLOG.md` (phase backlog) and
 |---|---|
 | `pnpm typecheck` | Strict TypeScript across the workspace |
 | `pnpm lint` | ESLint (flat config, `no-explicit-any` as error) |
-| `pnpm test` | Full Vitest suite |
-| `pnpm fixtures:validate` | Validate fixture schemas, hashes, and evidence anchors |
-| `pnpm fixtures:index` | Index all five fixtures and compare against expected graphs |
-| `pnpm fixtures:typecheck` | `tsc --noEmit` over the five fixture repositories |
-| `python validate_fixtures.py` | Python reference validator for the fixture artifact |
-| `pnpm skills:sync` | Sync canonical agent skills into `.claude/` and `.agents/` |
-| `pnpm skills:check` | Verify synced skills are byte-identical to canonical |
-| `pnpm benchmark:incremental` | Incremental-indexing latency and memory gates |
+| `pnpm test` | Full Vitest suite, including the fixture graph comparisons |
 | `pnpm tadori diff .` | Snapshot the working tree and diff against the previous head |
 | `pnpm tadori serve .` | Build/refresh the index and open the localhost visualization |
 | `pnpm tadori purge .` | Remove only the confined local `.tadori` index |

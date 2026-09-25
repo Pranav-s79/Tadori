@@ -9,7 +9,7 @@ export interface ServeConfig {
 }
 
 /**
- * Loads project configuration (CLI_CONTRACT.md step 2): records whether
+ * Loads project configuration (docs/CLI.md step 2): records whether
  * `.gitignore`/`.tadoriignore` exist (informational only — actual ignore
  * application already happens inside `scanRepository`) and parses
  * `tadori.rules.json` if present. Does not act on rule contents (09-03's

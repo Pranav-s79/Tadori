@@ -19,27 +19,11 @@
     }
   },
   "scripts": {
-    "skills:sync": "node scripts/sync-skills.mjs",
-    "skills:check": "node scripts/check-skills.mjs",
-    "gate": "node scripts/gate.mjs",
-    "gate:fast": "node scripts/gate.mjs --fast",
-    "gate:firefox": "node scripts/gate-firefox.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "pnpm --filter @tadori/viz build && vitest run --exclude=packages/cli/test/**/*.test.ts && vitest run packages/cli/test --pool=forks --maxWorkers=1 --no-file-parallelism && pnpm --filter @tadori/viz test",
     "package:artifact": "pnpm --filter @tadori/viz build && node scripts/build-package.mjs",
-    "package:smoke": "node scripts/smoke-package.mjs",
     "mcp:stdio": "tsx packages/mcp/src/cli.ts",
-    "fixtures:validate": "tsx packages/harness/src/cli-validate.ts",
-    "fixtures:index": "tsx packages/harness/src/cli-index.ts",
-    "fixtures:typecheck": "tsx packages/harness/src/cli-typecheck-fixtures.ts",
-    "benchmark:layout": "tsx scripts/benchmark-layout.mts",
-    "benchmark:incremental": "tsx scripts/benchmark-incremental.mts",
-    "benchmark:serve:coldstart": "tsx scripts/benchmark-serve-coldstart.mts",
-    "benchmark:serve:positions": "tsx scripts/benchmark-serve-positions-identity.mts",
-    "benchmark:serve:memory": "tsx scripts/benchmark-serve-memory.mts",
-    "external:validate": "tsx packages/bench/src/cli-external.ts",
-    "verify:viz:e2e": "pnpm --filter @tadori/viz build && tsx scripts/verify-viz-e2e.mts",
     "tadori": "tsx scripts/tadori.mts"
   },
   "devDependencies": {

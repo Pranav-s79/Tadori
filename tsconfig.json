@@ -15,8 +15,6 @@
     "packages/server/test/**/*.ts",
     "packages/cli/src/**/*.ts",
     "packages/cli/test/**/*.ts",
-    "packages/bench/src/**/*.ts",
-    "packages/bench/test/**/*.ts",
     "vitest.config.ts",
     "eslint.config.js",
     "scripts/**/*.mts"

@@ -4,7 +4,7 @@ import { describe, expect, test } from "vitest";
 
 import { indexRepository } from "../src/indexRepository.js";
 
-const FIXTURE = path.resolve("packages/bench/fixtures/mixed-oracle");
+const FIXTURE = path.resolve("packages/fixtures/mixed-oracle");
 
 describe("explicit cross-language boundary extraction", () => {
   test("resolves corroborated HTTP, generated binding, FFI, subprocess, and build links deterministically", () => {

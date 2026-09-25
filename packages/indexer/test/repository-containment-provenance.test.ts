@@ -2,7 +2,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { indexRepository } from "../src/indexRepository.js";
 
-const MIXED_FIXTURE = path.resolve("packages/bench/fixtures/mixed-oracle");
+const MIXED_FIXTURE = path.resolve("packages/fixtures/mixed-oracle");
 
 describe("repository containment provenance", () => {
   it("attributes root package-to-file edges to the repository layer and target language", () => {

@@ -7,7 +7,7 @@ import type { FileObservationOverlay, ReviewObservationsOverlayDto } from "./typ
  * changed, into honest per-file indicators — most importantly
  * `modifiedButNotRetrieved` (a file was changed without ever being read).
  *
- * Security / SWE contract (see blueprints/09-05):
+ * Security / SWE contract:
  *  - Task scoping is the trust boundary: `taskId` is server-owned (never a
  *    client param), so cross-task/cross-repo observations are unreachable.
  *  - Parameterized SQL only — no value is ever interpolated into query text.

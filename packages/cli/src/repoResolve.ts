@@ -5,7 +5,7 @@ import { scanRepository } from "@tadori/indexer";
 export type ResolveRepoRootResult = { ok: true; root: string } | { ok: false; error: string };
 
 /**
- * Resolves `<path>` (CLI_CONTRACT.md step 1) to a repository root. A
+ * Resolves `<path>` (docs/CLI.md step 1) to a repository root. A
  * supported repository contains at least one registered source, interface,
  * documentation, manifest, or configuration file. A missing path is distinct.
  */

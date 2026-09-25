@@ -6,5 +6,4 @@ packages:
   - "packages/mcp"
   - "packages/server"
   - "packages/cli"
-  - "packages/bench"
   - "apps/viz"

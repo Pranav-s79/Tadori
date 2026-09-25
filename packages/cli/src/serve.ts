@@ -106,7 +106,7 @@ function printStartupFacts(facts: StartupFacts, write: (text: string) => void): 
 
 /**
  * Implements the full 9-step `tadori serve <path>` lifecycle
- * (docs/CLI_CONTRACT.md). Returns the process exit code; the caller sets
+ * (docs/CLI.md). Returns the process exit code; the caller sets
  * `process.exitCode`.
  */
 export async function runServe(argv: readonly string[], deps: RunServeDeps = {}): Promise<number> {

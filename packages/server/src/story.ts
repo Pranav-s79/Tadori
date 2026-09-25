@@ -11,7 +11,7 @@ import type {
 
 /**
  * BehaviorStory derivation (08-07A). Frozen contract:
- * blueprints/09-behavior-story-contract.md.
+ * the behavior-story contract.
  *
  * Static behavior story only — never a runtime/execution claim. Every step and
  * transition carries the real origin/confidence/resolution and evidence of the
