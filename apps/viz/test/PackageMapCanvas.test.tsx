@@ -420,6 +420,14 @@ describe("3D projection", () => {
     expect(graph!.getNodeAttribute("pkg:b", "y")).toBe(10);
   });
 
+  it("publishes the served layout in 3D: height lives in the scene, never in the graph", async () => {
+    webgl(true);
+    const snapshots: RenderedGraphSnapshot[] = [];
+    render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} view3d onRenderedGraphChange={(next) => snapshots.push(next)} />);
+    await screen.findByTestId("stage3d");
+    expect(snapshots.at(-1)?.positions).toEqual(positions);
+  });
+
   it("stays flat, whole, and says so when WebGL is unavailable", () => {
     webgl(false);
     render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} view3d />);

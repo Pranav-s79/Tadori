@@ -556,7 +556,8 @@ function createWorld(host: HTMLElement, callbacks: { current: Callbacks }): Worl
       target
         .addScaledVector(right, ((minX + maxX) / 2) * halfHeight * camera.aspect)
         .addScaledVector(up, ((minY + maxY) / 2) * halfHeight);
-      const fill = Math.max((maxX - minX) / 2, (maxY - minY) / 2) / 0.86;
+      // Room at the edges for the labels that hang beside the blocks.
+      const fill = Math.max((maxX - minX) / 2, (maxY - minY) / 2) / 0.8;
       distance *= Math.max(fill, 0.05);
     }
     frameSurroundings(sphere, distance);
