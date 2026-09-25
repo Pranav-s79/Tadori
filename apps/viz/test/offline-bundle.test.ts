@@ -8,16 +8,19 @@ import { describe, expect, it } from "vitest";
 // index.html, and no `http(s)://<host>` literal in any dist file whose host is
 // anything other than the local loopback.
 //
-// Two library-internal literals are provably NOT fetch targets and are the
+// Three library-internal literals are provably NOT fetch targets and are the
 // only allowed exceptions:
 //   - www.w3.org  — the SVG/XML namespace URI baked into React/graphology.
 //   - react.dev   — the docs link in React's minified error messages.
+//   - jcgt.org    — a paper citation in a GLSL comment inside three.js's
+//                   PMREMGenerator shader source (the lazy 3D Atlas chunk).
 // Anything else (a CDN, a font host, an analytics beacon) is a real regression.
 const HOST_ALLOWLIST = new Set([
   "127.0.0.1",
   "localhost",
   "www.w3.org",
-  "react.dev"
+  "react.dev",
+  "jcgt.org"
 ]);
 
 // vitest runs with cwd at the package root (apps/viz); dist/ is a sibling of test/.
