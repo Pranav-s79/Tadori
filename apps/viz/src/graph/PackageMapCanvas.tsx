@@ -19,6 +19,7 @@ import { ATLAS_NODE_PROGRAMS } from "./AtlasNodeProgram.ts";
 import { ATLAS_EDGE_PROGRAMS } from "./ProvenanceEdgeProgram.ts";
 import { atlasEdgeVisual, atlasNodeVisual } from "./atlasVisuals.ts";
 import { visibleLabelEntityKeys } from "../lod/budgets.ts";
+import { createCollisionCulledLabels } from "../lod/labelCollisions.ts";
 import { applyAtlasProjection } from "./atlasTilt.ts";
 import { probeWebglSupport } from "../render/webglCapability.ts";
 import "./atlas-depth.css";
@@ -495,13 +496,16 @@ export function applyAtlasGraphStyles(graph: Graph): void {
   const visibleLabels = new Set(visibleLabelEntityKeys(
     graph.mapNodes((entityKey, attrs) => ({
       entityKey,
-      radiusPx: Number(attrs.size ?? 0)
+      radiusPx: Number(attrs.size ?? 0),
+      pinned: attrs.selected === true
     }))
   ));
   graph.forEachNode((key, attrs) => {
     const visible = visibleLabels.has(key);
     graph.mergeNodeAttributes(key, {
       label: visible ? labelTextByKey.get(key) ?? null : null,
+      // Forced past Sigma's size threshold and first in the collision cull, so
+      // the selected node is always named even where neighbours crowd it.
       forceLabel: visible && attrs.selected === true
     });
   });
@@ -523,6 +527,16 @@ export function selectGraphEntity(graph: Graph, entityKey: string): boolean {
   graph.forEachNode((key) => graph.setNodeAttribute(key, "selected", key === entityKey));
   applyAtlasGraphStyles(graph);
   return true;
+}
+
+/**
+ * The one package worth opening on landing: the root level holds exactly one
+ * package the file-level request can scope (it has a qualified name). Any other
+ * shape (several packages, none, or one that cannot be expanded) returns null.
+ */
+export function soleExpandablePackage(nodes: readonly ApiNode[]): ApiNode | null {
+  const expandable = nodes.filter((node) => node.kind === "package" && node.qualifiedName.length > 0);
+  return expandable.length === 1 ? expandable[0]! : null;
 }
 
 /** Truncates a package label at EXACTLY 24 chars, appending an ellipsis. */
@@ -632,6 +646,20 @@ export function PackageMapCanvas({
   const storyEmphasisRef = useRef<StoryMapEmphasis | null>(storyEmphasis);
   storyEmphasisRef.current = storyEmphasis;
 
+  // A repository with one package lands as one node in an empty field, with
+  // nothing on screen to act on. Open that package once, on the first data the
+  // map receives: a view-state default, not a rule. Escape (or Enter on the
+  // package) climbs back out, and a later refetch never re-opens what the
+  // reader closed. A failed fetch leaves the repository level showing, which is
+  // exactly what the map then says.
+  const landingDecidedRef = useRef(false);
+  useEffect(() => {
+    if (landingDecidedRef.current || nodes.length === 0) return;
+    landingDecidedRef.current = true;
+    const soleOpen = soleExpandablePackage(nodes);
+    if (soleOpen !== null) expand(soleOpen.entityKey, soleOpen.qualifiedName).catch(() => undefined);
+  }, [nodes, expand]);
+
   // Build the base graph once per data input; expansion mutates it in place.
   useEffect(() => {
     const container = containerRef.current;
@@ -661,9 +689,22 @@ export function PackageMapCanvas({
     prevExpandedRef.current = restoredPackages;
     prevExpandedFilesRef.current = restoredFiles;
     let renderer: Sigma;
+    const labels = createCollisionCulledLabels({
+      haloColor: getComputedStyle(container).getPropertyValue("--tadori-panel").trim() || undefined,
+      // Every drawn glyph, in the same viewport pixels Sigma hands the label
+      // drawer, so a label never prints over a neighbouring node.
+      obstacles: () => graph.nodes().flatMap((key) => {
+        const display = renderer.getNodeDisplayData(key);
+        if (display === undefined || display.hidden) return [];
+        const centre = renderer.framedGraphToViewport(display);
+        const radius = renderer.scaleSize(display.size);
+        return [{ key, box: { x: centre.x - radius, y: centre.y - radius, width: 2 * radius, height: 2 * radius } }];
+      })
+    });
     try {
       renderer = new Sigma(graph, container, {
         allowInvalidContainer: true,
+        defaultDrawNodeLabel: labels.draw,
         // The tilt is fixed: a rotated camera would spin the tilted ground plane
         // into a view that is no longer isometric. Zoom and pan only.
         enableCameraRotation: !tiltedRef.current,
@@ -679,6 +720,8 @@ export function PackageMapCanvas({
       return;
     }
     sigmaRef.current = renderer;
+    renderer.on("beforeRender", labels.reset);
+    renderer.on("afterRender", labels.flush);
 
     const publish = (): void => {
       // The container is focusable as soon as it mounts, but the Sigma graph is
@@ -853,6 +896,8 @@ export function PackageMapCanvas({
       container.removeEventListener("keydown", onKeyDown);
       camera.off?.("updated", publish);
       renderer.off("resize", publish);
+      renderer.off("beforeRender", labels.reset);
+      renderer.off("afterRender", labels.flush);
       renderer.kill();
       publishRef.current = null;
       sigmaRef.current = null;

@@ -43,14 +43,21 @@ export function assertLodResponseWithinBudget(
 export interface LabelCandidate {
   entityKey: string;
   radiusPx: number;
+  /**
+   * The selected/focused node. Its label always shows, so it skips the size
+   * floor and takes the first of the capped slots rather than a 201st.
+   */
+  pinned?: boolean;
 }
 
 /** Deterministic defense against label hairballs: footprint first, then hard cap. */
 export function visibleLabelEntityKeys(candidates: readonly LabelCandidate[]): string[] {
   return candidates
-    .filter((candidate) => candidate.radiusPx >= LABEL_BUDGET.minRadiusPx)
+    .filter((candidate) => candidate.pinned === true || candidate.radiusPx >= LABEL_BUDGET.minRadiusPx)
     .sort((left, right) =>
-      right.radiusPx - left.radiusPx || left.entityKey.localeCompare(right.entityKey)
+      Number(right.pinned === true) - Number(left.pinned === true)
+      || right.radiusPx - left.radiusPx
+      || left.entityKey.localeCompare(right.entityKey)
     )
     .slice(0, LABEL_BUDGET.maxSimultaneous)
     .map((candidate) => candidate.entityKey);

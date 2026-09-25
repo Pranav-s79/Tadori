@@ -154,6 +154,41 @@ describe("expand/collapse canvas byte-stability", () => {
     });
   });
 
+  it("opens a repository's sole package on landing, and Escape climbs back out for good", async () => {
+    restore = installMockFetch();
+    const sole = nodes.filter((node) => node.entityKey === "pkg:core");
+    const solePositions = positions.filter((position) => position.entityKey === "pkg:core");
+    let graph: Graph | null = null;
+    const { container, rerender } = render(
+      <PackageMapCanvas nodes={sole} edges={[]} positions={solePositions} onGraphReady={(g) => (graph = g)} />
+    );
+    const g = graph as unknown as Graph;
+    await waitFor(() => expect(g.hasNode("pkg:core::file:core/a.ts")).toBe(true));
+    // The package node stays, so the reader can see what was opened.
+    expect(g.hasNode("pkg:core")).toBe(true);
+
+    const canvas = container.querySelector(".package-map-canvas") as HTMLDivElement;
+    canvas.dataset.focusedNode = "pkg:core::file:core/a.ts";
+    await act(async () => {
+      canvas.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    await waitFor(() => expect(g.hasNode("pkg:core::file:core/a.ts")).toBe(false));
+    expect(canvas.dataset.focusedNode).toBe("pkg:core");
+
+    // A refetch hands the canvas new arrays; what the reader closed stays closed.
+    rerender(<PackageMapCanvas nodes={[...sole]} edges={[]} positions={[...solePositions]} onGraphReady={(next) => (graph = next)} />);
+    await act(async () => undefined);
+    expect((graph as unknown as Graph).hasNode("pkg:core::file:core/a.ts")).toBe(false);
+  });
+
+  it("leaves a repository with several packages at the repository level", async () => {
+    restore = installMockFetch();
+    let graph: Graph | null = null;
+    render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} onGraphReady={(g) => (graph = g)} />);
+    await act(async () => undefined);
+    expect((graph as unknown as Graph).order).toBe(nodes.length);
+  });
+
   it("supports keyboard focus movement, zoom, reset, and leaf inspection", () => {
     restore = installMockFetch();
     const onInspect = vi.fn();
