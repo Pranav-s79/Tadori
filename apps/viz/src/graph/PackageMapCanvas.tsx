@@ -224,11 +224,13 @@ export function projectedPackagePlates(
     if (memberPoints.length === 0) continue;
     const { core, outliers } = partitionOutliers(memberPoints);
     const shape = convexHull(core);
+    // Hung under the boundary, not at its centre: a compact boundary's centre
+    // is where its members' own labels are.
     const labelPosition = shape.kind === "circle"
-      ? shape.center
+      ? { x: shape.center.x, y: shape.center.y + Math.max(12, shape.radius) + 14 }
       : {
           x: shape.points.reduce((sum, point) => sum + point.x, 0) / shape.points.length,
-          y: shape.points.reduce((sum, point) => sum + point.y, 0) / shape.points.length
+          y: Math.max(...shape.points.map((point) => point.y)) + 14
         };
     const packageNode = apiNode(graph, packageKey);
     plates.push({

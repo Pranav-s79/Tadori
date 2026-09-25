@@ -82,6 +82,8 @@ const ISOMETRIC_ELEVATION = Math.atan(1 / Math.SQRT2);
 const ISOMETRIC_AZIMUTH = Math.PI / 4;
 const FIELD_OF_VIEW = 30;
 const FLIGHT_MS = 420;
+/** The fitted view spans at least this many world units either side. */
+const MIN_FIT_HALF_EXTENT = 22;
 const EDGE_SEGMENTS = 12;
 /** A file or symbol is named once its block is at least this big on screen. */
 const LABEL_MIN_RADIUS_PX = 9;
@@ -433,13 +435,16 @@ function createWorld(host: HTMLElement, callbacks: { current: Callbacks }): Worl
       if (point === undefined || point.x < -40 || point.y < -40 || point.x > width + 40 || point.y > height + 40) continue;
       const distance = camera.position.distanceTo(scratch.set(...node.anchor));
       const radius = (Math.max(node.size[0], node.size[1]) / 2) * (pixelsPerUnitAtOne / Math.max(distance, 0.001));
-      radii.set(node.key, radius);
       if (node.level !== "package") {
         obstacles.push({ key: node.key, box: { x: point.x - radius, y: point.y, width: 2 * radius, height: 2 * radius } });
       }
       const forced = node.level === "package" || node.selected || node.key === hovered;
       if (!forced && (node.dimmed || radius < LABEL_MIN_RADIUS_PX)) continue;
-      requests.push({ key: node.key, x: point.x, y: point.y, radius, textWidth: textWidth(node), labelSize: LABEL_SIZE_PX, forced });
+      // A label stays by its anchor however close the camera is: a package's
+      // plaque sits on its slab, a block's name just clear of the block.
+      const labelRadius = Math.min(radius, node.level === "package" ? 6 : 24);
+      radii.set(node.key, labelRadius);
+      requests.push({ key: node.key, x: point.x, y: point.y, radius: labelRadius, textWidth: textWidth(node), labelSize: LABEL_SIZE_PX, forced });
     }
     const placed = new Map(placeLabels(requests, obstacles).map((label) => [label.key, label.slot]));
     for (const [key, label] of labels) {
@@ -576,6 +581,8 @@ function createWorld(host: HTMLElement, callbacks: { current: Callbacks }): Worl
       const fill = Math.max((maxX - minX) / 2, (maxY - minY) / 2) / 0.8;
       distance *= Math.max(fill, 0.05);
     }
+    // A lone slab would otherwise fill the stage: always show some ground.
+    distance = Math.max(distance, MIN_FIT_HALF_EXTENT / Math.tan(Math.min(vertical, horizontal) / 2));
     frameSurroundings(sphere, distance);
     flyTo(target, target.clone().addScaledVector(direction, distance));
   };
