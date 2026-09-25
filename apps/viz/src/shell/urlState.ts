@@ -26,7 +26,9 @@ export interface UrlState {
 const MODES: readonly WorkspaceMode[] = [
   "overview", "atlas", "interview", "story", "changes", "table"
 ];
-const PROJECTIONS: readonly SpatialProjection[] = ["plan", "tilt", "relief"];
+const PROJECTIONS: readonly SpatialProjection[] = ["plan", "3d", "relief"];
+/** Retired projection names an old shared link may still carry. */
+const PROJECTION_ALIASES: Readonly<Record<string, SpatialProjection>> = { tilt: "3d" };
 const LENS_NAMES = ["boundaries", "changes", "observations", "provenance"] as const;
 
 type LensName = (typeof LENS_NAMES)[number];
@@ -48,7 +50,8 @@ function isProjection(value: string | null): value is SpatialProjection {
 export function readUrlState(search: string, defaults: UrlState): UrlState {
   const params = new URLSearchParams(search);
   const rawMode = params.get("mode");
-  const rawProjection = params.get("view");
+  const view = params.get("view");
+  const rawProjection = view === null ? null : PROJECTION_ALIASES[view] ?? view;
   const rawLens = params.get("lens");
 
   let lenses = defaults.lenses;

@@ -1,5 +1,5 @@
 /**
- * Depth on the tilted Atlas binds to exactly one named field: the abstraction
+ * Height on the 3D Atlas binds to exactly one named field: the abstraction
  * level a node was fetched at (`GET /api/v1/nodes?level=...`, the same enum
  * `layout_positions.abstraction_level` is CHECK-constrained to). It is computed
  * here, client-side, and never read from a server-provided `z` (blueprint 10-01,

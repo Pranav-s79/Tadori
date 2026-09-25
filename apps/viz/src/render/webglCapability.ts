@@ -1,9 +1,9 @@
 export type WebglSupport = "webgl2" | "webgl" | null;
 
 /**
- * Whether this browser can give the tilted Atlas a WebGL context. Probed once,
- * before tilting, so the map either tilts whole or stays flat; it never
- * half-renders a tilt (blueprint 10-01, decision F).
+ * Whether this browser can give the 3D Atlas a WebGL context. Probed once,
+ * before three.js is fetched, so the map is either drawn whole in 3D or stays
+ * flat; it never half-renders (blueprint 10-01, decision F).
  */
 export function probeWebglSupport(
   canvas: HTMLCanvasElement = document.createElement("canvas")

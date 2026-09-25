@@ -4,6 +4,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ApiEdge, ApiNode, LayoutPositionDto } from "../src/api/types.ts";
 import { PackageMapCanvas } from "../src/graph/PackageMapCanvas.tsx";
 import { installMockFetch } from "./mockServer.ts";
+import type { Atlas3DStageProps } from "../src/atlas3d/Atlas3DStage.tsx";
+
+// jsdom has no WebGL for three.js; the stand-in exposes what the map hands it.
+const stage3d = vi.hoisted(() => ({ props: null as Atlas3DStageProps | null }));
+vi.mock("../src/atlas3d/Atlas3DStage.tsx", () => ({
+  Atlas3DStage(props: Atlas3DStageProps) {
+    stage3d.props = props;
+    return <div data-testid="stage3d" />;
+  }
+}));
 
 // Mock sigma (no WebGL in jsdom). The fake captures event handlers so the test
 // can emit a clickNode, exercising the real activate -> expand/collapse path.
@@ -59,6 +69,8 @@ afterEach(() => {
   cameraSetStateMock.mockClear();
   restore?.();
   restore = null;
+  stage3d.props = null;
+  vi.restoreAllMocks();
 });
 
 const nodes: ApiNode[] = [
@@ -134,6 +146,39 @@ describe("expand/collapse canvas byte-stability", () => {
       expect(Object.is(after[key]?.x, before[key]?.x)).toBe(true);
       expect(Object.is(after[key]?.y, before[key]?.y)).toBe(true);
     }
+  });
+
+  it("in 3D a click only inspects, a double-click expands through Plan's own expansion, and Plan keeps it", async () => {
+    restore = installMockFetch();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockImplementation((() => ({ getExtension: () => null })) as never);
+    let graph: Graph | null = null;
+    const onInspect = vi.fn();
+    const map = (view3d: boolean) => (
+      <PackageMapCanvas nodes={nodes} edges={edges} positions={positions} view3d={view3d} onGraphReady={(g) => (graph = g)} onInspect={onInspect} />
+    );
+    const { container, rerender } = render(map(true));
+    await waitFor(() => expect(stage3d.props).not.toBeNull());
+    const g = graph as unknown as Graph;
+    expect(stage3d.props?.graph).toBe(g);
+
+    act(() => stage3d.props?.onSelect("pkg:store"));
+    expect(onInspect).toHaveBeenCalledWith("pkg:store");
+    expect(g.hasNode("pkg:store::file:store/index.ts")).toBe(false);
+
+    await act(async () => {
+      stage3d.props?.onActivate("pkg:store");
+    });
+    await waitFor(() => expect(g.hasNode("pkg:store::file:store/index.ts")).toBe(true));
+
+    rerender(map(false));
+    expect(container.querySelector(".package-map-canvas")).toHaveAttribute("data-projection", "plan");
+    expect(graph).toBe(g);
+    expect(g.hasNode("pkg:store::file:store/index.ts")).toBe(true);
+    expect(g.getNodeAttribute("pkg:store", "selected")).toBe(true);
+    await waitFor(() => expect(container.querySelector(
+      'g[aria-label="repository-derived package boundary: @tadori/store"]'
+    )).not.toBeNull());
   });
 
   it("keyboard Enter on a focused package node toggles expansion like a click", async () => {

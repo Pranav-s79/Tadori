@@ -339,7 +339,7 @@ export function App(): ReactElement {
       focusRequest={focusRequest}
       active={mode !== "table" && mode !== "overview" && mode !== "interview"
         && spatialProjection !== "relief"}
-      tilt={spatialProjection === "tilt"}
+      view3d={spatialProjection === "3d"}
       onRendererError={() => {
         setRendererError(true);
         setMode("table");

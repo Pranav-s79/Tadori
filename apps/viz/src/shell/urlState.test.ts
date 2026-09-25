@@ -30,9 +30,13 @@ describe("readUrlState", () => {
     });
   });
 
-  it("restores and writes the Tilt projection", () => {
-    expect(readUrlState("?view=tilt", defaults).projection).toBe("tilt");
-    expect(writeUrlState({ ...defaults, projection: "tilt" }, defaults)).toBe("?view=tilt");
+  it("restores and writes the 3D projection", () => {
+    expect(readUrlState("?view=3d", defaults).projection).toBe("3d");
+    expect(writeUrlState({ ...defaults, projection: "3d" }, defaults)).toBe("?view=3d");
+  });
+
+  it("opens 3D from an old Tilt link", () => {
+    expect(readUrlState("?view=tilt", defaults).projection).toBe("3d");
   });
 
   it("keeps defaults when no parameters are present", () => {
