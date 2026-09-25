@@ -104,7 +104,9 @@ function installNavigationMediaQuery(initialMatches: boolean): { setMatches(matc
     ...query,
     get matches() { return false; }
   } as MediaQueryList;
-  vi.stubGlobal("matchMedia", vi.fn((media: string) => media === "(max-width: 860px)" ? query : inactiveQuery));
+  // A narrow screen is also narrower than the search field's own breakpoint.
+  vi.stubGlobal("matchMedia", vi.fn((media: string) =>
+    media === "(max-width: 860px)" || media === "(max-width: 1100px)" ? query : inactiveQuery));
   return {
     setMatches(nextMatches: boolean): void {
       matches = nextMatches;

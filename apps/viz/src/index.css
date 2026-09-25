@@ -105,7 +105,8 @@ button { min-height: 2rem; }
 }
 
 .atlas-snapshot strong,
-.atlas-snapshot-id {
+.atlas-snapshot-id,
+.diagnostics-chip {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -136,7 +137,7 @@ button { min-height: 2rem; }
 .freshness-unknown { color: var(--tadori-ink-muted); }
 
 .diagnostics-chip {
-  flex: none;
+  flex: 0 1 auto;
   min-height: 1.5rem;
   padding: 0 var(--tadori-space-2);
   border: 1px solid var(--tadori-rule);
@@ -507,8 +508,9 @@ button { min-height: 2rem; }
    of the graph is drawn. */
 .atlas-context-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--tadori-space-3);
+  gap: var(--tadori-space-1) var(--tadori-space-3);
   min-width: 0;
   min-height: 2.5rem;
   padding: var(--tadori-space-1) var(--tadori-space-3);
@@ -520,7 +522,7 @@ button { min-height: 2rem; }
 
 .atlas-context-bar > span { flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0.06em; text-transform: uppercase; }
 .atlas-context-bar > .atlas-count { flex: 0 1 auto; min-width: 0; margin-left: auto; }
-.atlas-context-bar nav { flex: 0 1 auto; min-width: 0; letter-spacing: 0.06em; text-transform: uppercase; }
+.atlas-context-bar nav { flex: 1 1 auto; min-width: 0; letter-spacing: 0.06em; text-transform: uppercase; }
 .atlas-context-bar ol {
   display: flex;
   gap: var(--tadori-space-1);
@@ -1226,7 +1228,7 @@ button { min-height: 2rem; }
   background: var(--tadori-panel);
 }
 
-[role="status"]:not(.search-status),
+[role="status"]:not(.search-status, .atlas-count),
 [role="alert"] {
   padding: var(--tadori-space-2) var(--tadori-space-3);
   border-left: 0.2rem solid var(--tadori-copper);
@@ -1240,15 +1242,12 @@ button { min-height: 2rem; }
   .mode-tabs button { padding: 0 var(--tadori-space-2); }
 }
 
-/* Narrow screens: the header keeps the brand, a search button and a mode menu,
-   each of which opens a panel of its own; the inspector takes the screen. */
-@media (max-width: 860px) {
-  .atlas-header { gap: var(--tadori-space-2); padding: 0 var(--tadori-space-3); }
-  .atlas-brand > h1 { font-size: var(--tadori-text-md); }
-  .atlas-snapshot { display: none; }
+/* The search field gives way to a search button that opens it as a bar under
+   the header, so the views keep their room. */
+@media (max-width: 1100px) {
+  .atlas-header { gap: var(--tadori-space-3); padding: 0 var(--tadori-space-3); }
 
   .header-menu-toggle {
-    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: var(--tadori-space-1);
@@ -1256,7 +1255,7 @@ button { min-height: 2rem; }
     min-height: 2.25rem;
   }
 
-  .search-toggle { margin-left: auto; font-size: var(--tadori-text-lg); line-height: 1; }
+  .search-toggle { display: inline-flex; flex: none; margin-left: auto; padding: 0; }
 
   .atlas-search { display: none; }
   .atlas-search[data-open="true"] {
@@ -1274,6 +1273,15 @@ button { min-height: 2rem; }
   }
 
   .search-dropdown { left: 0; width: auto; max-height: calc(100vh - 9rem); }
+}
+
+/* Narrow screens: the header keeps the brand, the search button and a view
+   menu; the inspector takes the screen. */
+@media (max-width: 860px) {
+  .atlas-header { gap: var(--tadori-space-2); }
+  .atlas-brand > h1 { font-size: var(--tadori-text-md); }
+  .atlas-snapshot { display: none; }
+  .mode-menu-toggle { display: inline-flex; flex: none; }
 
   .mode-menu { display: none; }
   .mode-menu[data-open="true"] {
@@ -1462,7 +1470,7 @@ button { min-height: 2rem; }
 /* Overview and Interview: reading surfaces, not dashboards. Their measure,
    spacing and section headings live in features/overview/overview.css and
    features/interview/interview.css; this file keeps only what those build on. */
-.overview-panel, .interview-panel { display: grid; align-content: start; }
+.overview-panel, .interview-panel { display: grid; align-content: start; width: 100%; margin-inline: auto; }
 .overview-intro h2, .interview-intro h2 { margin: 0 0 var(--tadori-space-2); font-size: var(--tadori-text-xl); }
 .overview-intro p, .interview-intro p {
   margin: 0; max-width: 68ch;

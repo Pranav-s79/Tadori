@@ -49,38 +49,28 @@ const DEFAULT_LENSES: LensState = {
   provenance: true
 };
 
+/** Below this the header keeps only the brand, a search button and a view menu. */
 const COMPACT_LAYOUT_QUERY = "(max-width: 860px)";
+/** Below this the search field gives way to a search button, to fit the views. */
+const COMPACT_SEARCH_QUERY = "(max-width: 1100px)";
 const FORCED_COLORS_QUERY = "(forced-colors: active)";
 const EMPTY_VIEWPORT_POSITIONS: ReadonlyMap<string, ViewportPosition> = new Map();
 
-function currentCompactLayout(): boolean {
-  return window.matchMedia?.(COMPACT_LAYOUT_QUERY).matches ?? false;
+function matchesMedia(media: string): boolean {
+  return window.matchMedia?.(media).matches ?? false;
 }
 
-function useCompactLayout(): boolean {
-  const [compact, setCompact] = useState(currentCompactLayout);
+function useMediaQuery(media: string): boolean {
+  const [matches, setMatches] = useState(() => matchesMedia(media));
   useEffect(() => {
-    const query = window.matchMedia?.(COMPACT_LAYOUT_QUERY);
+    const query = window.matchMedia?.(media);
     if (query === undefined) return;
-    const onChange = (event: MediaQueryListEvent): void => setCompact(event.matches);
-    setCompact(query.matches);
+    const onChange = (event: MediaQueryListEvent): void => setMatches(event.matches);
+    setMatches(query.matches);
     query.addEventListener("change", onChange);
     return () => query.removeEventListener("change", onChange);
-  }, []);
-  return compact;
-}
-
-function useForcedColors(): boolean {
-  const [active, setActive] = useState(() => window.matchMedia?.(FORCED_COLORS_QUERY).matches ?? false);
-  useEffect(() => {
-    const query = window.matchMedia?.(FORCED_COLORS_QUERY);
-    if (query === undefined) return;
-    const onChange = (event: MediaQueryListEvent): void => setActive(event.matches);
-    setActive(query.matches);
-    query.addEventListener("change", onChange);
-    return () => query.removeEventListener("change", onChange);
-  }, []);
-  return active;
+  }, [media]);
+  return matches;
 }
 
 /** "1 nodes and 0 relations" and "1 entities" were the shell's own copy defects. */
@@ -152,8 +142,9 @@ export function App(): ReactElement {
   const boundaries = useBoundaries();
   const analysis = useAnalysis();
   const capabilities = useCapabilities();
-  const compactLayout = useCompactLayout();
-  const forcedColorsActive = useForcedColors();
+  const compactLayout = useMediaQuery(COMPACT_LAYOUT_QUERY);
+  const compactSearch = useMediaQuery(COMPACT_SEARCH_QUERY);
+  const forcedColorsActive = useMediaQuery(FORCED_COLORS_QUERY);
   // The address bar is the session's memory: a reload or a shared link reopens
   // the same reading. Defaults are captured once so the writer can omit them and
   // an untouched session keeps a clean URL.
@@ -162,7 +153,7 @@ export function App(): ReactElement {
     // should get oriented before being handed a graph.
     mode: "overview",
     projection: "plan",
-    lenses: { ...DEFAULT_LENSES, boundaries: !currentCompactLayout() },
+    lenses: { ...DEFAULT_LENSES, boundaries: !matchesMedia(COMPACT_LAYOUT_QUERY) },
     storyEntityKey: null,
     selectedEntityKey: null
   }));
@@ -190,7 +181,7 @@ export function App(): ReactElement {
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
   const closeModeMenu = useCallback(() => setModeMenuOpen(false), []);
-  const searchFocus = useNavigationFocus(searchOpen, closeSearch, compactLayout);
+  const searchFocus = useNavigationFocus(searchOpen, closeSearch, compactSearch);
   const modeMenuFocus = useNavigationFocus(modeMenuOpen, closeModeMenu, compactLayout);
   const [pathOpen, setPathOpen] = useState(false);
   const pathToggleRef = useRef<HTMLButtonElement | null>(null);
@@ -199,7 +190,7 @@ export function App(): ReactElement {
   useEffect(() => {
     setSearchOpen(false);
     setModeMenuOpen(false);
-  }, [compactLayout]);
+  }, [compactLayout, compactSearch]);
 
   // A menu closes when the reader presses anywhere else, as a menu does.
   useEffect(() => {
@@ -498,7 +489,10 @@ export function App(): ReactElement {
           aria-controls="atlas-search"
           onClick={() => setSearchOpen((open) => !open)}
         >
-          <span aria-hidden="true">⌕</span>
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="7.5" cy="7.5" r="5.5" />
+            <path d="M11.5 11.5 16 16" strokeLinecap="round" />
+          </svg>
           <span className="tadori-visually-hidden">Search</span>
         </button>
         <button
@@ -541,7 +535,8 @@ export function App(): ReactElement {
               {drawsMap && (
                 <div className="lens-group" role="group" aria-label="Map lenses">
                   <LensButton active={lenses.boundaries} label="Boundaries" onClick={() => toggleLens("boundaries")} />
-                  <LensButton active={lenses.changes} label="Changes" onClick={() => toggleLens("changes")} />
+                  {/* Change review always draws its changes; there the lens would be a key that does nothing. */}
+                  {mode !== "changes" && <LensButton active={lenses.changes} label="Changes" onClick={() => toggleLens("changes")} />}
                   <LensButton active={lenses.observations} label="Agent review" onClick={() => toggleLens("observations")} />
                   <LensButton active={lenses.provenance} label="Provenance" onClick={() => toggleLens("provenance")} />
                 </div>

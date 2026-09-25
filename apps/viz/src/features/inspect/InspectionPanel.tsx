@@ -79,6 +79,9 @@ export function InspectionPanel({ store, repoRoot, edgesByKey, actions }: Inspec
       ref={panelRef}
       onKeyDown={onKeyDown}
     >
+      {/* The entity name is an h3 under this, so the outline reads
+          page, inspector, entity, section in every mode. */}
+      <h2 className="tadori-visually-hidden">Inspector</h2>
       <div className="inspection-panel-toolbar">
         {previous !== null && (
           <button type="button" onClick={goBack} aria-label="Back to previous entity">
