@@ -1,6 +1,6 @@
 import Graph from "graphology";
 import Sigma from "sigma";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import type { ApiEdge, ApiNode, LayoutPositionDto, NodeKind } from "../api/types.ts";
 import { usePackageExpansion } from "../hooks/usePackageExpansion.ts";
 import { useFileExpansion } from "../hooks/useFileExpansion.ts";
@@ -13,21 +13,23 @@ import {
   diffExpandedNodes,
   truncate
 } from "./expansion.ts";
-import { convexHull, type Point } from "./convexHull.ts";
+import { convexHull, nearestPoint, partitionOutliers, type Point } from "./convexHull.ts";
 import { defaultFilters, edgeMatchesFilters, nodeMatchesFilters, type SearchFilters } from "../features/search/filterState.ts";
 import { ATLAS_NODE_PROGRAMS } from "./AtlasNodeProgram.ts";
 import { ATLAS_EDGE_PROGRAMS } from "./ProvenanceEdgeProgram.ts";
 import { atlasEdgeVisual, atlasNodeVisual } from "./atlasVisuals.ts";
 import { visibleLabelEntityKeys } from "../lod/budgets.ts";
 import { createCollisionCulledLabels } from "../lod/labelCollisions.ts";
-import { applyAtlasProjection } from "./atlasTilt.ts";
 import { probeWebglSupport } from "../render/webglCapability.ts";
-import "./atlas-depth.css";
+import type { Atlas3DHandle, Atlas3DStageProps } from "../atlas3d/Atlas3DStage.tsx";
+import "../atlas3d/atlas3d.css";
 
 const LABEL_MAX_LENGTH = 24;
 /** Breathing room around a fitted graph, as a multiple of its own extent. */
 const FIT_PADDING = 1.15;
 const NO_FILTERS = defaultFilters();
+/** Same face and fallbacks as --tadori-font-label. */
+const MAP_LABEL_FONT = '"IBM Plex Sans Condensed", "Arial Narrow", sans-serif';
 
 interface CameraLike {
   animate(state: Partial<CameraState>, options: { duration: number }): void;
@@ -85,14 +87,15 @@ export interface PackagePlate {
   packageEntityKey: string;
   label: string;
   attribution: "repository-derived package boundary";
+  /** The boundary around the package's core members. */
   shape: ReturnType<typeof convexHull>;
   labelPosition: ViewportPosition;
   /**
-   * Tilt only: the viewport offset from the plate's top face down to the ground
-   * plane, i.e. its members' abstraction-level lift. Drawn as the plate's solid
-   * lower edge, so its thickness is data, not decoration.
+   * Members served far from the rest, left outside the drawn boundary so one
+   * of them cannot stretch it into a spike. Each is tethered to its nearest
+   * boundary point: still a member, never moved.
    */
-  lift?: ViewportPosition;
+  tethers: { from: ViewportPosition; to: ViewportPosition }[];
 }
 
 
@@ -112,11 +115,10 @@ export function renderedGraphSnapshot(graph: Graph): RenderedGraphSnapshot {
     if (!nodeByCanonicalKey.has(node.entityKey)) {
       nodeByCanonicalKey.set(node.entityKey, { ...node });
       const attrs = graph.getNodeAttributes(graphKey);
-      // The served layout position, never the tilted one Sigma is drawing.
       positionByCanonicalKey.set(node.entityKey, {
         entityKey: node.entityKey,
-        x: Number(attrs.layoutX ?? attrs.x),
-        y: Number(attrs.layoutY ?? attrs.y),
+        x: Number(attrs.x),
+        y: Number(attrs.y),
         z: Number(attrs.z ?? 0),
         pinned: attrs.pinned === true
       });
@@ -213,28 +215,22 @@ export function projectedPackagePlates(
   for (const packageKey of graph.nodes().sort()) {
     if (graph.getNodeAttribute(packageKey, "kind") !== "package"
       || graph.getNodeAttribute(packageKey, "packageMembershipKnown") !== true) continue;
-    const members = graph.nodes()
+    const memberPoints = graph.nodes()
       .filter((nodeKey) => graph.getNodeAttribute(nodeKey, "expandedFrom") === packageKey)
       .sort()
-      .map((nodeKey) => graph.getNodeAttributes(nodeKey));
-    const memberPoints = members
+      .map((nodeKey) => graph.getNodeAttributes(nodeKey))
       .map((attrs) => renderer.graphToViewport({ x: Number(attrs.x), y: Number(attrs.y) }))
       .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
     if (memberPoints.length === 0) continue;
-    // Every member is at the file level, so one member's lift is the plate's.
-    const first = members[0];
-    let lift: ViewportPosition | undefined;
-    if (first !== undefined && typeof first.groundY === "number") {
-      const top = renderer.graphToViewport({ x: Number(first.x), y: Number(first.y) });
-      const ground = renderer.graphToViewport({ x: Number(first.x), y: first.groundY });
-      lift = { x: ground.x - top.x, y: ground.y - top.y };
-    }
-    const shape = convexHull(memberPoints);
+    const { core, outliers } = partitionOutliers(memberPoints);
+    const shape = convexHull(core);
+    // Hung under the boundary, not at its centre: a compact boundary's centre
+    // is where its members' own labels are.
     const labelPosition = shape.kind === "circle"
-      ? shape.center
+      ? { x: shape.center.x, y: shape.center.y + Math.max(12, shape.radius) + 14 }
       : {
           x: shape.points.reduce((sum, point) => sum + point.x, 0) / shape.points.length,
-          y: shape.points.reduce((sum, point) => sum + point.y, 0) / shape.points.length
+          y: Math.max(...shape.points.map((point) => point.y)) + 14
         };
     const packageNode = apiNode(graph, packageKey);
     plates.push({
@@ -243,39 +239,19 @@ export function projectedPackagePlates(
       attribution: "repository-derived package boundary",
       shape,
       labelPosition,
-      ...(lift === undefined ? {} : { lift })
+      tethers: outliers.map((from) => ({
+        from,
+        to: shape.kind === "hull" ? nearestPoint(shape.points, from) ?? from : shape.center
+      }))
     });
   }
   return plates;
 }
 
-/**
- * The solid lower edge of a tilted plate: its top face swept down to the ground
- * plane. For a polygon that silhouette is the hull of both faces; a circular
- * plate sweeps into a stadium, drawn as a round-capped stroke.
- */
-function PlateEdge({ plate }: { plate: PackagePlate }) {
-  const lift = plate.lift;
-  if (lift === undefined) return null;
-  const { shape } = plate;
-  if (shape.kind === "circle") {
-    return (
-      <line
-        className="package-plate-edge"
-        x1={shape.center.x}
-        y1={shape.center.y}
-        x2={shape.center.x + lift.x}
-        y2={shape.center.y + lift.y}
-        strokeWidth={2 * Math.max(12, shape.radius)}
-      />
-    );
-  }
-  const swept = convexHull([
-    ...shape.points,
-    ...shape.points.map((point) => ({ x: point.x + lift.x, y: point.y + lift.y }))
-  ]);
-  if (swept.kind !== "hull") return null;
-  return <polygon className="package-plate-edge" points={swept.points.map((point) => `${point.x},${point.y}`).join(" ")} />;
+function plateDescription(plate: PackagePlate): string {
+  const far = plate.tethers.length;
+  return `${plate.attribution}: ${plate.label}${far === 0 ? ""
+    : `; ${far === 1 ? "1 member is" : `${String(far)} members are`} served far from the rest and tethered to it`}`;
 }
 
 export function applyStoryGraphEmphasis(graph: Graph, emphasis: StoryMapEmphasis | null): void {
@@ -317,15 +293,30 @@ export function applyStoryGraphEmphasis(graph: Graph, emphasis: StoryMapEmphasis
 
 type ArrowDirection = "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown";
 
-export function directionalNeighbor(graph: Graph, fromKey: string, direction: ArrowDirection): string | null {
+/**
+ * The nearest node in an arrow's direction. Positions default to the graph's
+ * own x/y; the 3D map passes where each node sits on screen instead, so the
+ * arrows follow what the reader sees from any camera angle.
+ */
+export function directionalNeighbor(
+  graph: Graph,
+  fromKey: string,
+  direction: ArrowDirection,
+  positionOf: (key: string) => { x: number; y: number } | undefined = (key) => ({
+    x: Number(graph.getNodeAttribute(key, "x")),
+    y: Number(graph.getNodeAttribute(key, "y"))
+  })
+): string | null {
   if (!graph.hasNode(fromKey)) return null;
-  const fromX = Number(graph.getNodeAttribute(fromKey, "x"));
-  const fromY = Number(graph.getNodeAttribute(fromKey, "y"));
+  const from = positionOf(fromKey);
+  if (from === undefined) return null;
   const candidates: Array<{ key: string; distance: number }> = [];
-  graph.forEachNode((key, attrs) => {
+  graph.forEachNode((key) => {
     if (key === fromKey) return;
-    const dx = Number(attrs.x) - fromX;
-    const dy = Number(attrs.y) - fromY;
+    const position = positionOf(key);
+    if (position === undefined) return;
+    const dx = position.x - from.x;
+    const dy = position.y - from.y;
     const inDirection = direction === "ArrowLeft" ? dx < 0
       : direction === "ArrowRight" ? dx > 0
       : direction === "ArrowUp" ? dy < 0
@@ -565,12 +556,14 @@ export interface PackageMapCanvasProps {
   /** Evidence-backed Story path mapped to currently rendered representatives. */
   storyEmphasis?: StoryMapEmphasis | null;
   /**
-   * Fixed isometric tilt with depth bound to abstraction level (blueprint
-   * 10-01). Same nodes, edges, layout and interactions as Plan. Without WebGL
-   * the map stays flat and says so.
+   * Draw this same graph as a three.js scene, height bound to abstraction
+   * level. Selection, expansion and the keyboard stay here, so switching keeps
+   * both. Without WebGL the map stays flat and says so.
    */
-  tilt?: boolean;
+  view3d?: boolean;
 }
+
+type Stage3D = ComponentType<Atlas3DStageProps>;
 
 export function PartialLodNotice({
   scopes
@@ -610,19 +603,27 @@ export function PackageMapCanvas({
   focusRequest = null,
   active = true,
   storyEmphasis = null,
-  tilt = false
+  view3d = false
 }: PackageMapCanvasProps) {
-  // Probed once, the first time a tilt is asked for, so the map either tilts
-  // whole or stays flat.
+  // Probed once, the first time 3D is asked for, so three.js is never fetched
+  // for a browser that cannot draw it.
   const webglRef = useRef<boolean | null>(null);
-  if (tilt && webglRef.current === null) webglRef.current = probeWebglSupport() !== null;
-  const tilted = tilt && webglRef.current === true;
-  const tiltedRef = useRef(tilted);
+  if (view3d && webglRef.current === null) webglRef.current = probeWebglSupport() !== null;
+  const [stage3dFailure, setStage3dFailure] = useState<string | null>(null);
+  const [Stage3DComponent, setStage3DComponent] = useState<Stage3D | null>(null);
+  const [liveGraph, setLiveGraph] = useState<Graph | null>(null);
+  const wants3d = view3d && webglRef.current === true && stage3dFailure === null;
+  const threeD = wants3d && Stage3DComponent !== null && liveGraph !== null;
+  const threeDRef = useRef(threeD);
+  threeDRef.current = threeD;
+  const view3dRef = useRef<Atlas3DHandle | null>(null);
+  const stageActionsRef = useRef<{ pick(key: string): void; activate(key: string): boolean } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const sigmaRef = useRef<Sigma | null>(null);
   const graphRef = useRef<Graph | null>(null);
   const prevExpandedRef = useRef<ReadonlySet<string>>(new Set());
   const prevExpandedFilesRef = useRef<ReadonlySet<string>>(new Set());
+  const carriedSelectionRef = useRef<string | null>(null);
   const publishRef = useRef<(() => void) | null>(null);
   const [packagePlates, setPackagePlates] = useState<PackagePlate[]>([]);
   const [focusAnnouncement, setFocusAnnouncement] = useState("");
@@ -660,6 +661,22 @@ export function PackageMapCanvas({
     if (soleOpen !== null) expand(soleOpen.entityKey, soleOpen.qualifiedName).catch(() => undefined);
   }, [nodes, expand]);
 
+  // three.js lives in its own chunk, fetched the first time 3D is shown.
+  useEffect(() => {
+    if (!wants3d || Stage3DComponent !== null) return;
+    let cancelled = false;
+    import("../atlas3d/Atlas3DStage.tsx")
+      .then((module) => {
+        if (!cancelled) setStage3DComponent(() => module.Atlas3DStage);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setStage3dFailure(error instanceof Error ? error.message : String(error));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [wants3d, Stage3DComponent]);
+
   // Build the base graph once per data input; expansion mutates it in place.
   useEffect(() => {
     const container = containerRef.current;
@@ -682,8 +699,11 @@ export function PackageMapCanvas({
       applySymbolExpansion(graph, fileKey, expansionData);
       restoredFiles.add(fileKey);
     }
+    // A refetch rebuilds the graph; the reader's selection survives it, as
+    // their expansions do, whenever the selected entity is still served.
+    const carried = carriedSelectionRef.current;
+    if (carried !== null && graph.hasNode(carried)) graph.setNodeAttribute(carried, "selected", true);
     applyAtlasGraphStyles(graph);
-    applyAtlasProjection(graph, tiltedRef.current);
 
     graphRef.current = graph;
     prevExpandedRef.current = restoredPackages;
@@ -705,9 +725,9 @@ export function PackageMapCanvas({
       renderer = new Sigma(graph, container, {
         allowInvalidContainer: true,
         defaultDrawNodeLabel: labels.draw,
-        // The tilt is fixed: a rotated camera would spin the tilted ground plane
-        // into a view that is no longer isometric. Zoom and pan only.
-        enableCameraRotation: !tiltedRef.current,
+        // The app's label face; only its 600 weight is self-hosted.
+        labelFont: MAP_LABEL_FONT,
+        labelWeight: "600",
         nodeProgramClasses: { ...ATLAS_NODE_PROGRAMS },
         nodeHoverProgramClasses: { ...ATLAS_NODE_PROGRAMS },
         edgeProgramClasses: { ...ATLAS_EDGE_PROGRAMS }
@@ -720,6 +740,12 @@ export function PackageMapCanvas({
       return;
     }
     sigmaRef.current = renderer;
+    // Canvas text does not wait for a web font: labels drawn before it loads
+    // stay in the fallback until the next frame, so redraw once it is ready.
+    let alive = true;
+    void document.fonts?.load(`600 12px ${MAP_LABEL_FONT}`).then(() => {
+      if (alive) renderer.refresh();
+    }, () => undefined);
     renderer.on("beforeRender", labels.reset);
     renderer.on("afterRender", labels.flush);
 
@@ -733,20 +759,30 @@ export function PackageMapCanvas({
       container.dataset.graphReady = graph.order > 0 ? "true" : "false";
       callbacksRef.current.onGraphReady?.(graph);
       callbacksRef.current.onRenderedGraphChange?.(renderedGraphSnapshot(graph));
-      callbacksRef.current.onViewportPositionsChange?.(projectRenderedNodePositions(renderer, graph));
+      // In 3D the stage reports its own projection; Sigma's hidden one would
+      // put every overlay badge in the wrong place.
+      if (!threeDRef.current) {
+        callbacksRef.current.onViewportPositionsChange?.(projectRenderedNodePositions(renderer, graph));
+      }
       setPackagePlates(projectedPackagePlates(renderer, graph));
     };
     publishRef.current = publish;
 
-    const selectAndFocus = (nodeKey: string): void => {
-      if (!selectGraphEntity(graph, nodeKey)) return;
+    const select = (nodeKey: string): boolean => {
+      if (!selectGraphEntity(graph, nodeKey)) return false;
       applyFiltersToCanvasGraph(graph, filtersRef.current);
       applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
       container.dataset.focusedNode = nodeKey;
       setFocusAnnouncement(graphFocusAnnouncement(graph, nodeKey) ?? "");
-      focusGraphEntity(renderer, graph, nodeKey, prefersReducedMotion());
       renderer.refresh();
       publish();
+      return true;
+    };
+
+    const selectAndFocus = (nodeKey: string): void => {
+      if (!select(nodeKey)) return;
+      focusGraphEntity(renderer, graph, nodeKey, prefersReducedMotion());
+      view3dRef.current?.focus(nodeKey);
     };
 
     const inspect = (nodeKey: string): void => {
@@ -818,6 +854,16 @@ export function PackageMapCanvas({
       return false;
     };
 
+    // The 3D stage's pointer: a click selects and inspects, a double-click
+    // expands or collapses, through exactly the paths Plan uses.
+    stageActionsRef.current = {
+      pick: (nodeKey) => {
+        inspect(nodeKey);
+        select(nodeKey);
+      },
+      activate
+    };
+
     const updateCamera = (state: Partial<CameraState>): void => {
       const camera = renderer.getCamera();
       if (prefersReducedMotion()) camera.setState(state);
@@ -843,11 +889,14 @@ export function PackageMapCanvas({
         event.preventDefault();
         const direction = event.key as ArrowDirection;
         const first = graph.nodes().sort()[0];
+        const stage = view3dRef.current;
         const target = focused === undefined || focused === "" || !graph.hasNode(focused)
           ? first
-          : directionalNeighbor(graph, focused, direction);
-        if (target === undefined || target === null) pan(direction);
-        else selectAndFocus(target);
+          : stage === null
+            ? directionalNeighbor(graph, focused, direction)
+            : directionalNeighbor(graph, focused, direction, (key) => stage.screenPosition(key));
+        if (target !== undefined && target !== null) selectAndFocus(target);
+        else if (stage === null) pan(direction);
         return;
       }
       if (event.key === "Enter" && focused !== undefined && focused !== "") {
@@ -864,21 +913,25 @@ export function PackageMapCanvas({
         if (ascend(focused)) event.preventDefault();
         return;
       }
+      const stage = view3dRef.current;
       if (event.key === "+" || event.key === "=") {
         event.preventDefault();
         const current = renderer.getCamera().getState();
-        updateCamera({ ratio: Math.max(0.02, current.ratio * 0.75) });
+        if (stage !== null) stage.zoom(0.75);
+        else updateCamera({ ratio: Math.max(0.02, current.ratio * 0.75) });
         return;
       }
       if (event.key === "-" || event.key === "_") {
         event.preventDefault();
         const current = renderer.getCamera().getState();
-        updateCamera({ ratio: Math.min(10, current.ratio / 0.75) });
+        if (stage !== null) stage.zoom(1 / 0.75);
+        else updateCamera({ ratio: Math.min(10, current.ratio / 0.75) });
         return;
       }
       if (event.key === "0") {
         event.preventDefault();
-        updateCamera({ x: 0.5, y: 0.5, ratio: 1, angle: 0 });
+        if (stage !== null) stage.reset();
+        else updateCamera({ x: 0.5, y: 0.5, ratio: 1, angle: 0 });
       }
     };
     container.addEventListener("keydown", onKeyDown);
@@ -891,8 +944,13 @@ export function PackageMapCanvas({
     applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
     renderer.refresh();
     publish();
+    setLiveGraph(graph);
 
     return () => {
+      alive = false;
+      carriedSelectionRef.current = graph.findNode((_key, attrs) => attrs.selected === true) ?? null;
+      setLiveGraph(null);
+      stageActionsRef.current = null;
       container.removeEventListener("keydown", onKeyDown);
       camera.off?.("updated", publish);
       renderer.off("resize", publish);
@@ -920,6 +978,7 @@ export function PackageMapCanvas({
       if (containerRef.current !== null) containerRef.current.dataset.focusedNode = focusRequest.entityKey;
       setFocusAnnouncement(graphFocusAnnouncement(graph, focusRequest.entityKey) ?? "");
       publishRef.current?.();
+      view3dRef.current?.focus(focusRequest.entityKey);
     }
   }, [focusRequest]);
 
@@ -953,7 +1012,6 @@ export function PackageMapCanvas({
     }
     prevExpandedRef.current = expandedPackages;
     applyAtlasGraphStyles(graph);
-    applyAtlasProjection(graph, tiltedRef.current);
     applyFiltersToCanvasGraph(graph, filters);
     applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
     const renderer = sigmaRef.current;
@@ -990,7 +1048,6 @@ export function PackageMapCanvas({
     }
     prevExpandedFilesRef.current = expandedFiles;
     applyAtlasGraphStyles(graph);
-    applyAtlasProjection(graph, tiltedRef.current);
     applyFiltersToCanvasGraph(graph, filters);
     applyStoryGraphEmphasis(graph, storyEmphasisRef.current);
     const renderer = sigmaRef.current;
@@ -1011,6 +1068,7 @@ export function PackageMapCanvas({
     const focusKey = storyEmphasis?.activeEntityKey ?? storyEmphasis?.unresolvedFromEntityKey ?? null;
     if (focusKey !== null && graph.hasNode(focusKey)) {
       focusGraphEntity(renderer, graph, focusKey, prefersReducedMotion());
+      view3dRef.current?.focus(focusKey);
       if (containerRef.current !== null) containerRef.current.dataset.focusedNode = focusKey;
       setFocusAnnouncement(graphFocusAnnouncement(graph, focusKey) ?? "");
     }
@@ -1018,24 +1076,10 @@ export function PackageMapCanvas({
     publishRef.current?.();
   }, [storyEmphasis]);
 
-  // Switching projection rewrites only the coordinates Sigma draws; the graph,
-  // its expansion state and the selection are untouched. Refit so the whole
-  // reading stays in view, as a descent does.
+  // Back from 3D, the overlays read Sigma's projection again.
   useEffect(() => {
-    if (tiltedRef.current === tilted) return;
-    tiltedRef.current = tilted;
-    const graph = graphRef.current;
-    const renderer = sigmaRef.current;
-    if (graph === null || renderer === null) return;
-    // Level the camera before locking rotation; once locked, Sigma ignores any
-    // angle it is given, so a rotation carried over from Plan could never be undone.
-    if (tilted) renderer.getCamera().setState({ angle: 0 });
-    renderer.setSetting("enableCameraRotation", !tilted);
-    applyAtlasProjection(graph, tilted);
-    renderer.refresh();
-    fitCameraToVisibleNodes(renderer, graph, prefersReducedMotion());
-    publishRef.current?.();
-  }, [tilted]);
+    if (!threeD) publishRef.current?.();
+  }, [threeD]);
 
   useEffect(() => {
     const renderer = sigmaRef.current;
@@ -1059,11 +1103,13 @@ export function PackageMapCanvas({
   }, []);
 
   const zoomIn = useCallback(() => {
+    if (view3dRef.current !== null) return view3dRef.current.zoom(0.75);
     const current = sigmaRef.current?.getCamera().getState();
     if (current !== undefined) nudgeCamera({ ratio: Math.max(0.02, current.ratio * 0.75) });
   }, [nudgeCamera]);
 
   const zoomOut = useCallback(() => {
+    if (view3dRef.current !== null) return view3dRef.current.zoom(1 / 0.75);
     const current = sigmaRef.current?.getCamera().getState();
     if (current !== undefined) nudgeCamera({ ratio: Math.min(10, current.ratio / 0.75) });
   }, [nudgeCamera]);
@@ -1071,8 +1117,10 @@ export function PackageMapCanvas({
   // Fit, not reset. A blind reset to the centre at ratio 1 is only the right
   // view when the graph happens to fill the framed space; after a descent it
   // put the reader back to the same empty field they pressed the button to
-  // escape. Falls back to reset when there is nothing visible to frame.
+  // escape. Falls back to reset when there is nothing visible to frame. In 3D
+  // the fitted isometric three-quarter view is the reset.
   const fitToContent = useCallback(() => {
+    if (view3dRef.current !== null) return view3dRef.current.reset();
     const renderer = sigmaRef.current;
     const graph = graphRef.current;
     if (renderer !== null && graph !== null
@@ -1084,24 +1132,33 @@ export function PackageMapCanvas({
     ...[...expandedPackages].flatMap((key) => fileData.get(key)?.partial ? [fileData.get(key)!.partial!] : []),
     ...[...expandedFiles].flatMap((key) => symbolData.get(key)?.partial ? [symbolData.get(key)!.partial!] : [])
   ];
+  const notice3d = !view3d || threeD ? null
+    : webglRef.current === false ? "3D needs WebGL, which this browser does not provide. Showing the flat plan."
+      : stage3dFailure !== null ? `The 3D map could not start (${stage3dFailure}). Showing the flat plan.`
+        : "Loading the 3D map…";
   return (
     <>
       <PartialLodNotice scopes={partialScopes} />
-      {tilt && !tilted && (
-        <p className="atlas-tilt-notice" role="status">
-          Tilt needs WebGL, which this browser does not provide. Showing the flat plan.
-        </p>
-      )}
-      <svg
+      {notice3d !== null && <p className="atlas3d-notice" role="status">{notice3d}</p>}
+      {!threeD && <svg
         className="package-plate-overlay"
-        data-projection={tilted ? "tilt" : "plan"}
         role="img"
         aria-label="Repository-derived package boundaries"
       >
         {packagePlates.map((plate) => (
-          <g key={plate.packageEntityKey} role="group" aria-label={`${plate.attribution}: ${plate.label}`}>
-            <title>{`${plate.attribution}: ${plate.label}`}</title>
-            <PlateEdge plate={plate} />
+          <g key={plate.packageEntityKey} role="group" aria-label={plateDescription(plate)}>
+            <title>{plateDescription(plate)}</title>
+            {plate.tethers.map((tether) => (
+              <line
+                key={`${tether.from.x},${tether.from.y}`}
+                className="package-plate-tether"
+                x1={tether.from.x}
+                y1={tether.from.y}
+                x2={tether.to.x}
+                y2={tether.to.y}
+                style={{ stroke: "color-mix(in srgb, var(--tadori-copper) 58%, var(--tadori-panel))", strokeWidth: 1.25, strokeDasharray: "2 4" }}
+              />
+            ))}
             {plate.shape.kind === "hull" ? (
               <polygon points={plate.shape.points.map((point) => `${point.x},${point.y}`).join(" ")} />
             ) : (
@@ -1113,7 +1170,7 @@ export function PackageMapCanvas({
             </text>
           </g>
         ))}
-      </svg>
+      </svg>}
       {storyEmphasis?.unresolvedFromEntityKey !== null && storyEmphasis?.unresolvedFromEntityKey !== undefined && (
         <p className="story-map-status" role="status">
           {`Unresolved termination from ${storyEmphasis.unresolvedFromEntityKey}; destination unknown.`}
@@ -1133,18 +1190,34 @@ export function PackageMapCanvas({
         </button>
         <button type="button" onClick={fitToContent}>
           <span aria-hidden="true">⤢</span>
-          <span className="tadori-visually-hidden">Fit the map to its content</span>
+          <span className="tadori-visually-hidden">{threeD ? "Reset view" : "Fit the map to its content"}</span>
         </button>
       </div>
+      {/* In 3D this element stays the keyboard target, under the stage that
+          draws the scene; the stage must follow it directly for the focus ring. */}
       <div
         ref={containerRef}
         className="package-map-canvas"
-        data-projection={tilted ? "tilt" : "plan"}
+        data-projection={threeD ? "3d" : "plan"}
         tabIndex={0}
         role="application"
-        aria-label={`${tilted ? "Tilted package map, height shows package, file or symbol level" : "Package map"}; arrows move focus or pan, Enter descends or inspects, Escape ascends, plus and minus zoom, zero resets`}
+        aria-label={threeD
+          ? "3D package map, height shows package, file or symbol level; arrows move focus, Enter expands or collapses, Escape ascends, plus and minus zoom, zero resets the view; drag to orbit"
+          : "Package map; arrows move focus or pan, Enter descends or inspects, Escape ascends, plus and minus zoom, zero resets"}
         style={{ width: "100%", height: "100%" }}
       />
+      {wants3d && Stage3DComponent !== null && liveGraph !== null && (
+        <Stage3DComponent
+          graph={liveGraph}
+          active={active}
+          handleRef={view3dRef}
+          onSelect={(key) => stageActionsRef.current?.pick(key)}
+          onActivate={(key) => stageActionsRef.current?.activate(key)}
+          onPointerDown={() => containerRef.current?.focus({ preventScroll: true })}
+          onViewportPositionsChange={(positions) => callbacksRef.current.onViewportPositionsChange?.(positions)}
+          onError={(error) => setStage3dFailure(error.message)}
+        />
+      )}
     </>
   );
 }

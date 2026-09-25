@@ -13,12 +13,12 @@ describe("SpatialProjectionToggle", () => {
     expect(onChange).toHaveBeenCalledWith("relief");
   });
 
-  it("offers Tilt between Plan and Relief as a named, pressable projection", () => {
+  it("offers 3D between Plan and Relief as a named, pressable projection", () => {
     const onChange = vi.fn();
-    render(<SpatialProjectionToggle active="tilt" onChange={onChange} />);
+    render(<SpatialProjectionToggle active="3d" onChange={onChange} />);
     const buttons = screen.getAllByRole("button");
-    expect(buttons.map((button) => button.textContent)).toEqual(["Plan", "Tilt", "Relief"]);
-    expect(screen.getByRole("button", { name: "Tilt" })).toHaveAttribute("aria-pressed", "true");
+    expect(buttons.map((button) => button.textContent)).toEqual(["Plan", "3D", "Relief"]);
+    expect(screen.getByRole("button", { name: "3D" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Plan" })).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(screen.getByRole("button", { name: "Plan" }));
     expect(onChange).toHaveBeenCalledWith("plan");

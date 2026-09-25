@@ -1,0 +1,82 @@
+/* The 3D Atlas. The three.js stage covers the Plan canvas, which stays mounted
+   underneath: it owns the graph, takes the keyboard and is the fallback. */
+.atlas3d-stage {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  overflow: hidden;
+  background: var(--tadori-ground);
+}
+
+.atlas3d-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.atlas3d-labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Sigma's layers stay laid out but unpainted while 3D draws the map. */
+.package-map-canvas[data-projection="3d"] > * { visibility: hidden; }
+
+/* The keyboard target sits under the stage, so its focus ring is drawn here. */
+.package-map-canvas[data-projection="3d"]:focus-visible + .atlas3d-stage {
+  outline: 2px solid var(--tadori-focus);
+  outline-offset: -2px;
+}
+
+.atlas3d-label {
+  color: var(--tadori-ink);
+  /* The map's label face, as Plan draws it; only its 600 weight is hosted. */
+  font: 600 12px / 1.2 var(--tadori-font-label);
+  white-space: nowrap;
+  text-shadow:
+    0 0 2px var(--tadori-panel),
+    0 0 2px var(--tadori-panel),
+    0 0 3px var(--tadori-panel);
+}
+
+.atlas3d-label[data-slot="right"] { margin-left: var(--atlas3d-gap); }
+.atlas3d-label[data-slot="left"] { margin-left: calc(-1 * var(--atlas3d-gap)); }
+.atlas3d-label[data-slot="below"] { margin-top: var(--atlas3d-gap); }
+.atlas3d-label[data-slot="above"] { margin-top: calc(-1 * var(--atlas3d-gap)); }
+
+/* A package's name is a small plaque on its slab. */
+.atlas3d-label-package {
+  padding: 1px 6px;
+  border: 1px solid var(--tadori-rule);
+  border-radius: 2px;
+  background: var(--tadori-panel-raised);
+  box-shadow: var(--tadori-lift-1);
+  letter-spacing: 0.02em;
+  text-shadow: none;
+}
+
+.atlas3d-label[data-selected="true"] { color: var(--tadori-focus); }
+
+.atlas3d-notice {
+  position: absolute;
+  z-index: 6;
+  top: var(--tadori-space-3);
+  left: calc(var(--tadori-space-3) + 2.5rem);
+  max-width: min(28rem, calc(100% - 4rem));
+  margin: 0;
+  padding: var(--tadori-space-2) var(--tadori-space-3);
+  border-left: 3px solid var(--tadori-bronze);
+  background: var(--tadori-panel-raised);
+  box-shadow: var(--tadori-lift-1);
+  color: var(--tadori-ink);
+  font-size: var(--tadori-text-xs);
+}
+
+@media (forced-colors: active) {
+  .atlas3d-label { color: CanvasText; text-shadow: none; }
+  .atlas3d-label-package { border-color: CanvasText; background: Canvas; }
+  .atlas3d-notice { border-left-color: CanvasText; box-shadow: none; }
+}

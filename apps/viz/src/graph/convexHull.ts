@@ -77,6 +77,48 @@ export function convexHull(points: readonly Point[]): HullResult {
   return { kind: "hull", points: [...lower, ...upper] };
 }
 
+/** How many typical distances out a member must sit to be drawn as an outlier. */
+const OUTLIER_FACTOR = 4;
+
+function median(values: readonly number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = sorted.length >> 1;
+  return sorted.length % 2 === 1 ? sorted[middle]! : (sorted[middle - 1]! + sorted[middle]!) / 2;
+}
+
+/**
+ * Splits a package's member points into the core a drawn boundary should hug
+ * and the few far-off members that would stretch it into a spike. A member is
+ * an outlier when it sits more than four typical distances (the median
+ * distance to the median centre) from the rest. Medians, so the outliers
+ * cannot move the yardstick. Fewer than four points are all core. The layout
+ * is never changed: outliers are still members, drawn tethered to the core.
+ */
+export function partitionOutliers<T extends Point>(points: readonly T[]): { core: T[]; outliers: T[] } {
+  if (points.length < 4) return { core: [...points], outliers: [] };
+  const centre = { x: median(points.map((point) => point.x)), y: median(points.map((point) => point.y)) };
+  const typical = median(points.map((point) => distance(point, centre)));
+  if (typical === 0) return { core: [...points], outliers: [] };
+  const core: T[] = [];
+  const outliers: T[] = [];
+  for (const point of points) (distance(point, centre) > OUTLIER_FACTOR * typical ? outliers : core).push(point);
+  return { core, outliers };
+}
+
+/** The point of `candidates` closest to `target` (for an outlier's tether). */
+export function nearestPoint(candidates: readonly Point[], target: Point): Point | undefined {
+  let best: Point | undefined;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    const d = distance(candidate, target);
+    if (d < bestDistance) {
+      best = candidate;
+      bestDistance = d;
+    }
+  }
+  return best;
+}
+
 function dedupe(points: readonly Point[]): Point[] {
   const seen = new Set<string>();
   const result: Point[] = [];

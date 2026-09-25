@@ -17,8 +17,24 @@ import {
   type RenderedGraphSnapshot
 } from "../src/graph/PackageMapCanvas.tsx";
 import { defaultFilters } from "../src/features/search/filterState.ts";
-import { applyAtlasProjection } from "../src/graph/atlasTilt.ts";
-import { ISOMETRIC_TILT_RADIANS } from "../src/render/fixedTiltProjection.ts";
+import type { Atlas3DStageProps } from "../src/atlas3d/Atlas3DStage.tsx";
+
+// three.js needs WebGL, which jsdom lacks. The stand-in records what the map
+// hands the stage and answers its camera calls, so the wiring is testable.
+const stage3d = vi.hoisted(() => ({
+  props: null as Atlas3DStageProps | null,
+  handle: { focus: vi.fn(), reset: vi.fn(), zoom: vi.fn(), screenPosition: vi.fn() }
+}));
+vi.mock("../src/atlas3d/Atlas3DStage.tsx", async () => {
+  const { useImperativeHandle } = await import("react");
+  return {
+    Atlas3DStage(props: Atlas3DStageProps) {
+      stage3d.props = props;
+      useImperativeHandle(props.handleRef, () => stage3d.handle, []);
+      return <div className="atlas3d-stage" data-testid="stage3d" />;
+    }
+  };
+});
 
 // jsdom has no WebGL implementation, and sigma's real constructor calls
 // gl.blendFunc(...) unconditionally on the context it gets back from
@@ -87,6 +103,8 @@ afterEach(() => {
   cameraHandlers.clear();
   rendererHandlers.clear();
   viewportOffset = 0;
+  stage3d.props = null;
+  for (const mock of Object.values(stage3d.handle)) mock.mockReset();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -132,6 +150,19 @@ describe("PackageMapCanvas mount/unmount", () => {
     expect(screen.getByText(
       "@tadori/a. package. package foundation. partially buried neutral stone. Capability: capability not attributed."
     )).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("keeps the reader's selection when a refetch rebuilds the graph", () => {
+    let graph: Graph | null = null;
+    const { rerender } = render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} onGraphReady={(ready) => { graph = ready; }} />);
+    fireEvent.keyDown(screen.getByRole("application"), { key: "ArrowRight" });
+    const before = graph!;
+    expect(before.getNodeAttribute("pkg:a", "selected")).toBe(true);
+
+    rerender(<PackageMapCanvas nodes={[...nodes]} edges={[...edges]} positions={[...positions]} onGraphReady={(ready) => { graph = ready; }} />);
+    expect(graph).not.toBe(before);
+    expect(graph!.getNodeAttribute("pkg:a", "selected")).toBe(true);
+    expect(graph!.getNodeAttribute("pkg:b", "selected")).not.toBe(true);
   });
 
   it("kills the Sigma instance on unmount", () => {
@@ -298,6 +329,25 @@ describe("camera focus and render-only filters", () => {
     }));
   });
 
+  it("draws the boundary around the core members and tethers a far-off member instead of spiking to it", () => {
+    const graph = new Graph();
+    const pkg: ApiNode = { entityKey: "pkg", kind: "package", qualifiedName: "pkg", displayName: "pkg", file: null, exported: true, fanIn: 0 };
+    graph.addNode("pkg", { apiNode: pkg, kind: "package", packageMembershipKnown: true, x: 0, y: 0 });
+    const served = [[0, 0], [10, 0], [0, 10], [10, 10], [5, 12], [5, 400]] as const;
+    served.forEach(([x, y], index) => {
+      const file: ApiNode = { entityKey: `f${index}`, kind: "file", qualifiedName: `f${index}`, displayName: `f${index}`, file: `f${index}.ts`, exported: true, fanIn: 0 };
+      graph.addNode(`f${index}`, { apiNode: file, kind: "file", expandedFrom: "pkg", x, y });
+    });
+    const [plate] = projectedPackagePlates({ graphToViewport: (point) => point }, graph);
+    expect(plate?.shape.kind).toBe("hull");
+    const hullYs = plate?.shape.kind === "hull" ? plate.shape.points.map((point) => point.y) : [];
+    expect(Math.max(...hullYs)).toBe(12);
+    expect(plate?.tethers).toHaveLength(1);
+    expect(plate?.tethers[0]?.from).toEqual({ x: 5, y: 400 });
+    // The member is not moved, only drawn outside the boundary.
+    expect(graph.getNodeAttribute("f5", "y")).toBe(400);
+  });
+
   it("dims unrelated marks and uses copper only for the evidenced Story path", () => {
     const graph = new Graph({ multi: true, type: "directed" });
     const apiNodes = ["a", "b", "other"].map((entityKey) => ({ entityKey, kind: "package", qualifiedName: entityKey, displayName: entityKey, file: null, exported: true, fanIn: 0 } satisfies ApiNode));
@@ -337,6 +387,18 @@ describe("camera focus and render-only filters", () => {
     expect(directionalNeighbor(graph, "center", "ArrowLeft")).toBe("left");
   });
 
+  it("follows supplied screen positions and skips nodes that are off screen", () => {
+    const graph = new Graph();
+    for (const key of ["center", "right-on-screen", "hidden"]) graph.addNode(key, { x: 0, y: 0 });
+    const screen: Record<string, { x: number; y: number } | undefined> = {
+      center: { x: 100, y: 100 },
+      "right-on-screen": { x: 180, y: 90 },
+      hidden: undefined
+    };
+    expect(directionalNeighbor(graph, "center", "ArrowRight", (key) => screen[key])).toBe("right-on-screen");
+    expect(directionalNeighbor(graph, "center", "ArrowLeft", (key) => screen[key])).toBeNull();
+  });
+
   it("dims non-matches while preserving every node and edge", () => {
     const graph = new Graph({ multi: true, type: "directed" });
     graph.addNode("py", { kind: "package", qualifiedName: "py", displayName: "py", file: null, exported: false, fanIn: 0, x: 0, y: 0, language: null, aggregateLanguages: ["python"], aggregateCapabilities: ["structural"], aggregateDerivations: ["parser-derived"], color: "blue", size: 6 });
@@ -352,9 +414,7 @@ describe("camera focus and render-only filters", () => {
   });
 });
 
-describe("fixed tilt projection (blueprint 10-01)", () => {
-  const GROUND = Math.cos(ISOMETRIC_TILT_RADIANS);
-
+describe("3D projection", () => {
   // jsdom has no WebGL, so the capability probe's answer is chosen per test.
   function webgl(available: boolean): void {
     const context = { getExtension: () => null };
@@ -362,80 +422,90 @@ describe("fixed tilt projection (blueprint 10-01)", () => {
       .mockImplementation((() => (available ? context : null)) as never);
   }
 
-  function sigmaSettings(): { enableCameraRotation: boolean } {
-    return sigmaConstructorMock.mock.calls[0]?.[2] as { enableCameraRotation: boolean };
-  }
-
-  it("tilts the coordinates handed to Sigma, never the canvas, and locks rotation", () => {
+  it("draws the same live graph in 3D and keeps Plan's element as the named keyboard target", async () => {
     webgl(true);
     let graph: Graph | null = null;
-    render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} tilt onGraphReady={(ready) => { graph = ready; }} />);
-    expect(sigmaSettings().enableCameraRotation).toBe(false);
-    // pkg:b is served at (10, 10) and is package level, so it sits on the ground plane.
-    expect(graph!.getNodeAttribute("pkg:b", "x")).toBe(10);
-    expect(graph!.getNodeAttribute("pkg:b", "y")).toBeCloseTo(10 * GROUND, 10);
+    render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} view3d onGraphReady={(ready) => { graph = ready; }} />);
+    await screen.findByTestId("stage3d");
+    expect(stage3d.props?.graph).toBe(graph);
     const canvas = screen.getByRole("application");
-    expect(canvas).toHaveAttribute("data-projection", "tilt");
-    expect(canvas.style.transform).toBe("");
-    expect(canvas.getAttribute("aria-label")).toMatch(/^Tilted package map, height shows package, file or symbol level;/);
-    expect(screen.queryByText(/Tilt needs WebGL/)).toBeNull();
+    expect(canvas).toHaveAttribute("data-projection", "3d");
+    expect(canvas.getAttribute("aria-label")).toMatch(/^3D package map, height shows package, file or symbol level;/);
+    // The stage follows the keyboard target so the target's focus ring can be drawn on it.
+    expect(canvas.nextElementSibling).toBe(screen.getByTestId("stage3d"));
+    expect(screen.queryByRole("img", { name: "Repository-derived package boundaries" })).toBeNull();
+    expect(screen.queryByText(/3D needs WebGL/)).toBeNull();
+    // The served layout is untouched: 3D adds height in its own scene only.
+    expect(graph!.getNodeAttribute("pkg:b", "y")).toBe(10);
   });
 
-  it("publishes the served layout, not the tilted draw coordinates", () => {
+  it("publishes the served layout in 3D: height lives in the scene, never in the graph", async () => {
     webgl(true);
     const snapshots: RenderedGraphSnapshot[] = [];
-    render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} tilt onRenderedGraphChange={(next) => snapshots.push(next)} />);
+    render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} view3d onRenderedGraphChange={(next) => snapshots.push(next)} />);
+    await screen.findByTestId("stage3d");
     expect(snapshots.at(-1)?.positions).toEqual(positions);
   });
 
   it("stays flat, whole, and says so when WebGL is unavailable", () => {
     webgl(false);
-    let graph: Graph | null = null;
-    render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} tilt onGraphReady={(ready) => { graph = ready; }} />);
-    expect(screen.getByText("Tilt needs WebGL, which this browser does not provide. Showing the flat plan."))
+    render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} view3d />);
+    expect(screen.getByText("3D needs WebGL, which this browser does not provide. Showing the flat plan."))
       .toHaveAttribute("role", "status");
-    expect(graph!.getNodeAttribute("pkg:b", "y")).toBe(10);
     expect(screen.getByRole("application")).toHaveAttribute("data-projection", "plan");
-    expect(sigmaSettings().enableCameraRotation).toBe(true);
+    expect(screen.queryByTestId("stage3d")).toBeNull();
   });
 
-  it("switches projection in place: same renderer, same graph, exact Plan on return", () => {
+  it("falls back to Plan, and says why, when the 3D renderer fails", async () => {
     webgl(true);
-    let graph: Graph | null = null;
-    const onGraphReady = (ready: Graph) => { graph = ready; };
-    const { rerender } = render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} onGraphReady={onGraphReady} />);
-    const built = graph;
-
-    rerender(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} tilt onGraphReady={onGraphReady} />);
-    expect(sigmaConstructorMock).toHaveBeenCalledTimes(1);
-    expect(graph).toBe(built);
-    expect(graph!.getNodeAttribute("pkg:b", "y")).toBeCloseTo(10 * GROUND, 10);
-    expect(cameraSetStateMock).toHaveBeenCalledWith({ angle: 0 });
-    expect(setSettingMock).toHaveBeenLastCalledWith("enableCameraRotation", false);
-
-    rerender(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} onGraphReady={onGraphReady} />);
-    expect(graph!.getNodeAttribute("pkg:b", "y")).toBe(10);
-    expect(graph!.hasNodeAttribute("pkg:b", "layoutY")).toBe(false);
-    expect(setSettingMock).toHaveBeenLastCalledWith("enableCameraRotation", true);
+    render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} view3d />);
+    await screen.findByTestId("stage3d");
+    act(() => stage3d.props?.onError(new Error("context lost")));
+    expect(screen.getByText("The 3D map could not start (context lost). Showing the flat plan.")).toHaveAttribute("role", "status");
+    expect(screen.getByRole("application")).toHaveAttribute("data-projection", "plan");
   });
 
-  it("gives a tilted package plate a solid edge exactly as deep as its members' lift", () => {
-    const graph = new Graph();
-    const pkg: ApiNode = { entityKey: "pkg:known", kind: "package", qualifiedName: "known", displayName: "known", file: null, exported: true, fanIn: 0 };
-    graph.addNode(pkg.entityKey, { apiNode: pkg, kind: "package", packageMembershipKnown: true, x: 0, y: 0 });
-    for (const [key, x, y] of [["file:a", 0, 0], ["file:b", 10, 0], ["file:c", 0, 10]] as const) {
-      const file: ApiNode = { entityKey: key, kind: "file", qualifiedName: key, displayName: key, file: `${key}.ts`, exported: true, fanIn: 0 };
-      graph.addNode(key, { apiNode: file, kind: "file", expandedFrom: pkg.entityKey, x, y });
-    }
-    // Sigma's graph y grows upward; the viewport's grows downward.
-    const renderer = { graphToViewport: ({ x, y }: { x: number; y: number }) => ({ x, y: -y }) };
-    expect(projectedPackagePlates(renderer, graph)[0]?.lift).toBeUndefined();
+  it("routes a click to selection and the shared inspector, and the camera keys to the 3D camera", async () => {
+    webgl(true);
+    const onInspect = vi.fn();
+    const published: ReadonlyMap<string, { x: number; y: number }>[] = [];
+    let graph: Graph | null = null;
+    render(
+      <PackageMapCanvas
+        nodes={nodes}
+        edges={edges}
+        positions={positions}
+        view3d
+        onInspect={onInspect}
+        onGraphReady={(ready) => { graph = ready; }}
+        onViewportPositionsChange={(next) => published.push(next)}
+      />
+    );
+    await screen.findByTestId("stage3d");
+    act(() => stage3d.props?.onSelect("pkg:b"));
+    expect(onInspect).toHaveBeenCalledWith("pkg:b");
+    expect(graph!.getNodeAttribute("pkg:b", "selected")).toBe(true);
 
-    applyAtlasProjection(graph, true);
-    const lift = projectedPackagePlates(renderer, graph)[0]?.lift;
-    const fileA = graph.getNodeAttributes("file:a");
-    expect(lift?.x).toBe(0);
-    expect(lift?.y).toBeGreaterThan(0);
-    expect(lift?.y).toBeCloseTo(Number(fileA.y) - Number(fileA.groundY), 10);
+    // Overlays follow the 3D projection, not Sigma's hidden one.
+    const count = published.length;
+    viewportOffset = 40;
+    act(() => cameraHandlers.get("updated")?.());
+    expect(published).toHaveLength(count);
+    act(() => stage3d.props?.onViewportPositionsChange?.(new Map([["pkg:b", { x: 7, y: 8 }]])));
+    expect(published.at(-1)?.get("pkg:b")).toEqual({ x: 7, y: 8 });
+
+    const canvas = screen.getByRole("application");
+    fireEvent.keyDown(canvas, { key: "+" });
+    expect(stage3d.handle.zoom).toHaveBeenCalledWith(0.75);
+    fireEvent.keyDown(canvas, { key: "0" });
+    expect(stage3d.handle.reset).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Reset view" }));
+    expect(stage3d.handle.reset).toHaveBeenCalledTimes(2);
+
+    // Arrows move through what the reader sees on screen.
+    stage3d.handle.screenPosition.mockImplementation((key: string) => (key === "pkg:a" ? { x: 300, y: 200 } : { x: 100, y: 200 }));
+    fireEvent.keyDown(canvas, { key: "ArrowRight" });
+    expect(graph!.getNodeAttribute("pkg:a", "selected")).toBe(true);
+    expect(stage3d.handle.focus).toHaveBeenLastCalledWith("pkg:a");
   });
 });

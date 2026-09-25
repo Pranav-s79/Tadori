@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { convexHull, type Point } from "../src/graph/convexHull.ts";
+import { convexHull, nearestPoint, partitionOutliers, type Point } from "../src/graph/convexHull.ts";
 
 /** Sort points for order-independent hull comparison (rotation-agnostic). */
 function normalize(points: Point[]): Point[] {
@@ -117,5 +117,35 @@ describe("convexHull", () => {
     if (result.kind !== "hull") return;
     expect(result.points.length).toBeLessThanOrEqual(points.length);
     expect(result.points).not.toContainEqual({ x: 3, y: 3 });
+  });
+});
+
+describe("partitionOutliers", () => {
+  // Fixture 02's shape: a cluster of files and one test file served far away.
+  const cluster: Point[] = [
+    { x: 25, y: -28 }, { x: -18, y: -19 }, { x: 21, y: 28 }, { x: 9, y: 38 },
+    { x: 4, y: 58 }, { x: 4, y: -33 }, { x: -9, y: 16 }, { x: -29, y: -14 }
+  ];
+  const far: Point = { x: 5, y: -364 };
+
+  it("keeps a far-off member out of the drawn core, and only that member", () => {
+    const { core, outliers } = partitionOutliers([...cluster, far]);
+    expect(outliers).toEqual([far]);
+    expect(core).toEqual(cluster);
+  });
+
+  it("treats an evenly spread package as all core", () => {
+    expect(partitionOutliers(cluster).outliers).toEqual([]);
+  });
+
+  it("does not judge fewer than four members, or members that coincide", () => {
+    expect(partitionOutliers([{ x: 0, y: 0 }, { x: 1, y: 0 }, far]).outliers).toEqual([]);
+    const same = Array.from({ length: 5 }, () => ({ x: 2, y: 2 }));
+    expect(partitionOutliers(same).outliers).toEqual([]);
+  });
+
+  it("finds the closest point to tether an outlier to", () => {
+    expect(nearestPoint(cluster, far)).toEqual({ x: 4, y: -33 });
+    expect(nearestPoint([], far)).toBeUndefined();
   });
 });
