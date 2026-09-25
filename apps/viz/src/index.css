@@ -37,33 +37,37 @@ button { min-height: 2rem; }
 
 .skip-link:focus { transform: translateY(0); }
 
+/* One top bar, then one workspace. The inspector joins the workspace as a
+   right-hand column only while something is selected. */
 .app-shell {
   display: grid;
-  grid-template-rows: 3.25rem auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   height: 100%;
   background: var(--tadori-ground);
 }
 
 .atlas-header {
+  position: relative;
   z-index: 20;
   grid-row: 1;
   display: flex;
   align-items: center;
   gap: var(--tadori-space-4);
   min-width: 0;
+  height: 3.25rem;
   padding: 0 var(--tadori-space-4);
   border-bottom: 1px solid var(--tadori-rule);
   /* The lintel over the dig. Lit from the upper left; its lower edge and cast
-     shadow fall across both side slabs and the map beneath it. */
+     shadow fall across the workspace beneath it. */
   background: linear-gradient(170deg, var(--tadori-panel-raised) 45%, var(--tadori-panel));
   box-shadow: var(--tadori-lift-2);
 }
 
 .atlas-brand {
   display: flex;
-  align-items: baseline;
+  flex: none;
+  align-items: center;
   gap: var(--tadori-space-2);
-  min-width: max-content;
 }
 
 /* The brand stone: one plate drawn at the map's isometric tilt, so the first
@@ -72,7 +76,6 @@ button { min-height: 2rem; }
 .atlas-brand::before {
   content: "";
   flex: none;
-  align-self: center;
   width: 0.875rem;
   height: 0.875rem;
   margin-right: var(--tadori-space-1);
@@ -91,15 +94,9 @@ button { min-height: 2rem; }
   text-transform: uppercase;
 }
 
-.atlas-brand > small {
-  color: var(--tadori-ink-muted);
-  font-size: var(--tadori-text-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .atlas-snapshot {
   display: flex;
+  flex: 0 1 auto;
   align-items: center;
   gap: var(--tadori-space-2);
   min-width: 0;
@@ -108,15 +105,16 @@ button { min-height: 2rem; }
 }
 
 .atlas-snapshot strong,
-.atlas-snapshot > span:not(.freshness) {
+.atlas-snapshot-id {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 /* The snapshot id and kind are identifiers, so they are set in mono. The
-   diagnostics summary beside them is a sentence and keeps the UI face. */
-.atlas-snapshot > span:not(.freshness, .atlas-diagnostics-summary) {
+   diagnostics chip beside them is a sentence and keeps the UI face. */
+.atlas-snapshot-id {
   color: var(--tadori-ink-muted);
   font-family: var(--tadori-font-mono);
   font-size: var(--tadori-text-xs);
@@ -124,6 +122,7 @@ button { min-height: 2rem; }
 
 .freshness {
   display: inline-flex;
+  flex: none;
   padding: 0.1rem 0.45rem;
   border: 1px solid currentColor;
   color: var(--tadori-verdigris);
@@ -135,15 +134,38 @@ button { min-height: 2rem; }
 
 .freshness-stale { color: var(--tadori-change); }
 .freshness-unknown { color: var(--tadori-ink-muted); }
-.navigation-toggle { display: none; margin-left: auto; }
+
+.diagnostics-chip {
+  flex: none;
+  min-height: 1.5rem;
+  padding: 0 var(--tadori-space-2);
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: transparent;
+  color: var(--tadori-ink-muted);
+  cursor: pointer;
+  font-size: var(--tadori-text-xs);
+  white-space: nowrap;
+}
+
+.diagnostics-chip:hover { border-color: var(--tadori-copper); color: var(--tadori-ink); }
+
+.atlas-search {
+  flex: 1 1 16rem;
+  min-width: 9rem;
+  max-width: 26rem;
+  margin-left: auto;
+}
+
+/* The narrow-screen search and mode-menu buttons. */
+.header-menu-toggle { display: none; }
 
 /* Stone keys. A tab row is a slot cut into the surface and the chosen key is
    the one plate raised out of it. Selection is also carried by the key's own
-   border, ink and weight, never by depth alone. The mode tabs and the Explore
-   tabs share this rule so both rows read as the same object. */
-.mode-tabs,
-.explore-tabs [role="tablist"] {
+   border, ink and weight, never by depth alone. */
+.mode-tabs {
   display: flex;
+  flex: none;
   gap: 2px;
   padding: 3px;
   border: 1px solid var(--tadori-rule);
@@ -152,10 +174,7 @@ button { min-height: 2rem; }
   box-shadow: inset 0 1px 3px rgb(41 42 40 / 22%);
 }
 
-.mode-tabs { flex: none; margin-left: auto; }
-
-.mode-tabs button,
-.explore-tabs [role="tab"] {
+.mode-tabs button {
   min-height: 2rem;
   padding: 0 var(--tadori-space-3);
   border: 1px solid transparent;
@@ -171,14 +190,12 @@ button { min-height: 2rem; }
     background-color var(--tadori-motion-fast) ease;
 }
 
-.mode-tabs button:hover,
-.explore-tabs [role="tab"]:hover {
+.mode-tabs button:hover {
   background: color-mix(in srgb, var(--tadori-panel-raised) 55%, transparent);
   color: var(--tadori-ink);
 }
 
-.mode-tabs button[aria-selected="true"],
-.explore-tabs [role="tab"][aria-selected="true"] {
+.mode-tabs button[aria-selected="true"] {
   border-color: var(--tadori-rule);
   background: linear-gradient(170deg, var(--tadori-panel-raised) 45%, var(--tadori-panel));
   box-shadow: var(--tadori-lift-1);
@@ -188,9 +205,9 @@ button { min-height: 2rem; }
 }
 
 /* Plate buttons: a small raised stone that presses flush when used. */
-.navigation-toggle,
+.header-menu-toggle,
 .inspection-panel-toolbar button,
-.inspector-continuations button,
+.inspector-continuations > button,
 .explore-path form button,
 .search-retry,
 .mode-empty-state button {
@@ -206,16 +223,16 @@ button { min-height: 2rem; }
   transition: transform var(--tadori-motion-fast) ease, box-shadow var(--tadori-motion-fast) ease;
 }
 
-.navigation-toggle:hover,
+.header-menu-toggle:hover,
 .inspection-panel-toolbar button:hover,
-.inspector-continuations button:hover,
+.inspector-continuations > button:hover,
 .explore-path form button:hover,
 .search-retry:hover,
 .mode-empty-state button:hover { border-color: var(--tadori-copper); }
 
-.navigation-toggle:active,
+.header-menu-toggle:active,
 .inspection-panel-toolbar button:active,
-.inspector-continuations button:active,
+.inspector-continuations > button:active,
 .explore-path form button:active:not(:disabled),
 .search-retry:active,
 .mode-empty-state button:active { box-shadow: none; transform: translateY(1px); }
@@ -226,7 +243,7 @@ button { min-height: 2rem; }
   position: relative;
   grid-row: 3;
   display: grid;
-  grid-template-columns: 5rem minmax(15rem, 19rem) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
 }
@@ -234,127 +251,22 @@ button { min-height: 2rem; }
 .stale-state { grid-row: 2; }
 
 .app-shell.has-inspector .atlas-workspace {
-  grid-template-columns: 5rem minmax(15rem, 19rem) minmax(0, 1fr) minmax(18rem, 23rem);
+  grid-template-columns: minmax(0, 1fr) minmax(20rem, 25rem);
 }
 
-/* Overview and Interview show no map, so they draw no lens rail and the
-   workspace drops that column at every breakpoint below. */
-.atlas-workspace-lensless { grid-template-columns: minmax(15rem, 19rem) minmax(0, 1fr); }
-
-.app-shell.has-inspector .atlas-workspace-lensless {
-  grid-template-columns: minmax(15rem, 19rem) minmax(0, 1fr) minmax(18rem, 23rem);
-}
-
-.lens-rail {
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--tadori-space-2);
-  min-height: 0;
-  padding: var(--tadori-space-3) var(--tadori-space-1);
-  overflow-y: auto;
-  border-right: 1px solid var(--tadori-rule);
-  background: var(--tadori-panel);
-}
-
-/* Every lens is a key. Off, it stands proud of the rail with a hollow lamp and
-   a muted word; on, it is set down into the rail with a lit copper lamp and a
-   full-ink bold word. Shape, lamp fill and weight each carry the state, so it
-   never rests on colour alone. The old rail inverted this: an off lens was
-   bare text that did not read as clickable at all. */
-.lens-button {
-  display: grid;
-  width: 100%;
-  min-height: 2.75rem;
-  gap: var(--tadori-space-1);
-  padding: var(--tadori-space-1) 2px;
-  place-items: center;
-  border: 1px solid var(--tadori-rule);
-  border-radius: var(--tadori-radius-sm);
-  background: var(--tadori-panel-raised);
-  box-shadow: var(--tadori-lift-1);
-  color: var(--tadori-ink-muted);
-  cursor: pointer;
-  font: 400 0.6875rem / 1.1 var(--tadori-font-ui);
-  transition:
-    transform var(--tadori-motion-fast) ease,
-    box-shadow var(--tadori-motion-fast) ease,
-    background-color var(--tadori-motion-fast) ease;
-}
-
-.lens-button:not(:disabled):hover { border-color: var(--tadori-copper); color: var(--tadori-ink); }
-.lens-button:not(:disabled):active { box-shadow: none; transform: translateY(1px); }
-
-.lens-button[aria-pressed="true"] {
-  border-color: var(--tadori-bronze);
-  background: var(--tadori-ground);
-  box-shadow: inset 0 2px 3px rgb(41 42 40 / 28%);
-  color: var(--tadori-ink);
-  font-weight: 700;
-  transform: translateY(1px);
-}
-
-/* Unavailable in Table mode: flat and dashed, neither proud nor set. The lamp
-   still shows whether the lens will be on when a map returns. */
-.lens-button:disabled {
-  border-style: dashed;
-  background: transparent;
-  box-shadow: none;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* A border, not a fill, lights the lamp: forced colours repaint backgrounds
-   but keep borders, so filled versus hollow survives there too. */
-.lens-button-lamp {
-  width: 0.5rem;
-  height: 0.5rem;
-  border: 1px solid var(--tadori-ink-muted);
-  border-radius: 50%;
-}
-
-.lens-button[aria-pressed="true"] .lens-button-lamp { border: 0.25rem solid var(--tadori-copper); }
-
-.lens-button-label { text-align: center; }
-
-/* Side slabs framing the dig site. Each column stands above the map and the
-   face turned toward it shows the slab's thickness: --tadori-lift-2 laid on
-   its side. The z-index lets that face and its shadow fall across the map. */
-.atlas-navigation,
+/* The inspector is a slab standing beside the dig. The face turned toward the
+   map shows its thickness: --tadori-lift-2 laid on its side. */
 .atlas-inspector {
   z-index: 9;
   min-width: 0;
   min-height: 0;
   overflow: auto;
+  border-left: 1px solid var(--tadori-rule);
   background: var(--tadori-panel);
+  box-shadow: -3px 0 0 var(--tadori-plate-edge), -6px 0 12px rgb(41 42 40 / 16%);
   scrollbar-color: var(--tadori-rule) transparent;
 }
 
-.atlas-navigation {
-  border-right: 1px solid var(--tadori-rule);
-  box-shadow: 3px 0 0 var(--tadori-plate-edge), 6px 0 12px rgb(41 42 40 / 16%);
-}
-
-.atlas-inspector {
-  border-left: 1px solid var(--tadori-rule);
-  box-shadow: -3px 0 0 var(--tadori-plate-edge), -6px 0 12px rgb(41 42 40 / 16%);
-}
-
-.navigation-heading {
-  position: sticky;
-  z-index: 2;
-  top: 0;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--tadori-space-2);
-  padding: var(--tadori-space-3);
-  border-bottom: 1px solid var(--tadori-rule);
-  background: var(--tadori-panel);
-}
-
-.navigation-heading p,
 .atlas-legend-cartouche > p {
   margin: 0;
   font-family: var(--tadori-font-label);
@@ -364,35 +276,9 @@ button { min-height: 2rem; }
   text-transform: uppercase;
 }
 
-.navigation-heading span {
-  color: var(--tadori-ink-muted);
-  font-family: var(--tadori-font-mono);
-  font-size: var(--tadori-text-xs);
-}
+.search-panel { position: relative; }
+.search-field { display: flex; align-items: center; gap: var(--tadori-space-2); }
 
-/* Each navigation section is a tablet resting on the slab. */
-.navigation-section {
-  margin: var(--tadori-space-2);
-  border: 1px solid var(--tadori-rule);
-  border-radius: var(--tadori-radius-md);
-  background: var(--tadori-panel-raised);
-  box-shadow: var(--tadori-lift-1);
-}
-
-.navigation-section[open] > summary { border-bottom: 1px solid var(--tadori-rule); }
-
-.navigation-section > summary {
-  padding: var(--tadori-space-3);
-  cursor: pointer;
-  font-family: var(--tadori-font-label);
-  font-size: var(--tadori-text-xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.search-panel,
-.explore-tabs,
 .observation-overlay,
 .review-diff-view,
 .story-view,
@@ -401,10 +287,9 @@ button { min-height: 2rem; }
 .edge-view { padding: var(--tadori-space-3); }
 
 .search-input,
-.search-panel input[type="search"],
-.explore-tabs input,
-.explore-tabs select {
+.explore-path input {
   width: 100%;
+  min-width: 0;
   min-height: 2.25rem;
   border: 1px solid var(--tadori-rule);
   border-radius: var(--tadori-radius-sm);
@@ -414,11 +299,36 @@ button { min-height: 2rem; }
   padding: 0 var(--tadori-space-2);
 }
 
-/* The eight filter groups previously sat between the search input and its
-   results, pushing the first result roughly 900px down a 900px-tall panel: the
-   reader typed and saw nothing change. Collapsed by default, with the active
-   count always visible so a constrained result set can never read as
-   unconstrained. */
+.search-filter-flag {
+  flex: none;
+  color: var(--tadori-copper-text);
+  font-size: var(--tadori-text-xs);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* Results and filters drop from the field as one plate over the workspace. */
+.search-dropdown {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + var(--tadori-space-1));
+  right: 0;
+  width: max(100%, min(30rem, calc(100vw - 2rem)));
+  max-height: min(34rem, calc(100vh - 5rem));
+  overflow: auto;
+  padding: var(--tadori-space-3);
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-md);
+  background: var(--tadori-panel-raised);
+  box-shadow: var(--tadori-lift-3);
+}
+
+.search-dropdown[data-open="false"] { display: none; }
+
+/* The eight filter groups once sat between the search input and its results,
+   pushing the first result roughly 900px down: the reader typed and saw
+   nothing change. Collapsed by default, with the active count always visible
+   so a constrained result set can never read as unconstrained. */
 .search-filters-disclosure { margin-top: var(--tadori-space-2); }
 
 .search-filters-disclosure > summary {
@@ -443,9 +353,6 @@ button { min-height: 2rem; }
   text-align: center;
 }
 
-/* The navigation panel overflowed horizontally at every width because the
-   filter rows could not wrap below their intrinsic width. */
-.atlas-navigation { overflow-x: hidden; }
 .search-filter-group, .search-filter-option { min-width: 0; overflow-wrap: anywhere; }
 
 .search-filters { display: grid; gap: var(--tadori-space-2); margin-top: var(--tadori-space-3); }
@@ -555,22 +462,9 @@ button { min-height: 2rem; }
   text-transform: uppercase;
 }
 
-/* The Explore keys share the mode-tab rule above; here they only divide the
-   narrow tablet evenly. */
-.explore-tabs [role="tablist"] { margin-bottom: var(--tadori-space-3); }
-.explore-tabs [role="tab"] { flex: 1 1 0; min-width: 0; padding: 0 var(--tadori-space-1); }
-
-.explore-path form { display: grid; gap: var(--tadori-space-2); }
-.explore-path label { display: grid; gap: var(--tadori-space-1); }
-.explore-path form button { justify-self: start; }
-
-.explore-tests > h2,
-.explore-docs h2 {
-  margin: 0 0 var(--tadori-space-1);
-  font: 700 var(--tadori-text-sm) / 1.3 var(--tadori-font-label);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
+.explore-path form { display: flex; align-items: end; gap: var(--tadori-space-2); margin-top: var(--tadori-space-2); }
+.explore-path label { display: grid; flex: 1 1 auto; gap: var(--tadori-space-1); min-width: 0; font-size: var(--tadori-text-xs); }
+.explore-path form button { flex: none; }
 
 .explore-tests-caption { margin: 0; color: var(--tadori-ink-muted); font-size: var(--tadori-text-xs); }
 
@@ -585,7 +479,6 @@ button { min-height: 2rem; }
 .explore-tests-file,
 .explore-tests-linkage,
 .explore-docs-file,
-.explore-docs-grounds,
 .explore-path-relation {
   overflow-wrap: anywhere;
   color: var(--tadori-ink-muted);
@@ -595,23 +488,6 @@ button { min-height: 2rem; }
 
 .explore-path-steps { display: grid; gap: var(--tadori-space-1); margin: var(--tadori-space-2) 0 0; padding-left: var(--tadori-space-4); }
 .explore-path-steps > li { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--tadori-space-1); }
-
-/* A document body is a well cut into the tablet, like the source slice. */
-.explore-docs-body {
-  width: 100%;
-  max-height: 10rem;
-  margin: 0;
-  padding: var(--tadori-space-2);
-  overflow: auto;
-  border: 1px solid var(--tadori-rule);
-  border-radius: var(--tadori-radius-sm);
-  background: var(--tadori-panel);
-  box-shadow: inset 0 1px 3px rgb(41 42 40 / 16%);
-  font-family: var(--tadori-font-mono);
-  font-size: var(--tadori-text-xs);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
 
 /* Column rather than a two-row grid: the stage carries an optional notice
    between the context bar and the workspace, and fixed rows made that notice
@@ -623,27 +499,28 @@ button { min-height: 2rem; }
   min-height: 0;
 }
 
-.atlas-main > .atlas-context-bar { flex: none; height: 2rem; }
+.atlas-main > .atlas-context-bar { flex: none; }
 .atlas-main > .focus-unavailable-notice { flex: none; }
 .atlas-main > .mode-panel { flex: 1 1 auto; }
 
+/* The map's own toolbar: projection, lenses, where the reader is, and how much
+   of the graph is drawn. */
 .atlas-context-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--tadori-space-3);
   min-width: 0;
-  padding: 0 var(--tadori-space-3);
+  min-height: 2.5rem;
+  padding: var(--tadori-space-1) var(--tadori-space-3);
   border-bottom: 1px solid var(--tadori-rule);
   background: var(--tadori-panel);
   color: var(--tadori-ink-muted);
   font-size: var(--tadori-text-xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
-.atlas-context-bar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.atlas-context-bar nav { min-width: 0; }
+.atlas-context-bar > span { flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0.06em; text-transform: uppercase; }
+.atlas-context-bar > .atlas-count { flex: 0 1 auto; min-width: 0; margin-left: auto; }
+.atlas-context-bar nav { flex: 0 1 auto; min-width: 0; letter-spacing: 0.06em; text-transform: uppercase; }
 .atlas-context-bar ol {
   display: flex;
   gap: var(--tadori-space-1);
@@ -659,6 +536,59 @@ button { min-height: 2rem; }
   white-space: nowrap;
 }
 .atlas-context-bar li + li::before { content: "/"; margin-right: var(--tadori-space-1); }
+
+/* Lenses are a row of small keys set into one slot. Off, a key stands proud
+   with a hollow lamp; on, it is set down into the slot with a lit copper lamp
+   and full ink. Lamp fill and depth each carry the state, and aria-pressed
+   names it, so it never rests on colour alone. */
+.lens-group {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-ground);
+  box-shadow: inset 0 1px 2px rgb(41 42 40 / 18%);
+}
+
+.lens-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.5rem;
+  padding: 0 var(--tadori-space-2);
+  border: 1px solid var(--tadori-rule);
+  border-radius: 2px;
+  background: var(--tadori-panel-raised);
+  box-shadow: 0 1px 0 var(--tadori-plate-edge);
+  color: var(--tadori-ink-muted);
+  cursor: pointer;
+  font: 600 var(--tadori-text-xs) / 1 var(--tadori-font-ui);
+  white-space: nowrap;
+  transition: transform var(--tadori-motion-fast) ease, box-shadow var(--tadori-motion-fast) ease;
+}
+
+.lens-button:hover { border-color: var(--tadori-copper); color: var(--tadori-ink); }
+
+.lens-button[aria-pressed="true"] {
+  border-color: var(--tadori-bronze);
+  background: var(--tadori-panel);
+  box-shadow: inset 0 1px 2px rgb(41 42 40 / 28%);
+  color: var(--tadori-ink);
+  transform: translateY(1px);
+}
+
+/* A border, not a fill, lights the lamp: forced colours repaint backgrounds
+   but keep borders, so filled versus hollow survives there too. */
+.lens-button-lamp {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--tadori-ink-muted);
+  border-radius: 50%;
+}
+
+.lens-button[aria-pressed="true"] .lens-button-lamp { border: 0.25rem solid var(--tadori-copper); }
 
 .spatial-projection-toggle {
   display: inline-flex;
@@ -1181,7 +1111,9 @@ button { min-height: 2rem; }
 .inspect-connections > h4,
 .inspect-rationale > h4,
 .inspect-evidence > h4,
-.inspect-source > h4 {
+.inspect-source > h4,
+.explore-tests > h4,
+.explore-docs > h4 {
   margin: 0 0 var(--tadori-space-2);
   padding-bottom: var(--tadori-space-1);
   border-bottom: 1px solid var(--tadori-rule);
@@ -1196,18 +1128,16 @@ button { min-height: 2rem; }
 .inspect-readings { display: grid; gap: var(--tadori-space-2); margin: 0; padding: 0; list-style: none; }
 .inspect-readings > li { font-size: var(--tadori-text-sm); }
 
-.inspect-connections p, .inspect-evidence p { margin: 0; color: var(--tadori-ink-muted); font-size: var(--tadori-text-xs); }
+.inspect-connections p, .inspect-evidence p, .explore-docs > p, .explore-tests > p { margin: 0; color: var(--tadori-ink-muted); font-size: var(--tadori-text-xs); }
 
 .inspect-connections ul,
 .inspect-evidence ul { display: grid; gap: var(--tadori-space-1); margin: var(--tadori-space-2) 0 0; padding: 0; list-style: none; }
 
 /* Pivots are thin plates set flush into their tablet, a shade below it; the
    one under the pointer lifts out. One rule for every entity pivot in the
-   inspector and the Explore views. */
-.inspect-connections button,
-.inspect-meta dd button,
-.explore-tabs li button,
-.explore-routes button {
+   inspector. */
+.inspection-panel li button,
+.inspect-meta dd button {
   padding: var(--tadori-space-1) var(--tadori-space-2);
   overflow-wrap: anywhere;
   border: 1px solid var(--tadori-rule);
@@ -1226,10 +1156,8 @@ button { min-height: 2rem; }
 
 .inspect-connections button { width: 100%; }
 
-.inspect-connections button:hover,
-.inspect-meta dd button:hover,
-.explore-tabs li button:hover,
-.explore-routes button:hover {
+.inspection-panel li button:hover,
+.inspect-meta dd button:hover {
   border-color: var(--tadori-copper);
   background: var(--tadori-panel-raised);
   box-shadow: var(--tadori-lift-1);
@@ -1263,52 +1191,28 @@ button { min-height: 2rem; }
 
 .inspect-rationale article { margin: 0; font-size: var(--tadori-text-sm); }
 
+/* What to do next from this entity, directly under the toolbar. */
 .inspector-continuations {
   display: flex;
   flex-wrap: wrap;
   gap: var(--tadori-space-2);
-  padding: var(--tadori-space-3);
-  border-top: 1px solid var(--tadori-rule);
-  background: var(--tadori-panel);
+  margin-bottom: var(--tadori-space-3);
 }
 
-/* Routes feed Story mode, and Story mode is only reachable through this
-   table's action column. At the navigation panel's real width the five-column
-   table overflowed horizontally and pushed that column off-screen, so the
-   entry point could not be reached at all. Below 26rem the rows stack. */
-.explore-routes-wrap { container-type: inline-size; }
-.explore-routes { width: 100%; border-collapse: collapse; font-size: var(--tadori-text-xs); }
+.inspector-continuations > button { min-height: 1.75rem; padding: 0 var(--tadori-space-2); font-size: var(--tadori-text-xs); }
+.inspector-path { flex-basis: 100%; }
 
-.explore-routes th,
-.explore-routes td {
-  padding: var(--tadori-space-1) var(--tadori-space-2) var(--tadori-space-1) 0;
-  border-bottom: 1px solid var(--tadori-rule);
-  text-align: left;
-  vertical-align: top;
-}
-
-.explore-routes th { color: var(--tadori-ink-muted); letter-spacing: 0.04em; text-transform: uppercase; }
-.explore-routes button.explore-routes-story { font-family: var(--tadori-font-ui); font-weight: 650; white-space: nowrap; }
-.explore-routes-source-none { color: var(--tadori-ink-muted); }
-
-@container (max-width: 26rem) {
-  .explore-routes thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-  }
-
-  .explore-routes tr {
-    display: grid;
-    gap: var(--tadori-space-1);
-    padding: var(--tadori-space-2) 0;
-    border-bottom: 1px solid var(--tadori-rule);
-  }
-
-  .explore-routes td { padding: 0; border: 0; }
-  .explore-routes-story { justify-self: start; }
+/* The Agent review lens lays its findings on the map, beside the zoom keys. */
+.app-graph-stage > .observation-overlay {
+  position: absolute;
+  z-index: 7;
+  top: var(--tadori-space-3);
+  left: 3.5rem;
+  max-width: min(22rem, calc(100% - 4.5rem));
+  max-height: 45%;
+  margin: 0;
+  overflow: auto;
+  box-shadow: var(--tadori-lift-2);
 }
 
 .inspection-panel-toolbar {
@@ -1331,97 +1235,89 @@ button { min-height: 2rem; }
 
 [role="alert"] { border-left-color: var(--tadori-danger); }
 
-@media (max-width: 1280px) {
-  .atlas-brand > small,
-  .atlas-snapshot > span:not(.freshness) { display: none; }
-
-  /* The rail narrows here. The word used to give way to a single letter; it
-     now turns on its side and reads bottom to top, like the spine of a boxed
-     tray, so the visible label is still the whole word in the lens's name. */
-  .lens-button { padding: var(--tadori-space-2) 0; }
-  .lens-button-label { writing-mode: vertical-rl; transform: rotate(180deg); }
-
-  .atlas-workspace,
-  .app-shell.has-inspector .atlas-workspace { grid-template-columns: 3rem minmax(14rem, 17rem) minmax(0, 1fr); }
-
-  .atlas-workspace-lensless,
-  .app-shell.has-inspector .atlas-workspace-lensless { grid-template-columns: minmax(14rem, 17rem) minmax(0, 1fr); }
-
-  /* Below 1280px the inspector overlays the stage. It used to do so with no
-     visible boundary, starting at the top and covering the context bar's
-     level and count indicators exactly when the reader needed them — so the
-     map read as broken rather than as covered. It now begins below the bar
-     and carries a rule and a shadow. */
-  .atlas-inspector {
-    position: absolute;
-    z-index: 15;
-    top: 2rem;
-    right: 0;
-    bottom: 0;
-    width: min(23rem, calc(100% - 3rem));
-    border-left: 1px solid var(--tadori-rule);
-    /* Floating over the map, so it casts the deeper --tadori-lift-3 shadow. */
-    box-shadow: -3px 0 0 var(--tadori-plate-edge), -14px 6px 28px rgb(41 42 40 / 22%);
-  }
-}
-
-/* One step before the drawer breakpoint: the navigation panel gives up width
-   before the map does. At 1100px the map was down to roughly 380px with the
-   inspector covering half of it. */
 @media (max-width: 1180px) {
-  .atlas-workspace,
-  .app-shell.has-inspector .atlas-workspace {
-    grid-template-columns: 3rem minmax(11rem, 13rem) minmax(0, 1fr);
-  }
-
-  .atlas-workspace-lensless,
-  .app-shell.has-inspector .atlas-workspace-lensless { grid-template-columns: minmax(11rem, 13rem) minmax(0, 1fr); }
+  .atlas-snapshot-id { display: none; }
+  .mode-tabs button { padding: 0 var(--tadori-space-2); }
 }
 
+/* Narrow screens: the header keeps the brand, a search button and a mode menu,
+   each of which opens a panel of its own; the inspector takes the screen. */
 @media (max-width: 860px) {
-  .atlas-header { gap: var(--tadori-space-2); padding: 0 var(--tadori-space-2); }
+  .atlas-header { gap: var(--tadori-space-2); padding: 0 var(--tadori-space-3); }
+  .atlas-brand > h1 { font-size: var(--tadori-text-md); }
   .atlas-snapshot { display: none; }
-  .navigation-toggle { display: inline-flex; }
-  .mode-tabs { gap: 0; padding: 2px; margin-left: 0; }
-  .mode-tabs button { padding: 0 var(--tadori-space-2); }
 
-  .atlas-workspace,
-  .app-shell.has-inspector .atlas-workspace { grid-template-columns: 2.75rem minmax(0, 1fr); }
+  .header-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--tadori-space-1);
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+  }
 
-  /* With the navigation slab drawn away, the rail is the left wall of the dig. */
-  .lens-rail { box-shadow: 3px 0 0 var(--tadori-plate-edge), 6px 0 12px rgb(41 42 40 / 16%); }
+  .search-toggle { margin-left: auto; font-size: var(--tadori-text-lg); line-height: 1; }
 
-  .atlas-navigation {
+  .atlas-search { display: none; }
+  .atlas-search[data-open="true"] {
     position: absolute;
-    z-index: 14;
-    top: 0;
-    bottom: 0;
-    left: 2.75rem;
-    width: min(20rem, calc(100% - 2.75rem));
-    box-shadow: 3px 0 0 var(--tadori-plate-edge), 14px 6px 28px rgb(41 42 40 / 22%);
-    transform: translateX(-110%);
-    transition: transform var(--tadori-motion-fast) ease;
-    visibility: hidden;
-    pointer-events: none;
+    top: 100%;
+    right: 0;
+    left: 0;
+    display: block;
+    max-width: none;
+    margin: 0;
+    padding: var(--tadori-space-2) var(--tadori-space-3);
+    border-bottom: 1px solid var(--tadori-rule);
+    background: var(--tadori-panel);
+    box-shadow: var(--tadori-lift-2);
   }
 
-  /* An open drawer is the slab the reader just asked for, so it rises above
-     the inspector drawer (z-index 15). Beneath it, focus moved into a panel
-     that could not be seen. */
-  .atlas-navigation[data-open="true"] {
-    z-index: 16;
-    transform: translateX(0);
-    visibility: visible;
-    pointer-events: auto;
-  }
-  .atlas-main { grid-column: 2; }
+  .search-dropdown { left: 0; width: auto; max-height: calc(100vh - 9rem); }
 
-  .atlas-workspace-lensless,
-  .app-shell.has-inspector .atlas-workspace-lensless { grid-template-columns: minmax(0, 1fr); }
-  .atlas-workspace-lensless .atlas-navigation { left: 0; width: min(20rem, 100%); }
-  .atlas-workspace-lensless .atlas-main { grid-column: 1; }
+  .mode-menu { display: none; }
+  .mode-menu[data-open="true"] {
+    position: absolute;
+    top: calc(100% + var(--tadori-space-1));
+    right: var(--tadori-space-3);
+    display: block;
+  }
+
+  .mode-tabs {
+    flex-direction: column;
+    min-width: 11rem;
+    background: var(--tadori-panel);
+    box-shadow: var(--tadori-lift-3);
+  }
+
+  .mode-tabs button { min-height: 2.5rem; text-align: left; }
+
+  .app-shell.has-inspector .atlas-workspace { grid-template-columns: minmax(0, 1fr); }
+
+  .atlas-inspector {
+    position: fixed;
+    z-index: 30;
+    inset: 0;
+    border-left: 0;
+    box-shadow: none;
+  }
+
+  /* Two rows: projection and lenses, then the location. The lenses scroll
+     sideways inside their own slot rather than widen the page. The count stays
+     the live region that announces refreshes, visually hidden here. */
+  .atlas-context-bar { flex-wrap: wrap; gap: var(--tadori-space-1) var(--tadori-space-2); padding-inline: var(--tadori-space-2); }
+  .lens-group { flex: 1 1 0; min-width: 0; overflow-x: auto; }
+  .atlas-context-bar nav { flex-basis: 100%; }
+  .atlas-context-bar > span:not(.atlas-count) { display: none; }
+  .atlas-context-bar > .atlas-count {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
   .spatial-workspace-story { grid-template-columns: 1fr; }
-
   .spatial-workspace-story .app-graph-stage { grid-column: 1; }
 
   .story-view,
@@ -1432,43 +1328,13 @@ button { min-height: 2rem; }
     width: min(21rem, 88%);
     box-shadow: var(--tadori-space-3) 0 var(--tadori-space-8) rgb(72 55 30 / 18%);
   }
-}
 
-/* Six modes in a four-column grid wrapped to a second row that the fixed
-   2.875rem header row could not hold, so the keys spilled over the context
-   bar. Three columns by two rows, and a header row that grows to fit them. */
-@media (max-width: 570px) {
-  .app-shell { grid-template-rows: auto auto minmax(0, 1fr); }
-
-  .atlas-header {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: 2.5rem auto;
-    padding-bottom: var(--tadori-space-2);
-  }
-
-  .atlas-brand > h1 { font-size: var(--tadori-text-md); }
-  .navigation-toggle { grid-column: 2; grid-row: 1; }
-
-  .mode-tabs {
-    display: grid;
-    grid-column: 1 / -1;
-    grid-row: 2;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 2px;
-    width: 100%;
-  }
-
-  .mode-tabs button { min-width: 0; min-height: 1.75rem; }
-  .atlas-context-bar span:last-child,
   .atlas-legend-cartouche { display: none; }
-
   .relief-region-role { display: none; }
   .relief-metric-card { max-width: calc(100% - 1rem); top: var(--tadori-space-2); left: var(--tadori-space-2); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .atlas-navigation { transition: none; }
   .relief-traces line { filter: none !important; }
 }
 
@@ -1479,7 +1345,6 @@ button { min-height: 2rem; }
      state gains an outline. */
   .lens-button[aria-pressed="true"],
   .mode-tabs button[aria-selected="true"],
-  .explore-tabs [role="tab"][aria-selected="true"],
   .search-result-row[aria-selected="true"],
   .spatial-projection-toggle button[aria-pressed="true"] { outline: 2px solid Highlight; }
 
@@ -1493,12 +1358,6 @@ button { min-height: 2rem; }
 
 /* Analysis and extraction diagnostics. Severity is named in text, never by
    color alone, so the panel survives forced-colors and grayscale. */
-.atlas-diagnostics-summary { font-size: var(--tadori-text-xs); color: var(--tadori-ink-muted); }
-
-/* Inside a navigation tablet, so they take the same inset as Search and
-   Explore. */
-.analysis-panel, .capability-panel { padding: var(--tadori-space-3); }
-.navigation-section > .analysis-empty { margin: var(--tadori-space-3); }
 .analysis-panel { display: grid; gap: var(--tadori-space-3); }
 .analysis-empty, .analysis-budget, .analysis-analyzer {
   font-size: var(--tadori-text-xs);

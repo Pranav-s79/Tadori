@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { AnalysisPanel, diagnosticSeveritySummary } from "./features/analysis/AnalysisPanel.tsx";
 import { useAnalysis } from "./hooks/useAnalysis.ts";
 import { CapabilityPanel } from "./features/analysis/CapabilityPanel.tsx";
 import { useCapabilities } from "./hooks/useCapabilities.ts";
-import { OverviewPanel } from "./features/overview/OverviewPanel.tsx";
+import { OverviewPanel, OverviewStratum } from "./features/overview/OverviewPanel.tsx";
 import { InterviewPanel } from "./features/interview/InterviewPanel.tsx";
 import { BoundaryBadgeOverlay } from "./features/boundaries/BoundaryBadgeOverlay.tsx";
 import { useBoundaries } from "./features/boundaries/useBoundaries.ts";
 import { InspectionPanel } from "./features/inspect/InspectionPanel.tsx";
 import { useInspectionStore } from "./features/inspect/useInspectionStore.ts";
+import { PathFinder } from "./features/explore/PathFinder.tsx";
 import { StoryView, type StoryPlaybackState } from "./features/story/StoryView.tsx";
 import { AccessibleGraphTable } from "./features/a11y/AccessibleGraphTable.tsx";
 import { DiffBadgeOverlay } from "./features/review/DiffBadgeOverlay.tsx";
@@ -26,7 +27,7 @@ import { useCoupling } from "./hooks/useCoupling.ts";
 import { useRefreshStatus } from "./hooks/useRefreshStatus.ts";
 import { useSnapshot } from "./hooks/useSnapshot.ts";
 import { ProvenanceLegend } from "./legend/ProvenanceLegend.tsx";
-import { ModeTabs, type WorkspaceMode } from "./shell/ModeTabs.tsx";
+import { ModeTabs, WORKSPACE_MODES, type WorkspaceMode } from "./shell/ModeTabs.tsx";
 import { SpatialProjectionToggle, type SpatialProjection } from "./shell/SpatialProjectionToggle.tsx";
 import { LensButton } from "./shell/LensButton.tsx";
 import { useNavigationFocus } from "./shell/useNavigationFocus.ts";
@@ -48,25 +49,25 @@ const DEFAULT_LENSES: LensState = {
   provenance: true
 };
 
-const NAVIGATION_DRAWER_QUERY = "(max-width: 860px)";
+const COMPACT_LAYOUT_QUERY = "(max-width: 860px)";
 const FORCED_COLORS_QUERY = "(forced-colors: active)";
 const EMPTY_VIEWPORT_POSITIONS: ReadonlyMap<string, ViewportPosition> = new Map();
 
-function currentNavigationDrawerMode(): boolean {
-  return window.matchMedia?.(NAVIGATION_DRAWER_QUERY).matches ?? false;
+function currentCompactLayout(): boolean {
+  return window.matchMedia?.(COMPACT_LAYOUT_QUERY).matches ?? false;
 }
 
-function useNavigationDrawerMode(): boolean {
-  const [drawerMode, setDrawerMode] = useState(currentNavigationDrawerMode);
+function useCompactLayout(): boolean {
+  const [compact, setCompact] = useState(currentCompactLayout);
   useEffect(() => {
-    const query = window.matchMedia?.(NAVIGATION_DRAWER_QUERY);
+    const query = window.matchMedia?.(COMPACT_LAYOUT_QUERY);
     if (query === undefined) return;
-    const onChange = (event: MediaQueryListEvent): void => setDrawerMode(event.matches);
-    setDrawerMode(query.matches);
+    const onChange = (event: MediaQueryListEvent): void => setCompact(event.matches);
+    setCompact(query.matches);
     query.addEventListener("change", onChange);
     return () => query.removeEventListener("change", onChange);
   }, []);
-  return drawerMode;
+  return compact;
 }
 
 function useForcedColors(): boolean {
@@ -151,7 +152,7 @@ export function App(): ReactElement {
   const boundaries = useBoundaries();
   const analysis = useAnalysis();
   const capabilities = useCapabilities();
-  const navigationDrawerMode = useNavigationDrawerMode();
+  const compactLayout = useCompactLayout();
   const forcedColorsActive = useForcedColors();
   // The address bar is the session's memory: a reload or a shared link reopens
   // the same reading. Defaults are captured once so the writer can omit them and
@@ -161,7 +162,7 @@ export function App(): ReactElement {
     // should get oriented before being handed a graph.
     mode: "overview",
     projection: "plan",
-    lenses: { ...DEFAULT_LENSES, boundaries: !currentNavigationDrawerMode() },
+    lenses: { ...DEFAULT_LENSES, boundaries: !currentCompactLayout() },
     storyEntityKey: null,
     selectedEntityKey: null
   }));
@@ -174,7 +175,6 @@ export function App(): ReactElement {
   );
   const [rendererError, setRendererError] = useState(false);
   const [lenses, setLenses] = useState<LensState>(initialUrlState.lenses);
-  const [navigationOpen, setNavigationOpen] = useState(() => !currentNavigationDrawerMode());
   const [storyEntityKey, setStoryEntityKey] = useState<string | null>(
     initialUrlState.storyEntityKey
   );
@@ -183,12 +183,41 @@ export function App(): ReactElement {
   const [renderedGraph, setRenderedGraph] = useState<RenderedGraphSnapshot | null>(null);
   const [viewportPositions, setViewportPositions] = useState<ReadonlyMap<string, ViewportPosition>>(EMPTY_VIEWPORT_POSITIONS);
   const [storyPlayback, setStoryPlayback] = useState<StoryPlaybackState | null>(null);
-  const closeNavigation = useCallback(() => setNavigationOpen(false), []);
-  const navigationFocus = useNavigationFocus(navigationOpen, closeNavigation, navigationDrawerMode);
+  // On a narrow screen the header keeps only the brand, a search button and a
+  // mode menu; each of the last two opens its own panel. On a wide screen both
+  // are always shown and these stay false.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [modeMenuOpen, setModeMenuOpen] = useState(false);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
+  const closeModeMenu = useCallback(() => setModeMenuOpen(false), []);
+  const searchFocus = useNavigationFocus(searchOpen, closeSearch, compactLayout);
+  const modeMenuFocus = useNavigationFocus(modeMenuOpen, closeModeMenu, compactLayout);
+  const [pathOpen, setPathOpen] = useState(false);
+  const pathToggleRef = useRef<HTMLButtonElement | null>(null);
+  const [diagnosticsRequest, setDiagnosticsRequest] = useState(0);
 
   useEffect(() => {
-    setNavigationOpen(!navigationDrawerMode);
-  }, [navigationDrawerMode]);
+    setSearchOpen(false);
+    setModeMenuOpen(false);
+  }, [compactLayout]);
+
+  // A menu closes when the reader presses anywhere else, as a menu does.
+  useEffect(() => {
+    if (!modeMenuOpen) return;
+    const onPointerDown = (event: PointerEvent): void => {
+      const target = event.target as Node;
+      if (modeMenuFocus.drawerRef.current?.contains(target) === true) return;
+      if (modeMenuFocus.toggleRef.current?.contains(target) === true) return;
+      setModeMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [modeMenuOpen, modeMenuFocus.drawerRef, modeMenuFocus.toggleRef]);
+
+  // The header's diagnostics chip opens Overview at its diagnostics stratum.
+  useEffect(() => {
+    if (diagnosticsRequest > 0) document.getElementById("overview-section-diagnostics")?.focus();
+  }, [diagnosticsRequest]);
 
   useEffect(() => {
     if (forcedColorsActive) setMode("table");
@@ -207,6 +236,9 @@ export function App(): ReactElement {
   }, [initialUrlState.selectedEntityKey, inspectionOpenEntity]);
 
   const inspectedEntityKey = inspection.current?.entityKey ?? null;
+  // A path is found from the inspected entity, so a result for one entity is
+  // never left standing under another.
+  useEffect(() => { setPathOpen(false); }, [inspectedEntityKey]);
   // Asked of the snapshot, not the rendered graph: the landing view holds one
   // repository node, so testing the rendered set would deny a behavior trace to
   // every route until the reader happened to descend to it.
@@ -280,12 +312,17 @@ export function App(): ReactElement {
   // "genuinely zero diagnostics" are three distinct states and must read as
   // three distinct sentences.
   const diagnosticsSummary = analysis.error !== null
-    ? "Extraction diagnostics unavailable"
+    ? "Diagnostics unavailable"
     : analysis.data === null
-      ? "Loading extraction diagnostics…"
+      ? "Loading diagnostics…"
       : diagnosticSeveritySummary(analysis.data.diagnostics.bySeverity) === null
-        ? "No extraction diagnostics"
-        : `Extraction diagnostics: ${String(diagnosticSeveritySummary(analysis.data.diagnostics.bySeverity))}`;
+        ? "No diagnostics"
+        : `Diagnostics: ${String(diagnosticSeveritySummary(analysis.data.diagnostics.bySeverity))}`;
+  const changeMode = useCallback((nextMode: WorkspaceMode) => {
+    if (forcedColorsActive && nextMode !== "table") return;
+    if (nextMode !== "table") setRendererError(false);
+    setMode(nextMode);
+  }, [forcedColorsActive]);
   const storyMapEmphasis = useMemo(
     () => mapStoryPlaybackToGraph(storyPlayback, data?.representativeByEntityKey ?? new Map()),
     [data?.representativeByEntityKey, storyPlayback]
@@ -327,8 +364,17 @@ export function App(): ReactElement {
   const showBoundaries = lenses.boundaries;
   const visibleNodeCount = renderedGraph?.nodes.length ?? data?.nodes.length;
   const visibleEdgeCount = renderedGraph?.edges.length ?? data?.edges.length;
+  // The toolbar describes a map: Atlas, Story and Changes draw one, and Table
+  // lists the same rendered graph. Lenses and the projection belong to the
+  // drawn map only.
   const mapChrome = mode !== "overview" && mode !== "interview";
+  const drawsMap = mapChrome && mode !== "table";
   const lodLevel = renderedGraph?.lodLevel ?? "repository";
+  const graphCount = (
+    <span role="status" aria-live="polite" aria-atomic="true" className={mapChrome ? "atlas-count" : "tadori-visually-hidden"}>
+      {data === null ? "Graph unavailable" : `Showing ${countLabel(visibleNodeCount, "node")} and ${countLabel(visibleEdgeCount, "relation")}`}
+    </span>
+  );
 
   const mapSurface = (
     <div className="app-graph-stage" role="region" aria-label="Repository atlas">
@@ -388,6 +434,7 @@ export function App(): ReactElement {
           <ProvenanceLegend />
         </div>
       )}
+      {lenses.observations && <ObservationOverlayBadges onInspectFile={inspectObservationFile} />}
     </div>
   );
 
@@ -397,7 +444,6 @@ export function App(): ReactElement {
       <header className="atlas-header">
         <div className="atlas-brand">
           <h1>Tadori</h1>
-          <small>Codebase study workspace</small>
         </div>
         {/* The repository identity was the full absolute path, which consumed
             the header and then truncated mid-token — "C:/Users/…/c--SideProj…"
@@ -410,114 +456,113 @@ export function App(): ReactElement {
               ? "Repository"
               : /[^/\\]+$/.exec(snapshot.repository)?.[0] ?? snapshot.repository}
           </strong>
-          <span>{snapshot === null ? "No active snapshot" : `#${snapshot.snapshotId} · ${snapshot.snapshotKind}`}</span>
+          <span className="atlas-snapshot-id">{snapshot === null ? "No active snapshot" : `#${snapshot.snapshotId} · ${snapshot.snapshotKind}`}</span>
           <span className={`freshness freshness-${snapshot?.freshness ?? "unknown"}`}>
             {snapshot?.freshness ?? "unknown"}
           </span>
-          <span className="atlas-diagnostics-summary" role="status" aria-live="polite">
+          {/* A live region as well as a control: the sentence is announced
+              when extraction settles, and pressing it opens the full record. */}
+          <button
+            type="button"
+            className="diagnostics-chip"
+            aria-live="polite"
+            title="Open the extraction diagnostics in Overview"
+            onClick={() => {
+              changeMode("overview");
+              setDiagnosticsRequest((count) => count + 1);
+            }}
+          >
             {diagnosticsSummary}
-          </span>
+          </button>
+        </div>
+        <div
+          ref={searchFocus.drawerRef}
+          id="atlas-search"
+          className="atlas-search"
+          data-open={searchOpen}
+          onKeyDown={searchFocus.onDrawerKeyDown}
+        >
+          <SearchPanel
+            openInspectionPanel={openInspectionPanel}
+            focusEntity={focusEntity}
+            filters={searchFilters}
+            onFiltersChange={setSearchFilters}
+            languageOptions={languageOptions}
+          />
         </div>
         <button
-          ref={navigationFocus.toggleRef}
+          ref={searchFocus.toggleRef}
           type="button"
-          className="navigation-toggle"
-          aria-expanded={navigationOpen}
-          aria-controls="atlas-navigation"
-          onClick={() => setNavigationOpen((open) => !open)}
+          className="header-menu-toggle search-toggle"
+          aria-expanded={searchOpen}
+          aria-controls="atlas-search"
+          onClick={() => setSearchOpen((open) => !open)}
         >
-          Explore
+          <span aria-hidden="true">⌕</span>
+          <span className="tadori-visually-hidden">Search</span>
         </button>
-        <ModeTabs
-          active={mode}
-          onChange={(nextMode) => {
-            if (forcedColorsActive && nextMode !== "table") return;
-            if (nextMode !== "table") setRendererError(false);
-            setMode(nextMode);
-          }}
-        />
+        <button
+          ref={modeMenuFocus.toggleRef}
+          type="button"
+          className="header-menu-toggle mode-menu-toggle"
+          aria-expanded={modeMenuOpen}
+          aria-controls="mode-menu"
+          onClick={() => setModeMenuOpen((open) => !open)}
+        >
+          <span className="tadori-visually-hidden">View:</span>{" "}
+          {WORKSPACE_MODES.find((entry) => entry.id === mode)?.label}
+          <span aria-hidden="true" className="mode-menu-caret">▾</span>
+        </button>
+        {/* Choosing a view closes the narrow-screen menu; arrow keys only move
+            within it, since they choose as they go. */}
+        <div
+          ref={modeMenuFocus.drawerRef}
+          id="mode-menu"
+          className="mode-menu"
+          data-open={modeMenuOpen}
+          onKeyDown={modeMenuFocus.onDrawerKeyDown}
+          onClick={closeModeMenu}
+        >
+          <ModeTabs active={mode} onChange={changeMode} />
+        </div>
       </header>
 
       {snapshot?.stale === true && <StaleState staleReason={snapshot.staleReason} />}
 
-      {/* Lenses, the breadcrumb and the node count describe a map. Overview and
-          Interview show none, so they carry none of that chrome. */}
-      <div className={`atlas-workspace${mapChrome ? "" : " atlas-workspace-lensless"}`}>
-        {mapChrome && (
-          <nav className="lens-rail" aria-label="Map lenses">
-            <LensButton active={lenses.boundaries} label="Boundaries" onClick={() => toggleLens("boundaries")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
-            <LensButton active={lenses.changes} label="Changes" onClick={() => toggleLens("changes")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
-            <LensButton active={lenses.observations} label="Agent review" onClick={() => toggleLens("observations")} />
-            <LensButton active={lenses.provenance} label="Provenance" onClick={() => toggleLens("provenance")} disabledReason={mode === "table" ? "Available in map-based views, not Table mode." : undefined} />
-          </nav>
-        )}
-
-        <aside ref={navigationFocus.drawerRef} id="atlas-navigation" className="atlas-navigation" data-open={navigationOpen} aria-label="Repository navigation" aria-hidden={!navigationOpen} inert={!navigationOpen} tabIndex={-1} onKeyDown={navigationFocus.onDrawerKeyDown}>
-          <div className="navigation-heading">
-            <p>Explore</p>
-            <span>{data === null ? "No graph" : `${countLabel(data.nodes.length, "entity", "entities")} · ${countLabel(data.edges.length, "relation")}`}</span>
-          </div>
-          <details className="navigation-section" open>
-            <summary>Search and filter</summary>
-            <SearchPanel
-              openInspectionPanel={openInspectionPanel}
-              focusEntity={focusEntity}
-              filters={searchFilters}
-              onFiltersChange={setSearchFilters}
-              languageOptions={languageOptions}
-            />
-          </details>
-          <details className="navigation-section">
-            <summary>Analysis and diagnostics</summary>
-            <AnalysisPanel analysis={analysis} />
-          </details>
-          <details className="navigation-section">
-            <summary>Declared language support</summary>
-            <CapabilityPanel
-              capabilities={capabilities}
-              observedLanguageIds={(analysis.data?.languages ?? []).map((language) => language.id)}
-            />
-          </details>
-          {lenses.observations && <ObservationOverlayBadges onInspectFile={inspectObservationFile} />}
-        </aside>
-
+      <div className="atlas-workspace">
         <main id="workspace-stage" className="atlas-main" tabIndex={-1}>
-          <div className="atlas-context-bar">
-            <span>{
-              mode === "overview" ? "Repository overview"
-                : mode === "interview" ? "Interview preparation"
-                : mode === "atlas" ? (spatialProjection === "relief" ? "Repository relief" : spatialProjection === "tilt" ? "Tilted repository map" : "Repository map")
-                : mode === "story" ? "Static behavior"
-                : mode === "changes" ? "Change review"
-                : "Structured graph"
-            }</span>
-            {/* The projection toggle, breadcrumb and level describe the map. In
-                Overview and Interview there is no map, so they described
-                nothing — and they were what truncated the bar to ellipses
-                ("REPOSITOR…", "FILE L…") the moment the inspector opened.
-                The level is shown only below the repository: there it names
-                what the breadcrumb does not, while at the top the bar read
-                "Repository" and "Repository level" side by side. */}
-            {mapChrome && (
-              <>
-                {mode !== "table" && <SpatialProjectionToggle active={spatialProjection} onChange={setSpatialProjection} />}
-                <nav aria-label="Atlas location">
-                  <ol>
-                    {(renderedGraph?.breadcrumb ?? ["Repository"]).map((label, index, labels) => (
-                      <li key={`${index}:${label}`} aria-current={index === labels.length - 1 ? "location" : undefined}>{label}</li>
-                    ))}
-                  </ol>
-                </nav>
-                {lodLevel !== "repository" && <span>{`${lodLevel} level`}</span>}
-              </>
-            )}
-            {/* The count is map chrome too, so it is not drawn without a map.
-                It stays in the accessibility tree as the live region that
-                announces graph refreshes: silencing it in the landing mode
-                would take that announcement away from exactly the reader who
-                arrives while indexing is still settling. */}
-            <span role="status" aria-live="polite" aria-atomic="true" className={mapChrome ? undefined : "tadori-visually-hidden"}>{data === null ? "Graph unavailable" : `Showing ${countLabel(visibleNodeCount, "node")} and ${countLabel(visibleEdgeCount, "relation")}`}</span>
-          </div>
+          {/* The map's own toolbar. The level is shown only below the
+              repository: there it names what the breadcrumb does not, while at
+              the top the bar read "Repository" and "Repository level" side by
+              side. */}
+          {mapChrome && (
+            <div className="atlas-context-bar">
+              {drawsMap && <SpatialProjectionToggle active={spatialProjection} onChange={setSpatialProjection} />}
+              {drawsMap && (
+                <div className="lens-group" role="group" aria-label="Map lenses">
+                  <LensButton active={lenses.boundaries} label="Boundaries" onClick={() => toggleLens("boundaries")} />
+                  <LensButton active={lenses.changes} label="Changes" onClick={() => toggleLens("changes")} />
+                  <LensButton active={lenses.observations} label="Agent review" onClick={() => toggleLens("observations")} />
+                  <LensButton active={lenses.provenance} label="Provenance" onClick={() => toggleLens("provenance")} />
+                </div>
+              )}
+              <nav aria-label="Atlas location">
+                <ol>
+                  {(renderedGraph?.breadcrumb ?? ["Repository"]).map((label, index, labels) => (
+                    <li key={`${index}:${label}`} aria-current={index === labels.length - 1 ? "location" : undefined}>{label}</li>
+                  ))}
+                </ol>
+              </nav>
+              {lodLevel !== "repository" && <span>{`${lodLevel} level`}</span>}
+              {graphCount}
+            </div>
+          )}
+          {/* Off the map the count is not drawn, but it stays in the
+              accessibility tree as the live region that announces graph
+              refreshes: silencing it in the landing mode would take that
+              announcement away from exactly the reader who arrives while
+              indexing is still settling. */}
+          {!mapChrome && graphCount}
 
           {focusUnavailable !== null && (
             <p className="focus-unavailable-notice" role="status" aria-live="polite">
@@ -550,7 +595,25 @@ export function App(): ReactElement {
                   openInspectionPanel(entityKey);
                   focusEntity(entityKey);
                 }}
-              />
+              >
+                <OverviewStratum
+                  id="diagnostics"
+                  heading="Analysis and diagnostics"
+                  question="What did extraction observe, and what did it record going wrong?"
+                >
+                  <AnalysisPanel analysis={analysis} />
+                </OverviewStratum>
+                <OverviewStratum
+                  id="capabilities"
+                  heading="Declared language support"
+                  question="What does this build of Tadori claim to read?"
+                >
+                  <CapabilityPanel
+                    capabilities={capabilities}
+                    observedLanguageIds={(analysis.data?.languages ?? []).map((language) => language.id)}
+                  />
+                </OverviewStratum>
+              </OverviewPanel>
             )}
             {mode === "interview" && (
               <InterviewPanel
@@ -619,22 +682,49 @@ export function App(): ReactElement {
         </main>
 
         <div className="atlas-inspector" hidden={inspection.current === null}>
-          <InspectionPanel store={inspection} repoRoot={snapshot?.repository ?? null} />
-          {inspectedEntityKey !== null && (
-            <nav className="inspector-continuations" aria-label="Continue from this entity">
-              {/* A story starts at a route. Offering the action on entities that
-                  can only be refused would teach the reader to distrust it, so
-                  it appears when the graph says it will resolve. */}
-              {inspectedIsRoute && (
-                <button type="button" onClick={() => { openStory(inspectedEntityKey); }}>
-                  Trace execution flow
+          <InspectionPanel
+            store={inspection}
+            repoRoot={snapshot?.repository ?? null}
+            actions={inspectedEntityKey !== null && (
+              <nav className="inspector-continuations" aria-label="Continue from this entity">
+                {/* A story starts at a route. Offering the action on entities that
+                    can only be refused would teach the reader to distrust it, so
+                    it appears when the graph says it will resolve. */}
+                {inspectedIsRoute && (
+                  <button type="button" onClick={() => { openStory(inspectedEntityKey); }}>
+                    Trace execution flow
+                  </button>
+                )}
+                <button type="button" onClick={() => { setMode("interview"); }}>
+                  Prepare interview questions
                 </button>
-              )}
-              <button type="button" onClick={() => { setMode("interview"); }}>
-                Prepare interview questions
-              </button>
-            </nav>
-          )}
+                {inspection.current?.entityType === "node" && (
+                  <button
+                    ref={pathToggleRef}
+                    type="button"
+                    aria-expanded={pathOpen}
+                    onClick={() => setPathOpen((open) => !open)}
+                  >
+                    Find path from here…
+                  </button>
+                )}
+                {pathOpen && (
+                  <div
+                    className="inspector-path"
+                    onKeyDown={(event) => {
+                      if (event.key !== "Escape") return;
+                      // Closes the path finder only, not the whole inspector.
+                      event.stopPropagation();
+                      setPathOpen(false);
+                      pathToggleRef.current?.focus();
+                    }}
+                  >
+                    <PathFinder from={inspectedEntityKey} onInspect={openInspectionPanel} />
+                  </div>
+                )}
+              </nav>
+            )}
+          />
         </div>
       </div>
     </div>

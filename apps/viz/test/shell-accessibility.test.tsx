@@ -12,10 +12,12 @@ function DrawerHarness({ drawerMode = true }: { drawerMode?: boolean }) {
   const focus = useNavigationFocus(open, close, drawerMode);
   return (
     <>
-      <button ref={focus.toggleRef} type="button" onClick={() => setOpen((value) => !value)}>Explore</button>
-      <aside ref={focus.drawerRef} tabIndex={-1} data-open={open} onKeyDown={focus.onDrawerKeyDown}>
-        <input aria-label="Search repository" />
-      </aside>
+      <button ref={focus.toggleRef} type="button" onClick={() => setOpen((value) => !value)}>Search</button>
+      <div ref={focus.drawerRef} tabIndex={-1} data-open={open} onKeyDown={focus.onDrawerKeyDown}>
+        <button type="button" tabIndex={-1}>Overview</button>
+        <input aria-label="Search graph" />
+      </div>
+      <button type="button" onClick={() => setOpen(false)}>Elsewhere</button>
     </>
   );
 }
@@ -23,43 +25,49 @@ function DrawerHarness({ drawerMode = true }: { drawerMode?: boolean }) {
 describe("shell accessibility", () => {
   it("moves focus into an opened navigation drawer and restores it on Escape", async () => {
     render(<DrawerHarness />);
-    const toggle = screen.getByRole("button", { name: "Explore" });
+    const toggle = screen.getByRole("button", { name: "Search" });
     fireEvent.click(toggle);
-    await waitFor(() => expect(screen.getByRole("textbox", { name: "Search repository" })).toHaveFocus());
-    fireEvent.keyDown(screen.getByRole("textbox", { name: "Search repository" }), { key: "Escape" });
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Search graph" })).toHaveFocus());
+    fireEvent.keyDown(screen.getByRole("textbox", { name: "Search graph" }), { key: "Escape" });
     await waitFor(() => expect(toggle).toHaveFocus());
+  });
+
+  it("lands on the first control a Tab would reach, skipping roving tab stops", async () => {
+    render(<DrawerHarness />);
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Search graph" })).toHaveFocus());
+    expect(screen.getByRole("button", { name: "Overview" })).not.toHaveFocus();
+  });
+
+  it("leaves focus where the reader moved it when another control closes the drawer", async () => {
+    render(<DrawerHarness />);
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Search graph" })).toHaveFocus());
+    const elsewhere = screen.getByRole("button", { name: "Elsewhere" });
+    elsewhere.focus();
+    fireEvent.click(elsewhere);
+    await waitFor(() => expect(document.querySelector("[data-open]")).toHaveAttribute("data-open", "false"));
+    expect(elsewhere).toHaveFocus();
   });
 
   it("keeps persistent desktop navigation open when Escape is pressed", async () => {
     render(<DrawerHarness drawerMode={false} />);
-    fireEvent.click(screen.getByRole("button", { name: "Explore" }));
-    const search = screen.getByRole("textbox", { name: "Search repository" });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    const search = screen.getByRole("textbox", { name: "Search graph" });
     search.focus();
     fireEvent.keyDown(search, { key: "Escape" });
-    expect(document.querySelector("aside")).toHaveAttribute("data-open", "true");
+    expect(document.querySelector("[data-open]")).toHaveAttribute("data-open", "true");
     expect(search).toHaveFocus();
   });
 
-  it("disables map-only lenses with an accessible reason while retaining actionable lenses", () => {
-    const mapAction = vi.fn();
-    const agentAction = vi.fn();
-    render(
-      <>
-        <LensButton active label="Boundaries" onClick={mapAction} disabledReason="Available in map-based views, not Table mode." />
-        <LensButton active={false} label="Agent review" onClick={agentAction} />
-      </>
-    );
-    const boundaries = screen.getByRole("button", { name: /Boundaries lens unavailable/ });
-    expect(boundaries).toBeDisabled();
-    expect(boundaries).toHaveAttribute("aria-disabled", "true");
-    expect(boundaries).toHaveAccessibleDescription("Available in map-based views, not Table mode.");
-    fireEvent.click(boundaries);
-    expect(mapAction).not.toHaveBeenCalled();
+  it("toggles a lens from the keyboard and exposes its pressed state", () => {
+    const action = vi.fn();
+    render(<LensButton active={false} label="Agent review" onClick={action} />);
     const agent = screen.getByRole("button", { name: "Agent review lens" });
-    expect(agent).toBeEnabled();
+    expect(agent).toHaveAttribute("aria-pressed", "false");
     agent.focus();
     fireEvent.keyDown(agent, { key: "Enter" });
     fireEvent.click(agent);
-    expect(agentAction).toHaveBeenCalledTimes(1);
+    expect(action).toHaveBeenCalledTimes(1);
   });
 });

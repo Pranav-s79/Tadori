@@ -140,23 +140,63 @@ describe("App focus ownership", () => {
     expect(screen.queryByRole("complementary", { name: "Inspection" })).not.toBeInTheDocument();
   });
 
-  it("closes responsive navigation with Escape and restores persistent desktop navigation", async () => {
-    const media = installNavigationMediaQuery(true);
+  /**
+   * On a narrow screen the header keeps only the brand, a search button and a
+   * mode menu. Each opens its own panel, takes focus into it, and gives focus
+   * back to its button on Escape or on choosing a view.
+   */
+  it("opens the narrow-screen search and mode menu and returns focus on close", async () => {
+    installNavigationMediaQuery(true);
     render(<App />);
-    const toggle = screen.getByRole("button", { name: "Explore" });
-    const navigation = document.querySelector("#atlas-navigation");
-    expect(navigation).toHaveAttribute("inert");
-    expect(navigation).toHaveAttribute("aria-hidden", "true");
-    fireEvent.click(toggle);
+    const searchToggle = screen.getByRole("button", { name: "Search" });
+    expect(searchToggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(searchToggle);
     await waitFor(() => expect(screen.getByRole("button", { name: "Open package inspection" })).toHaveFocus());
     fireEvent.keyDown(screen.getByRole("button", { name: "Open package inspection" }), { key: "Escape" });
-    await waitFor(() => expect(toggle).toHaveFocus());
-    expect(navigation).toHaveAttribute("inert");
+    await waitFor(() => expect(searchToggle).toHaveFocus());
+    expect(searchToggle).toHaveAttribute("aria-expanded", "false");
 
-    act(() => media.setMatches(false));
-    await waitFor(() => expect(navigation).not.toHaveAttribute("inert"));
-    fireEvent.keyDown(screen.getByRole("button", { name: "Open package inspection" }), { key: "Escape" });
-    expect(navigation).toHaveAttribute("aria-hidden", "false");
+    const modeToggle = screen.getByRole("button", { name: "View: Overview" });
+    fireEvent.click(modeToggle);
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Overview" })).toHaveFocus());
+    fireEvent.click(screen.getByRole("tab", { name: "Atlas" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "View: Atlas" })).toHaveFocus());
+    expect(screen.getByRole("button", { name: "View: Atlas" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("tab", { name: "Atlas" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("keeps the wide-screen search in the header, where Escape does not hide it", () => {
+    installNavigationMediaQuery(false);
+    render(<App />);
+    const opener = screen.getByRole("button", { name: "Open package inspection" });
+    opener.focus();
+    fireEvent.keyDown(opener, { key: "Escape" });
+    expect(document.querySelector("#atlas-search")).toHaveAttribute("data-open", "false");
+    expect(opener).toHaveFocus();
+  });
+
+  it("opens Overview at its diagnostics from the header chip", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("tab", { name: "Atlas" }));
+    fireEvent.click(screen.getByRole("button", { name: "No diagnostics" }));
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(document.getElementById("overview-section-diagnostics")).toHaveFocus());
+    expect(screen.getByRole("heading", { name: "Analysis and diagnostics" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Declared language support" })).toBeInTheDocument();
+  });
+
+  it("finds a path from the inspected entity and closes only the path finder on Escape", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Open package inspection" }));
+    const toggle = await screen.findByRole("button", { name: "Find path from here…" });
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const to = screen.getByLabelText("To");
+    await waitFor(() => expect(to).toHaveFocus());
+    fireEvent.keyDown(to, { key: "Escape" });
+    await waitFor(() => expect(toggle).toHaveFocus());
+    expect(screen.queryByLabelText("To")).not.toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Inspection" })).toBeInTheDocument();
   });
 
   /**
@@ -167,31 +207,33 @@ describe("App focus ownership", () => {
    */
   it("draws map chrome only in the modes that show a map", () => {
     render(<App />);
-    expect(screen.queryByRole("navigation", { name: "Map lenses" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Map lenses" })).not.toBeInTheDocument();
     expect(screen.getByText(/^Showing \d+ nodes? and/)).toHaveClass("tadori-visually-hidden");
 
     fireEvent.click(screen.getByRole("tab", { name: "Interview" }));
-    expect(screen.queryByRole("navigation", { name: "Map lenses" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Map lenses" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Atlas" }));
-    expect(screen.getByRole("navigation", { name: "Map lenses" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Map lenses" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Boundaries lens" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText(/^Showing \d+ nodes? and/)).not.toHaveClass("tadori-visually-hidden");
     expect(screen.getByRole("navigation", { name: "Atlas location" })).toHaveTextContent("Repository");
     expect(screen.queryByText(/level$/)).not.toBeInTheDocument();
   });
 
-  it("counts a single entity in the singular", () => {
+  it("counts a single node in the singular", () => {
     render(<App />);
-    expect(screen.getByText("1 entity · 0 relations")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Atlas" }));
+    expect(screen.getByText("Showing 1 node and 0 relations")).toBeInTheDocument();
   });
 
-  it("disables map-only lenses in Table mode but leaves Agent Review actionable", () => {
+  /** Lenses belong to a drawn map; Table lists the graph and draws none. */
+  it("draws no lens keys in Table mode but keeps its location and count", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("tab", { name: "Table" }));
-    expect(screen.getByRole("button", { name: /Boundaries lens unavailable/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /Changes lens unavailable/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /Provenance lens unavailable/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Agent review lens" })).toBeEnabled();
+    expect(screen.queryByRole("group", { name: "Map lenses" })).not.toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Atlas location" })).toBeInTheDocument();
+    expect(screen.getByText("Showing 1 node and 0 relations")).not.toHaveClass("tadori-visually-hidden");
   });
 
   it("falls back to the structured graph when the map renderer is unavailable", async () => {

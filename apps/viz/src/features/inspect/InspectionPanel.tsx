@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type KeyboardEvent, type ReactElement } from "react";
+import { useCallback, useEffect, useRef, type KeyboardEvent, type ReactElement, type ReactNode } from "react";
 import { EdgeView } from "./EdgeView.tsx";
 import type { ToolEdge } from "./inspectApi.ts";
 import { NodeView } from "./NodeView.tsx";
@@ -15,6 +15,8 @@ interface InspectionPanelProps {
    * ToolEdge (e.g. a node's connection list), so the opener registers it here.
    */
   edgesByKey?: ReadonlyMap<string, ToolEdge>;
+  /** What the reader can do next from this entity, set under the toolbar. */
+  actions?: ReactNode;
 }
 
 /**
@@ -24,7 +26,7 @@ interface InspectionPanelProps {
  * when `store.current` is null. Dismissible via the close control and `Escape`;
  * focus moves into the panel on open.
  */
-export function InspectionPanel({ store, repoRoot, edgesByKey }: InspectionPanelProps): ReactElement | null {
+export function InspectionPanel({ store, repoRoot, edgesByKey, actions }: InspectionPanelProps): ReactElement | null {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const wasOpenRef = useRef(false);
@@ -87,6 +89,8 @@ export function InspectionPanel({ store, repoRoot, edgesByKey }: InspectionPanel
           ✕
         </button>
       </div>
+
+      {actions}
 
       {current.entityType === "node" ? (
         <NodeView entityKey={current.entityKey} repoRoot={repoRoot} onPivot={onPivot} />

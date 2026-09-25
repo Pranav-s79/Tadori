@@ -82,9 +82,9 @@ describe("component stylesheet coverage", () => {
     ".inspect-connections button",
     ".inspect-source-body",
     ".story-step-kind",
-    ".explore-routes",
     ".atlas-controls",
-    ".lens-button-label"
+    ".lens-button",
+    ".search-dropdown"
   ])("styles %s rather than leaving it at browser defaults", (selector) => {
     const escaped = selector.replaceAll(".", "\\.").replaceAll(" ", "\\s+");
     expect(stylesheet("index.css")).toMatch(new RegExp(`${escaped}\\s*[,{:]`));
@@ -109,8 +109,9 @@ describe("component stylesheet coverage", () => {
    * snapshot id beside it, and read like a line of code.
    */
   it("keeps the header diagnostics sentence out of the mono identifier rule", () => {
-    const mono = /\.atlas-snapshot > span(:not\([^)]*\))?\s*\{[^}]*--tadori-font-mono/.exec(stylesheet("index.css"));
-    expect(mono?.[1]).toContain(".atlas-diagnostics-summary");
+    const css = stylesheet("index.css");
+    expect(css).toMatch(/\.atlas-snapshot-id\s*\{[^}]*--tadori-font-mono/);
+    expect(css).not.toMatch(/\.diagnostics-chip[^{]*\{[^}]*--tadori-font-mono/);
   });
 
   it("keeps the lens word visible at every breakpoint", () => {
