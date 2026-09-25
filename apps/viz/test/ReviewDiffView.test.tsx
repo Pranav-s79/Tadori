@@ -70,6 +70,8 @@ function fakeStore(over: Partial<ReviewDiffStore> = {}): ReviewDiffStore {
     status: "idle" as ReviewDiffStatus,
     errorCode: null,
     nextCursor: null,
+    snapshotPair: null,
+    noEarlierSnapshot: null,
     setKind: vi.fn(),
     setCoalesced: vi.fn(),
     loadMore: vi.fn(),
@@ -114,6 +116,48 @@ describe("ReviewDiffView rendering", () => {
   it("renders a failed state via role=alert", () => {
     render(<ReviewDiffView store={fakeStore({ status: "failed", errorCode: "not_a_git_repository" })} />);
     expect(screen.getByRole("alert")).toHaveTextContent(/not_a_git_repository/);
+  });
+
+  it("names the compared snapshot pair in words", () => {
+    render(<ReviewDiffView store={fakeStore({ status: "empty", page: diff(), snapshotPair: { base: 3, head: 4 } })} />);
+    expect(screen.getByText("Snapshot #3 → #4 (served)")).toBeInTheDocument();
+  });
+
+  it("explains an automatic switch to Working tree as information, not an alert", () => {
+    render(<ReviewDiffView store={fakeStore({ kind: "working_tree", noEarlierSnapshot: "only_one", status: "empty", page: diff() })} />);
+    const statuses = screen.getAllByRole("status").map((el) => el.textContent);
+    expect(statuses).toEqual([
+      "Only one snapshot has been indexed, so this compares the working tree with it.",
+      "No changes in this comparison."
+    ]);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("radio", { name: "Working tree" })).toBeChecked();
+    expect(screen.queryByText(/Snapshot #/)).toBeNull();
+  });
+
+  it("states a chosen Snapshot with nothing earlier as a neutral status", () => {
+    render(<ReviewDiffView store={fakeStore({ status: "no_earlier_snapshot", noEarlierSnapshot: "only_one" })} />);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Only one snapshot has been indexed, so there is no earlier snapshot to compare it with."
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps a server refusal of the snapshot pair an alert", () => {
+    render(<ReviewDiffView store={fakeStore({ status: "failed", errorCode: "bad_snapshot_ref", snapshotPair: { base: 1, head: 2 } })} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not load the diff (bad_snapshot_ref).");
+  });
+
+  it("pluralizes omitted counts, including one", () => {
+    render(
+      <ReviewDiffView
+        store={fakeStore({
+          status: "partial",
+          page: diff({ nodesAdded: [node("a")], nodesAddedOmitted: 1, nodesRemovedOmitted: 1, edgesOmitted: 1 })
+        })}
+      />
+    );
+    expect(screen.getByText("+1 added node not shown; 1 removed node not shown; 1 changed edge not shown")).toBeInTheDocument();
   });
 
   it("shows a Load more button only when nextCursor is present", () => {
@@ -282,17 +326,14 @@ describe("ReviewDiffView determinism", () => {
 
 describe("diffFailureText", () => {
   /**
-   * A freshly indexed repository has exactly one snapshot, so a
-   * snapshot-to-snapshot diff has nothing to compare against. Rendering the
-   * bare code made that ordinary state read as a fault with no way forward.
+   * Deliberately replaces the old pin that reworded `bad_snapshot_ref` as
+   * "this repository has been indexed once". The viz sent no base/head, so
+   * that sentence could be false. Snapshot now sends a real pair, and a
+   * refusal of it is a genuine fault that keeps its code.
    */
-  it("explains the no-baseline case and names the comparisons that work", () => {
-    const text = diffFailureText("bad_snapshot_ref");
-
-    expect(text).toContain("no earlier snapshot");
-    expect(text).toContain("Working tree");
-    expect(text).toContain("Staged");
-    expect(text).not.toContain("bad_snapshot_ref");
+  it("keeps a snapshot-ref refusal as a real failure with its code", () => {
+    expect(diffFailureText("bad_snapshot_ref")).toBe("Could not load the diff (bad_snapshot_ref).");
+    expect(diffFailureText("unknown_snapshot")).toBe("Could not load the diff (unknown_snapshot).");
   });
 
   /**

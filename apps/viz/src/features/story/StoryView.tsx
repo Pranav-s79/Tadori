@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from "react";
 import { EvidenceList } from "../inspect/EvidenceList.tsx";
+import { deriveMethodLabel } from "../explore/routeLabels.ts";
+import type { ExploreNode } from "../explore/exploreApi.ts";
+import { useRoutes } from "../../hooks/useRoutes.ts";
 import {
   fetchRouteStory,
   type BehaviorStory,
@@ -22,8 +25,14 @@ export interface StoryPlaybackState {
 }
 
 interface StoryViewProps {
-  /** The route entity to tell the story of; null hides the view. */
+  /**
+   * The route entity to tell the story of. When null, the view lists the
+   * registered routes to start from — or renders nothing if `onSelectRoute`
+   * is not wired.
+   */
   entityKey: string | null;
+  /** Open a registered route's story: the Routes tab's Story action. */
+  onSelectRoute?: (entityKey: string) => void;
   /** Absolute repository root for confined evidence deep links. */
   repoRoot?: string | null;
   onInspect?: (entityKey: string) => void;
@@ -211,6 +220,59 @@ function evidencedPathText(story: BehaviorStory, path: readonly number[]): strin
 }
 
 /**
+ * The way into a story when none is selected: the registered routes, in place,
+ * as stone plates — not a pointer to another panel. Mounted only while nothing
+ * is selected, so routes are read only then. Loading, failure and a snapshot
+ * that genuinely extracted no route are three different sentences.
+ */
+const LEADING_METHOD = /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|ALL)\s+(\S.*)$/u;
+
+/**
+ * Method and path for a route plate. Express route names already lead with the
+ * method ("GET /users/:id"), which the signature-based label cannot see; any
+ * other name keeps that label, "unknown" included, and is shown whole.
+ */
+export function routePlateParts(node: ExploreNode): { method: string; path: string } {
+  const match = LEADING_METHOD.exec(node.displayName);
+  return match?.[1] !== undefined && match[2] !== undefined
+    ? { method: match[1], path: match[2] }
+    : { method: deriveMethodLabel(node), path: node.displayName };
+}
+
+function RouteChooser({ onSelectRoute }: { onSelectRoute: (entityKey: string) => void }): ReactElement {
+  const routes = useRoutes();
+  return (
+    <aside className="story-view story-chooser" aria-labelledby="story-chooser-title">
+      <h2 id="story-chooser-title">Select a registered route</h2>
+      <p className="story-chooser-lede">
+        Trace a static, evidence-backed behavior path from a registered route.
+      </p>
+      {routes.status === "loading" && <p role="status">Loading registered routes…</p>}
+      {routes.status === "error" && <p role="alert">Registered routes could not be loaded.</p>}
+      {routes.status === "ready" && routes.routes.length === 0 && (
+        <p role="status">No registered route was extracted from this snapshot.</p>
+      )}
+      {routes.status === "ready" && routes.routes.length > 0 && (
+        <ul className="story-route-plates" aria-label="Registered routes">
+          {routes.routes.map(({ node }) => {
+            const { method, path } = routePlateParts(node);
+            return (
+              <li key={node.entityKey}>
+                <button type="button" className="story-route-plate" onClick={() => onSelectRoute(node.entityKey)}>
+                  <span className="story-route-method">{method}</span>
+                  <span className="story-route-name">{path}</span>
+                  {node.file !== null && <span className="story-route-file">{node.file}</span>}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </aside>
+  );
+}
+
+/**
  * BehaviorStory view (08-07A frontend). Renders the STATIC behavior story for a
  * route: an ordered list of reached steps with their honesty labels and
  * evidence, the explicit unresolved walls (dynamic dispatch that dead-ends —
@@ -219,7 +281,7 @@ function evidencedPathText(story: BehaviorStory, path: readonly number[]): strin
  * was executed or observed. Each resolved step links into the existing
  * inspection panel. Reads the DTO only — no graph mutation.
  */
-export function StoryView({ entityKey, repoRoot = null, onInspect, onClose, onPlaybackChange }: StoryViewProps): ReactElement | null {
+export function StoryView({ entityKey, repoRoot = null, onInspect, onClose, onPlaybackChange, onSelectRoute }: StoryViewProps): ReactElement | null {
   const [state, setState] = useState<StoryState>({ status: "loading" });
   const [activeStepIndex, setActiveStepIndex] = useState(-1);
   const [stepNames, setStepNames] = useState<ReadonlyMap<string, StepName>>(EMPTY_STEP_NAMES);
@@ -293,7 +355,7 @@ export function StoryView({ entityKey, repoRoot = null, onInspect, onClose, onPl
   useEffect(() => () => onPlaybackChange?.(null), [onPlaybackChange]);
 
   if (entityKey === null) {
-    return null;
+    return onSelectRoute === undefined ? null : <RouteChooser onSelectRoute={onSelectRoute} />;
   }
 
   return (

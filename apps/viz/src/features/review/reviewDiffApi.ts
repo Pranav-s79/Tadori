@@ -1,3 +1,4 @@
+import { fetchSnapshot } from "../../api/client.ts";
 import type { ApiContext, NodeKind } from "../../api/types.ts";
 
 const API_BASE = "/api/v1";
@@ -136,6 +137,52 @@ export class ReviewDiffError extends Error {
     this.detail = opts.detail;
     this.status = opts.status;
   }
+}
+
+/** The two persisted snapshots a Snapshot comparison diffs: base → head. */
+export interface SnapshotPair {
+  base: number;
+  head: number;
+}
+
+/**
+ * Why there is no pair. `only_one`: the listing holds only the served
+ * snapshot. `none_earlier`: nothing older than the served snapshot is still
+ * retained (never indexed, or pruned — a pruned snapshot has no members left,
+ * so diffing against it would report everything as added).
+ */
+export type NoEarlierSnapshotReason = "only_one" | "none_earlier";
+
+/**
+ * Head is the served snapshot; base is the newest ACTIVE snapshot older than
+ * it. Pure, so the choice is tested without a server.
+ */
+export function pickSnapshotPair(rows: readonly SnapshotRow[], servedId: number): SnapshotPair | NoEarlierSnapshotReason {
+  let base: number | null = null;
+  for (const row of rows) {
+    if (row.id < servedId && row.status === "active" && (base === null || row.id > base)) {
+      base = row.id;
+    }
+  }
+  if (base !== null) {
+    return { base, head: servedId };
+  }
+  return rows.length === 1 && rows[0]?.id === servedId ? "only_one" : "none_earlier";
+}
+
+/** GET /api/v1/snapshots: every snapshot row of the served repository. */
+export async function fetchSnapshots(): Promise<SnapshotRow[]> {
+  const response = await fetch(`${API_BASE}/snapshots`);
+  if (!response.ok) {
+    throw new ReviewDiffError(`snapshots failed: ${response.status}`, { code: null, detail: null, status: response.status });
+  }
+  return (await response.json()) as SnapshotRow[];
+}
+
+/** The pair for a Snapshot comparison, read from the served id and the listing. */
+export async function resolveSnapshotPair(): Promise<SnapshotPair | NoEarlierSnapshotReason> {
+  const [served, rows] = await Promise.all([fetchSnapshot(), fetchSnapshots()]);
+  return pickSnapshotPair(rows, served.snapshotId);
 }
 
 /**

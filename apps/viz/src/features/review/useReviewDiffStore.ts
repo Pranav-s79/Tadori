@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchReviewDiff,
+  resolveSnapshotPair,
   ReviewDiffError,
   type EdgeDiffRow,
+  type NoEarlierSnapshotReason,
   type ReviewDiffKind,
   type ReviewDiffNode,
-  type ReviewDiffPage
+  type ReviewDiffPage,
+  type SnapshotPair
 } from "./reviewDiffApi.ts";
 
 export type ReviewDiffStatus =
@@ -15,6 +18,8 @@ export type ReviewDiffStatus =
   | "empty"
   | "partial"
   | "unsupported"
+  // Snapshot chosen, and the listing proves there is nothing older to diff.
+  | "no_earlier_snapshot"
   | "failed";
 
 /** Accumulated rows across cursor pages, plus the first page's context/base/head. */
@@ -41,6 +46,15 @@ export interface ReviewDiffState {
   status: ReviewDiffStatus;
   errorCode: string | null;
   nextCursor: string | null;
+  /** The persisted pair a Snapshot comparison diffs; null for other kinds. */
+  snapshotPair: SnapshotPair | null;
+  /**
+   * Set when the snapshot listing proved there is no earlier snapshot: either
+   * the opening load moved to Working tree on its own (kind is then
+   * working_tree), or the user chose Snapshot (status no_earlier_snapshot).
+   * Cleared when the user picks another kind.
+   */
+  noEarlierSnapshot: NoEarlierSnapshotReason | null;
 }
 
 export interface ReviewDiffStore extends ReviewDiffState {
@@ -54,6 +68,11 @@ const DEFAULT_LIMIT = 50;
 
 /** 501 codes that mean "this comparison can't be produced here" (honest, not a failure). */
 const UNSUPPORTED_CODES = new Set(["coalesced_unsupported", "git_unavailable"]);
+
+/** The `base`/`head` query refs for a Snapshot pair (none for other kinds). */
+function pairParams(pair: SnapshotPair | null): { base?: string; head?: string } {
+  return pair === null ? {} : { base: String(pair.base), head: String(pair.head) };
+}
 
 /** Stable id for a node row (per side): entityKey is unique within added/removed. */
 function nodeId(node: ReviewDiffNode): string {
@@ -189,8 +208,12 @@ export function useReviewDiffStore(
   const [status, setStatus] = useState<ReviewDiffStatus>("idle");
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [snapshotPair, setSnapshotPair] = useState<SnapshotPair | null>(null);
+  const [noEarlierSnapshot, setNoEarlierSnapshot] = useState<NoEarlierSnapshotReason | null>(null);
 
   const generationRef = useRef(0);
+  // The pair the current Snapshot load diffs, so loadMore pages the same pair.
+  const pairRef = useRef<SnapshotPair | null>(null);
   const coalescedRef = useRef<boolean>(false);
   coalescedRef.current = coalesced;
   // Live mirror of accumulated page/cursor so loadMore reads them without
@@ -215,7 +238,7 @@ export function useReviewDiffStore(
   }, []);
 
   const load = useCallback(
-    (targetKind: ReviewDiffKind, targetCoalesced: boolean) => {
+    (targetKind: ReviewDiffKind, targetCoalesced: boolean, switchIfNoEarlierSnapshot = false) => {
       const generation = ++generationRef.current;
       setKindState(targetKind);
       setCoalescedState(targetCoalesced);
@@ -226,11 +249,40 @@ export function useReviewDiffStore(
       cursorRef.current = null;
       setErrorCode(null);
       setStatus("loading");
+      setSnapshotPair(null);
+      pairRef.current = null;
       loadingMoreRef.current = false;
-      fetchReviewDiff({ kind: targetKind, limit: DEFAULT_LIMIT, coalesce: targetCoalesced }, generation)
+      const request = (kindToFetch: ReviewDiffKind, pair: SnapshotPair | null): Promise<ReviewDiffPage> =>
+        fetchReviewDiff({ kind: kindToFetch, limit: DEFAULT_LIMIT, coalesce: targetCoalesced, ...pairParams(pair) }, generation);
+      // Snapshot diffs a real persisted pair: the served snapshot against the
+      // newest retained one before it. Only a listing that proves there is none
+      // moves the opening load to Working tree; a user's Snapshot then says so
+      // without a request. Server refusals stay errors.
+      const begin: Promise<ReviewDiffPage | null> = targetKind !== "snapshot"
+        ? request(targetKind, null)
+        : resolveSnapshotPair().then((pair) => {
+          if (generation !== generationRef.current) {
+            return null;
+          }
+          if (typeof pair !== "string") {
+            setSnapshotPair(pair);
+            pairRef.current = pair;
+            setNoEarlierSnapshot(null);
+            return request("snapshot", pair);
+          }
+          setNoEarlierSnapshot(pair);
+          if (!switchIfNoEarlierSnapshot) {
+            setStatus("no_earlier_snapshot");
+            return null;
+          }
+          setKindState("working_tree");
+          kindRef.current = "working_tree";
+          return request("working_tree", null);
+        });
+      begin
         .then((result) => {
-          if (result.generation !== generationRef.current) {
-            return; // stale — a newer kind change superseded this request
+          if (result === null || result.generation !== generationRef.current) {
+            return; // no request needed, or stale — a newer kind change superseded it
           }
           const merged = mergePage(null, result);
           setPage(merged);
@@ -251,6 +303,8 @@ export function useReviewDiffStore(
 
   const setKind = useCallback(
     (next: ReviewDiffKind) => {
+      // A kind the user picks is respected, Snapshot included: no second switch.
+      setNoEarlierSnapshot(null);
       load(next, coalescedRef.current);
     },
     [load]
@@ -271,7 +325,7 @@ export function useReviewDiffStore(
     loadingMoreRef.current = true;
     const generation = generationRef.current; // same generation — appending to current kind
     fetchReviewDiff(
-      { kind: kindRef.current, cursor, limit: DEFAULT_LIMIT, coalesce: coalescedRef.current },
+      { kind: kindRef.current, cursor, limit: DEFAULT_LIMIT, coalesce: coalescedRef.current, ...pairParams(pairRef.current) },
       generation
     )
       .then((result) => {
@@ -295,12 +349,15 @@ export function useReviewDiffStore(
       });
   }, [applyError]);
 
-  // Initial fetch: default kind = snapshot, once on mount. `load` is stable
-  // (its only dep, applyError, is memoized), so depending on it is a no-op —
-  // the effect still runs exactly once.
+  // Initial fetch: default kind = snapshot, once on mount, moving to Working
+  // tree once if the listing proves there is no earlier snapshot. `load` is
+  // stable (its only dep, applyError, is memoized), so depending on it is a
+  // no-op — the effect still runs exactly once.
   useEffect(() => {
-    load("snapshot", false);
+    load("snapshot", false, true);
   }, [load]);
 
-  return { kind, coalesced, page, status, errorCode, nextCursor, setKind, setCoalesced, loadMore };
+  return {
+    kind, coalesced, page, status, errorCode, nextCursor, snapshotPair, noEarlierSnapshot, setKind, setCoalesced, loadMore
+  };
 }

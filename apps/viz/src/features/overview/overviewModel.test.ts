@@ -45,6 +45,21 @@ describe("buildOverview", () => {
     expect(claim?.value).toMatch(/not that the system has none/u);
   });
 
+  it("inflects diagnostic severity counts", () => {
+    const limits = (error: number, warning: number) => sectionById({
+      ...empty,
+      analysis: {
+        snapshotId: 1, analyzerVersion: "v", languages: [], extractors: [],
+        diagnostics: {
+          items: [], total: error + warning, omittedCount: 0, nextCursor: null,
+          bySeverity: { info: 0, warning, error }
+        }
+      }
+    }, "limits")?.claims[0]?.value;
+    expect(limits(1, 1)).toMatch(/^2 diagnostics recorded \(1 error, 1 warning, 0 info\)\./u);
+    expect(limits(0, 4)).toMatch(/^4 diagnostics recorded \(0 errors, 4 warnings, 0 info\)\./u);
+  });
+
   it("reports observed routes with the file as evidence", () => {
     const input = {
       ...empty,

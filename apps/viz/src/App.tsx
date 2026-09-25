@@ -571,11 +571,11 @@ export function App(): ReactElement {
             >
               {mapSurface}
               {mode === "story" && (
-                <>
                 <StoryView
                   entityKey={storyEntityKey}
                   repoRoot={snapshot?.repository ?? null}
                   onInspect={openInspectionPanel}
+                  onSelectRoute={openStory}
                   onPlaybackChange={(playback) => {
                     if (playback !== null) setStoryPlayback(playback);
                   }}
@@ -585,28 +585,6 @@ export function App(): ReactElement {
                     setMode("atlas");
                   }}
                 />
-                {storyEntityKey === null && (
-                  <div className="mode-empty-state">
-                    <span className="empty-state-mark" aria-hidden="true">◇</span>
-                    <h2>Select a registered route</h2>
-                    <p>Trace a static, evidence-backed behavior path from a registered route.</p>
-                    {/* The empty state used to name a location — "Routes under
-                        Explore evidence" — and leave the reader to hunt for it
-                        in a panel that scrolls. An empty state that knows where
-                        to send you should send you. */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNavigationOpen(true);
-                        document.getElementById("explore-tab-routes")?.click();
-                        document.getElementById("explore-panel-routes")?.scrollIntoView({ block: "center" });
-                      }}
-                    >
-                      Open registered routes
-                    </button>
-                  </div>
-                )}
-                </>
               )}
               {mode === "changes" && (
                 <div className="changes-ledger">

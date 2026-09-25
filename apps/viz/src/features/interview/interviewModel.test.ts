@@ -115,8 +115,44 @@ describe("buildInterviewQuestions", () => {
       }
     });
     const reliability = questions.find((item) => item.group === "Reliability");
-    expect(reliability?.question).toMatch(/3 extraction error/u);
+    expect(reliability?.question).toMatch(/recorded 3 extraction errors\./u);
     expect(reliability?.strongAnswer.join(" ")).toMatch(/extraction failed, not the code/u);
+  });
+
+  it("inflects every count in the questions instead of writing '(s)'", () => {
+    const routeRow = (key: string) => ({
+      node: { entityKey: key, kind: "route", qualifiedName: key, displayName: key, file: "src/app.ts" },
+      pathSourceOrigin: "compiler"
+    }) as never;
+    const testLink = (key: string) => ({
+      node: { entityKey: key, kind: "test", qualifiedName: key, displayName: key, file: "test/a.ts" },
+      linkage: null,
+      edge: null
+    }) as never;
+    const withCounts = (count: number) => buildInterviewQuestions({
+      ...empty,
+      routes: { status: "ready", routes: ["GET /a", "GET /b"].slice(0, count).map(routeRow) },
+      tests: { status: "ready", tests: ["t1", "t2"].slice(0, count).map(testLink) },
+      analysis: {
+        snapshotId: 1, analyzerVersion: "v", languages: [], extractors: [],
+        diagnostics: {
+          items: [], total: count, omittedCount: 0, nextCursor: null,
+          bySeverity: { info: 0, warning: 0, error: count }
+        }
+      }
+    }).map((item) => item.question).join("\n");
+
+    const one = withCounts(1);
+    expect(one).toMatch(/registers 1 entry point, `GET \/a`\. How would you validate and version it\?/u);
+    expect(one).toMatch(/recorded 1 extraction error\./u);
+    expect(one).toMatch(/^1 test entity is statically linked\./mu);
+
+    const two = withCounts(2);
+    expect(two).toMatch(/registers 2 entry points, including `GET \/a`\. How would you validate and version them\?/u);
+    expect(two).toMatch(/recorded 2 extraction errors\./u);
+    expect(two).toMatch(/^2 test entities are statically linked\./mu);
+
+    expect(`${one}\n${two}`).not.toMatch(/\(s\)/u);
   });
 
   it("never asks a pending or failed test read as 'no tests exist'", () => {

@@ -84,6 +84,23 @@
 
 .review-diff-load-more { justify-self: start; }
 
+.review-diff-pair {
+  margin: 0;
+  color: var(--tadori-ink-muted);
+  font: 650 var(--tadori-text-sm) / 1.4 var(--tadori-font-mono);
+}
+
+/* An explanation, not a warning: a plain carved note with no copper or red,
+   overriding the shell's tinted status bar. */
+.review-diff .review-diff-note[role="status"] {
+  margin: 0;
+  border: 1px solid var(--tadori-rule);
+  border-left: 0.2rem solid var(--tadori-ink-muted);
+  border-radius: var(--tadori-radius-sm);
+  background: var(--tadori-ground);
+  color: var(--tadori-ink);
+}
+
 .review-diff-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
@@ -261,6 +278,28 @@
 }
 
 .diff-badge-unplaced p { margin: 0 0 var(--tadori-space-2); font-size: var(--tadori-text-xs); }
+
+/* Nothing to place: one line on the map says so, where the unplaced list
+   would sit, and a loaded comparison hands the ledger most of the height. */
+.diff-badge-caption {
+  position: absolute;
+  bottom: var(--tadori-space-3);
+  left: var(--tadori-space-3);
+  max-width: calc(100% - 1.5rem);
+  margin: 0;
+  padding: var(--tadori-space-1) var(--tadori-space-3);
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  background: color-mix(in srgb, var(--tadori-panel-raised) 96%, transparent);
+  box-shadow: var(--tadori-lift-1);
+  color: var(--tadori-ink);
+  font-size: var(--tadori-text-sm);
+}
+
+.spatial-workspace-changes:has(.diff-badge-caption[data-settled="true"]) {
+  /* Not lower: the boundary panel shares this map and scrolls below ~40%. */
+  grid-template-rows: minmax(14rem, 40%) minmax(12rem, 1fr);
+}
 .diff-badge-unplaced ul { display: grid; gap: var(--tadori-space-1); margin: 0; padding: 0; list-style: none; }
 .diff-badge-unplaced-item { width: 100%; border-left: 4px solid var(--badge-accent); }
 
@@ -308,6 +347,8 @@
   .review-diff-coalesced,
   .diff-badge-unplaced,
   .observation-overlay { border: 1px solid CanvasText; border-top-width: 4px; }
+
+  .diff-badge-caption { border: 1px solid CanvasText; }
 
   .review-diff-list [role="option"][aria-selected="true"] { outline: 2px solid Highlight; outline-offset: 1px; }
   .review-diff-kind-option:has(input:checked) { outline: 1px solid CanvasText; }

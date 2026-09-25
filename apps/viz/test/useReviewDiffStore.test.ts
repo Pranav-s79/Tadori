@@ -11,10 +11,33 @@ interface Pending {
 }
 let pending: Pending[] = [];
 
+function snapshotRow(id: number, status = "active") {
+  return { id, kind: "working_tree", label: null, baseCommitSha: null, workspaceHash: `h${id}`, pinned: false, status, createdAt: null };
+}
+
+// The snapshot pair is read before every Snapshot diff. These answer at once,
+// so `pending` holds only review-diff requests. Default: #1 and #2, #2 served.
+let servedSnapshotId = 2;
+let snapshotRows: unknown[] = [];
+let snapshotListStatus = 200;
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+}
+
 function installFetch(): void {
   pending = [];
+  servedSnapshotId = 2;
+  snapshotRows = [snapshotRow(1), snapshotRow(2)];
+  snapshotListStatus = 200;
   globalThis.fetch = vi.fn((input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : input.toString();
+    if (url.endsWith("/api/v1/snapshots")) {
+      return Promise.resolve(json(snapshotRows, snapshotListStatus));
+    }
+    if (url.endsWith("/api/v1/snapshot")) {
+      return Promise.resolve(json({ context: { ...mockContext, snapshotId: servedSnapshotId } }));
+    }
     return new Promise((resolve) => {
       pending.push({
         url,
@@ -73,13 +96,33 @@ async function resolveInitial(body: unknown): Promise<void> {
 }
 
 describe("useReviewDiffStore initial load + kind param", () => {
-  it("defaults to snapshot and fetches kind=snapshot on mount", async () => {
+  it("defaults to snapshot and diffs the served snapshot against the one before it", async () => {
     const { result } = renderHook(() => useReviewDiffStore());
     await waitFor(() => expect(pending.length).toBeGreaterThan(0));
     expect(pending[0]!.url).toContain("kind=snapshot");
+    expect(pending[0]!.url).toContain("base=1");
+    expect(pending[0]!.url).toContain("head=2");
     await act(async () => pending[0]!.resolve(pageBody({ nodesAdded: [node("a")] })));
     expect(result.current.kind).toBe("snapshot");
     expect(result.current.status).toBe("ok");
+    expect(result.current.snapshotPair).toEqual({ base: 1, head: 2 });
+  });
+
+  it("picks the newest retained earlier snapshot, skipping pruned and newer ones", async () => {
+    servedSnapshotId = 4;
+    snapshotRows = [snapshotRow(1), snapshotRow(2), snapshotRow(3, "pruned"), snapshotRow(4), snapshotRow(5)];
+    renderHook(() => useReviewDiffStore());
+    await waitFor(() => expect(pending.length).toBe(1));
+    expect(pending[0]!.url).toContain("base=2");
+    expect(pending[0]!.url).toContain("head=4");
+  });
+
+  it("pages the same snapshot pair on loadMore", async () => {
+    const { result } = renderHook(() => useReviewDiffStore());
+    await resolveInitial(pageBody({ nodesAdded: [node("a")], nextCursor: "1" }));
+    act(() => result.current.loadMore());
+    await waitFor(() => expect(pending.length).toBe(2));
+    expect(pending[1]!.url).toMatch(/base=1.*head=2.*cursor=1/u);
   });
 
   it("setKind(working_tree) sends kind=working_tree and no base/head", async () => {
@@ -142,6 +185,68 @@ describe("useReviewDiffStore structured error mapping (never silent fallback)", 
     });
     expect(result.current.status).toBe("failed");
     expect(result.current.errorCode).toBe("not_a_git_repository");
+  });
+});
+
+describe("useReviewDiffStore when no earlier snapshot exists", () => {
+  it("switches the opening comparison to working_tree once, with no snapshot request", async () => {
+    snapshotRows = [snapshotRow(2)];
+    const { result } = renderHook(() => useReviewDiffStore());
+    await waitFor(() => expect(pending.length).toBe(1));
+    expect(pending[0]!.url).toContain("kind=working_tree");
+    expect(result.current.kind).toBe("working_tree");
+    expect(result.current.status).toBe("loading");
+    await act(async () => pending[0]!.resolve(pageBody({ nodesAdded: [node("wt")] })));
+    expect(result.current.status).toBe("ok");
+    expect(result.current.noEarlierSnapshot).toBe("only_one");
+    expect(result.current.snapshotPair).toBeNull();
+  });
+
+  it("respects a later user choice of Snapshot: states it without a request", async () => {
+    snapshotRows = [snapshotRow(2)];
+    const { result } = renderHook(() => useReviewDiffStore());
+    await waitFor(() => expect(pending.length).toBe(1));
+    await act(async () => pending[0]!.resolve(pageBody()));
+
+    act(() => result.current.setKind("snapshot"));
+    await waitFor(() => expect(result.current.status).toBe("no_earlier_snapshot"));
+    expect(pending).toHaveLength(1);
+    expect(result.current.kind).toBe("snapshot");
+    expect(result.current.noEarlierSnapshot).toBe("only_one");
+
+    // Choosing another kind clears the explanation.
+    act(() => result.current.setKind("working_tree"));
+    expect(result.current.noEarlierSnapshot).toBeNull();
+  });
+
+  it("says none is retained, not 'only one', when older snapshots were pruned", async () => {
+    snapshotRows = [snapshotRow(1, "pruned"), snapshotRow(2)];
+    const { result } = renderHook(() => useReviewDiffStore());
+    await waitFor(() => expect(pending.length).toBe(1));
+    expect(pending[0]!.url).toContain("kind=working_tree");
+    expect(result.current.noEarlierSnapshot).toBe("none_earlier");
+  });
+});
+
+describe("useReviewDiffStore snapshot errors stay errors", () => {
+  it("a refused snapshot pair is failed with its code, never switched", async () => {
+    const { result } = renderHook(() => useReviewDiffStore());
+    await waitFor(() => expect(pending.length).toBe(1));
+    await act(async () => pending[0]!.resolve({ error: "x", code: "unknown_snapshot" }, 404));
+    expect(pending).toHaveLength(1);
+    expect(result.current.kind).toBe("snapshot");
+    expect(result.current.status).toBe("failed");
+    expect(result.current.errorCode).toBe("unknown_snapshot");
+    expect(result.current.noEarlierSnapshot).toBeNull();
+  });
+
+  it("a failed snapshot listing is failed, never read as 'no earlier snapshot'", async () => {
+    snapshotListStatus = 500;
+    const { result } = renderHook(() => useReviewDiffStore());
+    await waitFor(() => expect(result.current.status).toBe("failed"));
+    expect(pending).toHaveLength(0);
+    expect(result.current.kind).toBe("snapshot");
+    expect(result.current.noEarlierSnapshot).toBeNull();
   });
 });
 

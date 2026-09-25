@@ -2,7 +2,7 @@ import type { ClaimBasis } from "../../design/ClaimBadge.tsx";
 import type { SnapshotAnalysisDto } from "../../api/types.ts";
 import type { NodeDetail, ToolEdge } from "../inspect/inspectApi.ts";
 import type { TestLink } from "../explore/exploreApi.ts";
-import type { RoutesState } from "../overview/overviewModel.ts";
+import { plural, type RoutesState } from "../overview/overviewModel.ts";
 
 export type QuestionGroup =
   | "Basic comprehension"
@@ -110,7 +110,7 @@ function testingQuestion(tests: TestsState): InterviewQuestion {
   }
   return {
     group: "Testing",
-    question: `${String(tests.tests.length)} test entities are statically linked. `
+    question: `${plural(tests.tests.length, "test entity is", "test entities are")} statically linked. `
       + "What is covered, and what conspicuously is not?",
     strongAnswer: [
       "Distinguish static linkage from executed coverage — Tadori shows the former only",
@@ -205,8 +205,11 @@ export function buildInterviewQuestions(input: InterviewInput): InterviewQuestio
     const registered = routes.routes;
     questions.push({
       group: "APIs and boundaries",
-      question: `This repository registers ${String(registered.length)} entry point(s), including `
-        + `\`${registered[0]?.node.displayName ?? ""}\`. How would you validate and version them?`,
+      question: registered.length === 1
+        ? `This repository registers 1 entry point, \`${registered[0]?.node.displayName ?? ""}\`. `
+          + "How would you validate and version it?"
+        : `This repository registers ${String(registered.length)} entry points, including `
+          + `\`${registered[0]?.node.displayName ?? ""}\`. How would you validate and version them?`,
       strongAnswer: [
         "Name the actual routes rather than speaking generically",
         "Cover input validation at the boundary",
@@ -239,7 +242,7 @@ export function buildInterviewQuestions(input: InterviewInput): InterviewQuestio
   if (errorCount > 0) {
     questions.push({
       group: "Reliability",
-      question: `Static analysis recorded ${String(errorCount)} extraction error(s). `
+      question: `Static analysis recorded ${plural(errorCount, "extraction error", "extraction errors")}. `
         + "What does that imply about the parts of this codebase you have not seen?",
       strongAnswer: [
         "Recognise that affected files are under-represented in the graph",

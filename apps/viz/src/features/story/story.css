@@ -37,6 +37,67 @@
   font-size: var(--tadori-text-sm);
 }
 
+/* The chooser: every registered route as a raised plate to step onto. The
+   method is carved on its own tab so it reads without colour. */
+.story-chooser h2 { margin: 0 0 var(--tadori-space-1); font-size: var(--tadori-text-lg); }
+
+.story-chooser-lede {
+  margin: 0 0 var(--tadori-space-3);
+  color: var(--tadori-ink-muted);
+  font-size: var(--tadori-text-sm);
+}
+
+.story-route-plates {
+  display: grid;
+  gap: var(--tadori-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.story-route-plate {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2px var(--tadori-space-2);
+  padding: var(--tadori-space-2) var(--tadori-space-3);
+  border: 1px solid var(--tadori-rule);
+  border-left: 4px solid var(--tadori-copper);
+  border-radius: var(--tadori-radius-md);
+  background: var(--tadori-panel-raised);
+  box-shadow: var(--tadori-lift-2);
+  color: var(--tadori-ink);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: transform var(--tadori-motion-fast) ease, box-shadow var(--tadori-motion-fast) ease;
+}
+
+.story-route-plate:hover { box-shadow: var(--tadori-lift-3); transform: translateY(-2px); }
+.story-route-plate:active { box-shadow: var(--tadori-lift-1); transform: translateY(1px); }
+
+.story-route-method {
+  padding: 0 0.3rem;
+  border: 1px solid var(--tadori-rule);
+  border-radius: var(--tadori-radius-sm);
+  color: var(--tadori-copper-text);
+  font: 700 var(--tadori-text-xs) / 1.5 var(--tadori-font-mono);
+  letter-spacing: 0.04em;
+}
+
+.story-route-name {
+  font: 650 var(--tadori-text-sm) / 1.4 var(--tadori-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.story-route-file {
+  grid-column: 2;
+  color: var(--tadori-ink-muted);
+  font: var(--tadori-text-xs) / 1.4 var(--tadori-font-mono);
+  overflow-wrap: anywhere;
+}
+
 .story-transport button,
 .story-tests button {
   min-height: 2rem;
@@ -220,8 +281,12 @@
 
 @media (prefers-reduced-motion: reduce) {
   .story-step,
+  .story-route-plate,
   .story-transport button,
   .story-tests button { transition: none; }
+
+  .story-route-plate:hover,
+  .story-route-plate:active { transform: none; }
 }
 
 /* Forced colours drop shadows and fills, so every plate keeps a real border
@@ -231,6 +296,8 @@
   .story-step,
   .story-tests,
   .story-static-note { border: 1px solid CanvasText; }
+
+  .story-route-plate { border: 1px solid ButtonText; border-left-width: 4px; }
 
   .story-step { border-left-width: 4px; }
   .story-step-inferred, .story-step-ambiguous { border-left-style: dotted; }

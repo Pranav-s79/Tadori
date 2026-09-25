@@ -105,6 +105,55 @@ describe("StoryView", () => {
     expect(container.firstChild).toBeNull();
   });
 
+  describe("route chooser (no entity selected)", () => {
+    const routeNode = (entityKey: string, displayName: string, signature: string): unknown => ({
+      entityKey,
+      kind: "route",
+      qualifiedName: `src/app.ts.${displayName}`,
+      displayName,
+      file: "src/app.ts",
+      signature
+    });
+
+    it("lists registered routes in place and opens the chosen one", async () => {
+      stubFetch({
+        routes: [
+          // The served shape: the method leads the display name, no signature.
+          { node: routeNode("k-users", "GET /users/:id", ""), pathSourceOrigin: "compiler" },
+          { node: routeNode("k-orders", "/orders", "router.post('/orders', create)"), pathSourceOrigin: "compiler" },
+          { node: routeNode("k-computed", "<computed:adminPath>", ""), pathSourceOrigin: "heuristic" }
+        ]
+      });
+      const onSelectRoute = vi.fn();
+      render(<StoryView entityKey={null} onSelectRoute={onSelectRoute} />);
+      expect(screen.getByRole("heading", { name: "Select a registered route" })).toBeTruthy();
+      expect(screen.getByRole("status").textContent).toBe("Loading registered routes…");
+      const plates = await screen.findAllByRole("button");
+      expect(plates.map((plate) => plate.textContent)).toEqual([
+        "GET/users/:idsrc/app.ts",
+        "POST/orderssrc/app.ts",
+        "unknown<computed:adminPath>src/app.ts"
+      ]);
+      fireEvent.click(screen.getByRole("button", { name: /\/orders/ }));
+      expect(onSelectRoute).toHaveBeenCalledWith("k-orders");
+    });
+
+    it("says no route was extracted, never that none exist", async () => {
+      stubFetch({ routes: [] });
+      render(<StoryView entityKey={null} onSelectRoute={vi.fn()} />);
+      await waitFor(() =>
+        expect(screen.getByRole("status").textContent).toBe("No registered route was extracted from this snapshot."));
+      expect(screen.queryByRole("list")).toBeNull();
+    });
+
+    it("reports a failed route read as a failure, not as zero routes", async () => {
+      stubFetch({}, 500);
+      render(<StoryView entityKey={null} onSelectRoute={vi.fn()} />);
+      expect((await screen.findByRole("alert")).textContent).toBe("Registered routes could not be loaded.");
+      expect(screen.queryByText(/No registered route/)).toBeNull();
+    });
+  });
+
   it("always shows the static-analysis-only banner", async () => {
     stubFetch(story());
     render(<StoryView entityKey="k-route" />);
