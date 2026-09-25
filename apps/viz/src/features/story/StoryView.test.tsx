@@ -121,7 +121,8 @@ describe("StoryView", () => {
           // The served shape: the method leads the display name, no signature.
           { node: routeNode("k-users", "GET /users/:id", ""), pathSourceOrigin: "compiler" },
           { node: routeNode("k-orders", "/orders", "router.post('/orders', create)"), pathSourceOrigin: "compiler" },
-          { node: routeNode("k-computed", "<computed:adminPath>", ""), pathSourceOrigin: "heuristic" }
+          { node: routeNode("k-computed", "<computed:adminPath>", ""), pathSourceOrigin: "heuristic" },
+          { node: routeNode("k-orphan", "orphan", ""), pathSourceOrigin: null }
         ]
       });
       const onSelectRoute = vi.fn();
@@ -129,10 +130,13 @@ describe("StoryView", () => {
       expect(screen.getByRole("heading", { name: "Select a registered route" })).toBeTruthy();
       expect(screen.getByRole("status").textContent).toBe("Loading registered routes…");
       const plates = await screen.findAllByRole("button");
+      // The path source is the origin's own label; a route with no
+      // registration edge says so rather than getting a guessed source.
       expect(plates.map((plate) => plate.textContent)).toEqual([
-        "GET/users/:idsrc/app.ts",
-        "POST/orderssrc/app.ts",
-        "unknown<computed:adminPath>src/app.ts"
+        "GET/users/:idsrc/app.tspath source: direct",
+        "POST/orderssrc/app.tspath source: direct",
+        "unknown<computed:adminPath>src/app.tspath source: derived (heuristic)",
+        "unknownorphansrc/app.tsno route-registration edge"
       ]);
       fireEvent.click(screen.getByRole("button", { name: /\/orders/ }));
       expect(onSelectRoute).toHaveBeenCalledWith("k-orders");

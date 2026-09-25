@@ -18,8 +18,8 @@ function linkageLabel(linkage: TestLinkage): string {
 }
 
 interface LikelyTestsProps {
-  /** Optional entity to scope the query to (from a row pivot); all tests otherwise. */
-  forEntity?: string;
+  /** The inspected entity the tests are linked to. */
+  forEntity: string;
   onInspect?: (entityKey: string) => void;
 }
 
@@ -63,14 +63,14 @@ export function LikelyTests({ forEntity, onInspect }: LikelyTestsProps): ReactEl
 
   return (
     <section className="explore-tests" aria-label={HEADING}>
-      <h2>{HEADING}</h2>
+      <h4>{HEADING}</h4>
       <p className="explore-tests-caption">{NOT_OBSERVED}</p>
 
-      {state.status === "loading" && <p role="status">Loading tests…</p>}
+      {state.status === "loading" && <p>Loading tests…</p>}
       {state.status === "error" && <p role="alert">{`Tests failed to load: ${state.message}`}</p>}
       {state.status === "ready" &&
         (state.result.tests.length === 0 ? (
-          <p role="status">No likely-relevant tests found.</p>
+          <p>No likely-relevant tests found.</p>
         ) : (
           <ul role="list">
             {state.result.tests.map(({ node, linkage }) => (

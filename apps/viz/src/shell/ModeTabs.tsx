@@ -41,8 +41,9 @@ export function ModeTabs({ active, onChange }: ModeTabsProps): ReactElement {
 
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number): void {
     let next: number | null = null;
-    if (event.key === "ArrowRight") next = (index + 1) % WORKSPACE_MODES.length;
-    else if (event.key === "ArrowLeft") next = (index - 1 + WORKSPACE_MODES.length) % WORKSPACE_MODES.length;
+    // Up and Down too: on a narrow screen the same list opens as a menu.
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % WORKSPACE_MODES.length;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (index - 1 + WORKSPACE_MODES.length) % WORKSPACE_MODES.length;
     else if (event.key === "Home") next = 0;
     else if (event.key === "End") next = WORKSPACE_MODES.length - 1;
     if (next !== null) {

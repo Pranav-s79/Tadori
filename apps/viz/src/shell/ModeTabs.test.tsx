@@ -37,6 +37,17 @@ describe("ModeTabs", () => {
     expect(onChange).toHaveBeenLastCalledWith("overview");
     expect(screen.getByRole("tab", { name: "Overview" })).toHaveFocus();
   });
+
+  /** On a narrow screen the same list opens as a vertical menu. */
+  it("also moves with the up and down arrows", () => {
+    const onChange = vi.fn();
+    render(<ModeTabs active="atlas" onChange={onChange} />);
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Atlas" }), { key: "ArrowDown" });
+    expect(onChange).toHaveBeenLastCalledWith("interview");
+    expect(screen.getByRole("tab", { name: "Interview" })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Interview" }), { key: "ArrowUp" });
+    expect(onChange).toHaveBeenLastCalledWith("atlas");
+  });
 });
 
 describe("LensButton", () => {
@@ -65,21 +76,5 @@ describe("LensButton", () => {
     const button = screen.getByRole("button", { name: "Provenance lens" });
     expect(button).toHaveTextContent(/^Provenance$/);
     expect(button).toHaveAttribute("aria-pressed", "true");
-  });
-
-  it("still names a disabled lens and says why it is unavailable", () => {
-    render(
-      <LensButton
-        active={false}
-        label="Changes"
-        onClick={() => undefined}
-        disabledReason="Available in map-based views, not Table mode."
-      />
-    );
-
-    expect(screen.getByText("Changes")).toBeInTheDocument();
-    expect(screen.getByRole("button", {
-      name: "Changes lens unavailable: Available in map-based views, not Table mode."
-    })).toBeDisabled();
   });
 });

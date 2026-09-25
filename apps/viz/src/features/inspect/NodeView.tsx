@@ -12,6 +12,8 @@ import {
   type ToolEdge
 } from "./inspectApi.ts";
 import { SourceView } from "./SourceView.tsx";
+import { DocumentsPanel } from "../explore/DocumentsPanel.tsx";
+import { LikelyTests } from "../explore/LikelyTests.tsx";
 
 /** The exact frozen fallback string; rendered verbatim when no ADR resolves. */
 export const NO_DECISION_FALLBACK = "No documented design decision found.";
@@ -157,6 +159,9 @@ export function NodeView({ entityKey, repoRoot, onPivot }: NodeViewProps): React
           </>
         )}
       </section>
+
+      <LikelyTests forEntity={node.entityKey} onInspect={(key) => onPivot(key, "node")} />
+      <DocumentsPanel forEntity={node.entityKey} onInspect={(key) => onPivot(key, "node")} />
     </div>
   );
 }

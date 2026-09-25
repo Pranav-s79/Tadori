@@ -120,7 +120,8 @@ async function capture(page: Page, base: string, shot: Shot, options: Options, o
   // The app holds a live connection open, so "networkidle" is only a best effort.
   const settle = (): Promise<void> => page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => undefined);
   await page.goto(`${base}?${query.toString()}`, { waitUntil: "load" });
-  await page.waitForSelector('[role="tablist"]');
+  // Attached, not visible: on a narrow screen the mode tabs live in a closed menu.
+  await page.waitForSelector('[role="tablist"]', { state: "attached" });
   await settle();
   await page.evaluate("document.fonts.ready.then(() => undefined)");
   if (options.keys.length > 0) {

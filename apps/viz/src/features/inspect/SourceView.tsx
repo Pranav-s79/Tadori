@@ -52,7 +52,9 @@ export function SourceView({ result, loading }: SourceViewProps): React.ReactEle
       </p>
     );
   } else {
-    content = <pre className="inspect-source-body">{result.slice.body}</pre>;
+    // Focusable because long lines scroll sideways, and a keyboard reader has
+    // to be able to scroll them too.
+    content = <pre className="inspect-source-body" tabIndex={0}>{result.slice.body}</pre>;
   }
 
   return (

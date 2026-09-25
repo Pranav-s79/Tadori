@@ -303,7 +303,7 @@
 .diff-badge-unplaced ul { display: grid; gap: var(--tadori-space-1); margin: 0; padding: 0; list-style: none; }
 .diff-badge-unplaced-item { width: 100%; border-left: 4px solid var(--badge-accent); }
 
-/* Agent-change review: a plate in the navigation, one line per flagged file. */
+/* Agent-change review: a plate on the map, one line per flagged file. */
 .observation-overlay {
   margin: var(--tadori-space-3);
   border: 1px solid var(--tadori-rule);
