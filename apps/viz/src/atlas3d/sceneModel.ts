@@ -94,10 +94,11 @@ function blockSize(level: AbstractionLevel, baseSize: number): Vec3 {
     return [side, PLATE_THICKNESS, side];
   }
   if (level === "file") {
+    // An upright tablet: taller than wide, and thin.
     const scale = baseSize / 11;
-    return [1.9 * scale, 2.6 * scale, 0.5 * scale];
+    return [1.5 * scale, 2.1 * scale, 0.32 * scale];
   }
-  const side = 1.3 * (baseSize / 9);
+  const side = 1.05 * (baseSize / 9);
   return [side, side, side];
 }
 

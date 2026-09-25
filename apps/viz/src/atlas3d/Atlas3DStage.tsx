@@ -21,7 +21,7 @@ import {
   Mesh,
   MeshLambertMaterial,
   type Object3D,
-  PCFSoftShadowMap,
+  PCFShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
   Quaternion,
@@ -69,7 +69,8 @@ export interface Atlas3DStageProps {
 type Callbacks = Pick<Atlas3DStageProps, "onSelect" | "onActivate" | "onViewportPositionsChange" | "onError">;
 
 interface World {
-  invalidate(structural: boolean): void;
+  /** Follow this graph's mutations; the renderer and camera carry over. */
+  setGraph(graph: Graph): () => void;
   setActive(active: boolean): void;
   handle: Atlas3DHandle;
   dispose(): void;
@@ -131,7 +132,7 @@ function arcPoints(from: Vec3, to: Vec3): Vector3[] {
   });
 }
 
-function createWorld(host: HTMLElement, graph: Graph, callbacks: { current: Callbacks }): World {
+function createWorld(host: HTMLElement, callbacks: { current: Callbacks }): World {
   const reducedMotion = prefersReducedMotion();
   const styles = getComputedStyle(host);
   const token = (name: string, fallback: string): Color =>
@@ -150,7 +151,7 @@ function createWorld(host: HTMLElement, graph: Graph, callbacks: { current: Call
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setClearColor(colours.ground);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = PCFSoftShadowMap;
+  renderer.shadowMap.type = PCFShadowMap;
   const canvas = renderer.domElement;
   canvas.className = "atlas3d-canvas";
   canvas.setAttribute("role", "img");
@@ -172,11 +173,14 @@ function createWorld(host: HTMLElement, graph: Graph, callbacks: { current: Call
   controls.zoomToCursor = true;
   controls.maxPolarAngle = Math.PI / 2 - 0.08;
 
-  scene.add(new AmbientLight(0xffffff, 1.35));
-  const sun = new DirectionalLight(0xffffff, 1.9);
+  // Soft: a strong ambient fill keeps shaded faces readable, and the one sun
+  // gives every block a lit top and a shadow on the ground.
+  scene.add(new AmbientLight(0xffffff, 2));
+  const sun = new DirectionalLight(0xffffff, 1.4);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.bias = -0.0004;
+  sun.shadow.radius = 4;
   sun.shadow.normalBias = 0.02;
   scene.add(sun, sun.target);
 
@@ -214,11 +218,14 @@ function createWorld(host: HTMLElement, graph: Graph, callbacks: { current: Call
   const textWidths = new Map<string, number>();
   const measure = document.createElement("canvas").getContext("2d");
   const labelFont = styles.getPropertyValue("--tadori-font-label").trim() || "sans-serif";
+  const uiFont = styles.getPropertyValue("--tadori-font-ui").trim() || "sans-serif";
 
   let hovered: string | null = null;
   let pointer: Vector2 | null = null;
+  let graph: Graph | null = null;
   let modelDirty = true;
-  let structureDirty = true;
+  /** The node set the camera was last fitted to; a new set refits. */
+  let fittedNodes: string | null = null;
   let viewDirty = true;
   let flight: { fromPosition: Vector3; toPosition: Vector3; fromTarget: Vector3; toTarget: Vector3; start: number } | null = null;
   const raycaster = new Raycaster();
@@ -240,7 +247,11 @@ function createWorld(host: HTMLElement, graph: Graph, callbacks: { current: Call
     content.clear();
   };
 
-  const colourOf = (node: SceneNode): Color => new Color(node.color);
+  // Blocks are pale stone carrying Plan's material hue; the selection keeps
+  // Plan's full focus colour so it stands out from every stone.
+  const colourOf = (node: SceneNode): Color => node.selected
+    ? new Color(node.color)
+    : colours.panel.clone().lerp(new Color(node.color), 0.62);
 
   const buildPlates = (): void => {
     for (const plate of model.plates) {
@@ -371,7 +382,11 @@ function createWorld(host: HTMLElement, graph: Graph, callbacks: { current: Call
     const cacheKey = `${node.level}\u0000${node.label}`;
     let width = textWidths.get(cacheKey);
     if (width === undefined) {
-      if (measure !== null) measure.font = `${node.level === "package" ? 600 : 400} ${String(LABEL_SIZE_PX)}px ${labelFont}`;
+      if (measure !== null) {
+        measure.font = node.level === "package"
+          ? `600 ${String(LABEL_SIZE_PX)}px ${labelFont}`
+          : `400 ${String(LABEL_SIZE_PX)}px ${uiFont}`;
+      }
       // A package label is a small plaque: its padding is part of its box.
       width = (measure?.measureText(node.label).width ?? node.label.length * 6.5) + (node.level === "package" ? 14 : 0);
       textWidths.set(cacheKey, width);
@@ -452,15 +467,14 @@ function createWorld(host: HTMLElement, graph: Graph, callbacks: { current: Call
     };
   };
 
-  const bounds = (): Sphere => {
-    const box = new Box3();
-    for (const node of model.nodes) {
-      box.expandByPoint(scratch.set(...node.ground));
-      box.expandByPoint(scratch.set(...node.anchor));
-    }
-    for (const plate of model.plates) {
-      for (const point of plate.outline) box.expandByPoint(scratch.set(point.x, 0, point.y));
-    }
+  /** Every point the map draws: ground points, block tops and slab corners. */
+  const extentPoints = (): Vector3[] => [
+    ...model.nodes.flatMap((node) => [new Vector3(...node.ground), new Vector3(...node.anchor)]),
+    ...model.plates.flatMap((plate) => plate.outline.map((point) => new Vector3(point.x, 0, point.y)))
+  ];
+
+  const bounds = (points: readonly Vector3[]): Sphere => {
+    const box = new Box3().setFromPoints([...points]);
     const sphere = box.isEmpty() ? new Sphere(new Vector3(), 10) : box.getBoundingSphere(new Sphere());
     sphere.radius = Math.max(sphere.radius, 10);
     return sphere;
@@ -504,18 +518,54 @@ function createWorld(host: HTMLElement, graph: Graph, callbacks: { current: Call
     shadow.updateProjectionMatrix();
   };
 
+  /**
+   * The isometric three-quarter view, as close as it can be while every point
+   * stays on screen. A bounding sphere alone leaves a long, diagonal map small
+   * in the middle of the stage, so the sphere's view is refined against where
+   * the points actually project: recentred, then scaled to the margin.
+   */
   const reset = (): void => {
-    const sphere = bounds();
+    const points = extentPoints();
+    const sphere = bounds(points);
+    const direction = isometricDirection();
     const vertical = (camera.fov * Math.PI) / 180;
     const horizontal = 2 * Math.atan(Math.tan(vertical / 2) * camera.aspect);
-    const distance = (sphere.radius / Math.sin(Math.min(vertical, horizontal) / 2)) * 0.92;
+    let distance = sphere.radius / Math.sin(Math.min(vertical, horizontal) / 2);
+    const target = sphere.center.clone();
+    const probe = camera.clone();
+    const right = new Vector3();
+    const up = new Vector3();
+    for (let pass = 0; pass < 3 && points.length > 0; pass += 1) {
+      probe.position.copy(target).addScaledVector(direction, distance);
+      probe.lookAt(target);
+      probe.updateMatrixWorld();
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      for (const point of points) {
+        const ndc = scratch.copy(point).project(probe);
+        minX = Math.min(minX, ndc.x);
+        maxX = Math.max(maxX, ndc.x);
+        minY = Math.min(minY, ndc.y);
+        maxY = Math.max(maxY, ndc.y);
+      }
+      right.setFromMatrixColumn(probe.matrixWorld, 0);
+      up.setFromMatrixColumn(probe.matrixWorld, 1);
+      const halfHeight = distance * Math.tan(vertical / 2);
+      target
+        .addScaledVector(right, ((minX + maxX) / 2) * halfHeight * camera.aspect)
+        .addScaledVector(up, ((minY + maxY) / 2) * halfHeight);
+      const fill = Math.max((maxX - minX) / 2, (maxY - minY) / 2) / 0.86;
+      distance *= Math.max(fill, 0.05);
+    }
     frameSurroundings(sphere, distance);
-    flyTo(sphere.center.clone(), sphere.center.clone().addScaledVector(isometricDirection(), distance));
+    flyTo(target, target.clone().addScaledVector(direction, distance));
   };
 
   const rebuild = (): void => {
     disposeContent();
-    model = buildAtlasScene(graph);
+    model = graph === null ? { nodes: [], plates: [], edges: [] } : buildAtlasScene(graph);
     nodeByKey = new Map(model.nodes.map((node) => [node.key, node]));
     pickables = [];
     paint = new Map();
@@ -556,8 +606,11 @@ function createWorld(host: HTMLElement, graph: Graph, callbacks: { current: Call
     if (modelDirty) {
       modelDirty = false;
       rebuild();
-      if (structureDirty) {
-        structureDirty = false;
+      // Frame the map when what it holds changes (landing, expansion,
+      // collapse), not when a refetch or a selection restyles the same nodes.
+      const nodes = model.nodes.map((node) => node.key).join("\n");
+      if (nodes !== fittedNodes) {
+        fittedNodes = nodes;
         reset();
       }
       viewDirty = true;
@@ -668,9 +721,18 @@ function createWorld(host: HTMLElement, graph: Graph, callbacks: { current: Call
   };
 
   return {
-    invalidate(structural) {
+    setGraph(next) {
+      graph = next;
       modelDirty = true;
-      if (structural) structureDirty = true;
+      // Any mutation, structural or a restyle, redraws on the next frame; a
+      // burst of attribute writes coalesces into one rebuild.
+      const invalidate = (): void => {
+        modelDirty = true;
+      };
+      for (const event of GRAPH_EVENTS) next.on(event, invalidate);
+      return () => {
+        for (const event of GRAPH_EVENTS) next.off(event, invalidate);
+      };
     },
     setActive(active) {
       renderer.setAnimationLoop(active ? tick : null);
@@ -711,8 +773,13 @@ function createWorld(host: HTMLElement, graph: Graph, callbacks: { current: Call
   };
 }
 
-const STRUCTURAL_EVENTS = ["nodeAdded", "nodeDropped", "edgeAdded", "edgeDropped", "cleared", "edgesCleared"] as const;
-const STYLE_EVENTS = [
+const GRAPH_EVENTS = [
+  "nodeAdded",
+  "nodeDropped",
+  "edgeAdded",
+  "edgeDropped",
+  "cleared",
+  "edgesCleared",
   "attributesUpdated",
   "nodeAttributesUpdated",
   "edgeAttributesUpdated",
@@ -743,29 +810,27 @@ export function Atlas3DStage({
   const activeRef = useRef(active);
   activeRef.current = active;
 
+  // One WebGL world per mount. A refetched graph is swapped in below, so the
+  // camera and the GPU context survive it.
   useEffect(() => {
     const host = hostRef.current;
     if (host === null) return;
     let world: World;
     try {
-      world = createWorld(host, graph, callbacks);
+      world = createWorld(host, callbacks);
     } catch (error) {
       callbacks.current.onError(asError(error));
       return;
     }
     worldRef.current = world;
-    const structural = (): void => world.invalidate(true);
-    const style = (): void => world.invalidate(false);
-    for (const event of STRUCTURAL_EVENTS) graph.on(event, structural);
-    for (const event of STYLE_EVENTS) graph.on(event, style);
     world.setActive(activeRef.current);
     return () => {
-      for (const event of STRUCTURAL_EVENTS) graph.off(event, structural);
-      for (const event of STYLE_EVENTS) graph.off(event, style);
       world.dispose();
       worldRef.current = null;
     };
-  }, [graph]);
+  }, []);
+
+  useEffect(() => worldRef.current?.setGraph(graph), [graph]);
 
   useEffect(() => {
     worldRef.current?.setActive(active);

@@ -152,6 +152,19 @@ describe("PackageMapCanvas mount/unmount", () => {
     )).toHaveAttribute("aria-live", "polite");
   });
 
+  it("keeps the reader's selection when a refetch rebuilds the graph", () => {
+    let graph: Graph | null = null;
+    const { rerender } = render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} onGraphReady={(ready) => { graph = ready; }} />);
+    fireEvent.keyDown(screen.getByRole("application"), { key: "ArrowRight" });
+    const before = graph!;
+    expect(before.getNodeAttribute("pkg:a", "selected")).toBe(true);
+
+    rerender(<PackageMapCanvas nodes={[...nodes]} edges={[...edges]} positions={[...positions]} onGraphReady={(ready) => { graph = ready; }} />);
+    expect(graph).not.toBe(before);
+    expect(graph!.getNodeAttribute("pkg:a", "selected")).toBe(true);
+    expect(graph!.getNodeAttribute("pkg:b", "selected")).not.toBe(true);
+  });
+
   it("kills the Sigma instance on unmount", () => {
     const { unmount } = render(<PackageMapCanvas nodes={nodes} edges={edges} positions={positions} />);
     unmount();

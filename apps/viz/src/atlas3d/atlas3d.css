@@ -33,7 +33,7 @@
 
 .atlas3d-label {
   color: var(--tadori-ink);
-  font: 400 12px / 1.2 var(--tadori-font-label);
+  font: 400 12px / 1.2 var(--tadori-font-ui);
   white-space: nowrap;
   text-shadow:
     0 0 2px var(--tadori-panel),
@@ -53,6 +53,7 @@
   border-radius: 2px;
   background: var(--tadori-panel-raised);
   box-shadow: var(--tadori-lift-1);
+  font-family: var(--tadori-font-label);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-shadow: none;

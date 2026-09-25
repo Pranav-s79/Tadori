@@ -601,6 +601,7 @@ export function PackageMapCanvas({
   const graphRef = useRef<Graph | null>(null);
   const prevExpandedRef = useRef<ReadonlySet<string>>(new Set());
   const prevExpandedFilesRef = useRef<ReadonlySet<string>>(new Set());
+  const carriedSelectionRef = useRef<string | null>(null);
   const publishRef = useRef<(() => void) | null>(null);
   const [packagePlates, setPackagePlates] = useState<PackagePlate[]>([]);
   const [focusAnnouncement, setFocusAnnouncement] = useState("");
@@ -676,6 +677,10 @@ export function PackageMapCanvas({
       applySymbolExpansion(graph, fileKey, expansionData);
       restoredFiles.add(fileKey);
     }
+    // A refetch rebuilds the graph; the reader's selection survives it, as
+    // their expansions do, whenever the selected entity is still served.
+    const carried = carriedSelectionRef.current;
+    if (carried !== null && graph.hasNode(carried)) graph.setNodeAttribute(carried, "selected", true);
     applyAtlasGraphStyles(graph);
 
     graphRef.current = graph;
@@ -911,6 +916,7 @@ export function PackageMapCanvas({
     setLiveGraph(graph);
 
     return () => {
+      carriedSelectionRef.current = graph.findNode((_key, attrs) => attrs.selected === true) ?? null;
       setLiveGraph(null);
       stageActionsRef.current = null;
       container.removeEventListener("keydown", onKeyDown);
