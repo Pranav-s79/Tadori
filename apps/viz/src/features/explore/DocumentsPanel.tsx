@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactElement } from "react";
 import { fetchDocs, type DocsResult } from "./exploreApi.ts";
 
 interface DocumentsPanelProps {
+  /** The inspected entity: only docs whose `documents` edges cite it are listed. */
+  forEntity: string;
   onInspect?: (entityKey: string) => void;
 }
 
@@ -11,83 +13,48 @@ type DocsState =
   | { status: "error"; message: string };
 
 /**
- * Documents/ADR panel: every `adr`/`doc_section` node with its body. The live
- * /docs endpoint returns `{node, body}` per doc (no `documents`-edge grouping
- * yet), so this lists each doc with its inline body and a pivot into the
- * inspection panel for full evidence — grouping-by-documented-entity is the
- * documented follow-up once the endpoint carries the edges.
+ * The docs and ADRs that cite the inspected entity through a `documents` edge
+ * (`/docs?for=`). Each one pivots into the inspector, where its own source
+ * slice is the body. An entity nothing cites says so; it is never padded with
+ * docs that merely sit nearby.
  */
-export function DocumentsPanel({ onInspect }: DocumentsPanelProps): ReactElement {
+export function DocumentsPanel({ forEntity, onInspect }: DocumentsPanelProps): ReactElement {
   const [state, setState] = useState<DocsState>({ status: "loading" });
 
   useEffect(() => {
     let cancelled = false;
-    fetchDocs()
+    setState({ status: "loading" });
+    fetchDocs(forEntity)
       .then((result) => {
-        if (!cancelled) {
-          setState({ status: "ready", result });
-        }
+        if (!cancelled) setState({ status: "ready", result });
       })
       .catch((err: unknown) => {
-        if (!cancelled) {
-          setState({ status: "error", message: err instanceof Error ? err.message : String(err) });
-        }
+        if (!cancelled) setState({ status: "error", message: err instanceof Error ? err.message : String(err) });
       });
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  if (state.status === "loading") {
-    return <p role="status">Loading documents…</p>;
-  }
-  if (state.status === "error") {
-    return <p role="alert">{`Documents failed to load: ${state.message}`}</p>;
-  }
-  if (state.result.docs.length === 0) {
-    return <p role="status">No documents or ADRs in this snapshot.</p>;
-  }
-
-  // Grounded docs cite at least one entity via a `documents` edge; ungrounded
-  // docs cite nothing. Both are shown — an ungrounded doc is never dropped.
-  const grounded = state.result.docs.filter((d) => d.documents.length > 0);
-  const ungrounded = state.result.docs.filter((d) => d.documents.length === 0);
+  }, [forEntity]);
 
   return (
     <section className="explore-docs" aria-label="Documents">
-      {grounded.length > 0 && (
-        <section aria-label="Documents that cite an entity">
-          <ul>
-            {grounded.map(({ node, body, documents }) => (
-              <li key={node.entityKey}>
-                <button type="button" onClick={() => onInspect?.(node.entityKey)}>
-                  {node.displayName}
-                </button>
-                {node.file !== null && <span className="explore-docs-file"> {node.file}</span>}
-                <span className="explore-docs-grounds">{` — documents ${documents.length} ${documents.length === 1 ? "entity" : "entities"}`}</span>
-                {body !== null && <pre className="explore-docs-body">{body}</pre>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {ungrounded.length > 0 && (
-        <section aria-label="Documents with no outgoing citation">
-          <h2>{`Ungrounded (${ungrounded.length}) — no entity cited`}</h2>
-          <ul>
-            {ungrounded.map(({ node, body }) => (
-              <li key={node.entityKey}>
-                <button type="button" onClick={() => onInspect?.(node.entityKey)}>
-                  {node.displayName}
-                </button>
-                {node.file !== null && <span className="explore-docs-file"> {node.file}</span>}
-                {body !== null && <pre className="explore-docs-body">{body}</pre>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <h4>Documents</h4>
+      {state.status === "loading" && <p>Loading documents…</p>}
+      {state.status === "error" && <p role="alert">{`Documents failed to load: ${state.message}`}</p>}
+      {state.status === "ready" && (state.result.docs.length === 0 ? (
+        <p>No document or ADR in this snapshot cites this entity.</p>
+      ) : (
+        <ul>
+          {state.result.docs.map(({ node }) => (
+            <li key={node.entityKey}>
+              <button type="button" onClick={() => onInspect?.(node.entityKey)}>
+                {node.displayName}
+              </button>
+              {node.file !== null && <span className="explore-docs-file">{node.file}</span>}
+            </li>
+          ))}
+        </ul>
+      ))}
     </section>
   );
 }

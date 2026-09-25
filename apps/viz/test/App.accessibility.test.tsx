@@ -79,7 +79,6 @@ vi.mock("../src/features/search/SearchPanel.tsx", () => ({
     <button type="button" onClick={() => props.openInspectionPanel?.("pkg")}>Open package inspection</button>
   )
 }));
-vi.mock("../src/features/explore/ExploreTabs.tsx", () => ({ ExploreTabs: () => <div>explore</div> }));
 vi.mock("../src/features/inspect/NodeView.tsx", () => ({
   NodeView: ({ repoRoot }: { repoRoot: string | null }) => <div>{`node detail · ${repoRoot ?? "no repository root"}`}</div>
 }));

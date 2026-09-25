@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from "react";
 import { EvidenceList } from "../inspect/EvidenceList.tsx";
-import { deriveMethodLabel } from "../explore/routeLabels.ts";
+import { deriveMethodLabel, pathSourceLabel } from "../explore/routeLabels.ts";
 import type { ExploreNode } from "../explore/exploreApi.ts";
 import { useRoutes } from "../../hooks/useRoutes.ts";
 import {
@@ -254,7 +254,7 @@ function RouteChooser({ onSelectRoute }: { onSelectRoute: (entityKey: string) =>
       )}
       {routes.status === "ready" && routes.routes.length > 0 && (
         <ul className="story-route-plates" aria-label="Registered routes">
-          {routes.routes.map(({ node }) => {
+          {routes.routes.map(({ node, pathSourceOrigin }) => {
             const { method, path } = routePlateParts(node);
             return (
               <li key={node.entityKey}>
@@ -262,6 +262,11 @@ function RouteChooser({ onSelectRoute }: { onSelectRoute: (entityKey: string) =>
                   <span className="story-route-method">{method}</span>
                   <span className="story-route-name">{path}</span>
                   {node.file !== null && <span className="story-route-file">{node.file}</span>}
+                  {/* How the path was obtained, or that no registration edge
+                      says; never a guessed source. */}
+                  <span className="story-route-file">
+                    {pathSourceOrigin === null ? "no route-registration edge" : pathSourceLabel(pathSourceOrigin)}
+                  </span>
                 </button>
               </li>
             );

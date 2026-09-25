@@ -73,7 +73,6 @@ vi.mock("../src/hooks/useAnalysis.ts", () => ({
   })
 }));
 vi.mock("../src/graph/PackageMapCanvas.tsx", () => ({ PackageMapCanvas: () => <div>map</div> }));
-vi.mock("../src/features/explore/ExploreTabs.tsx", () => ({ ExploreTabs: () => <div>explore</div> }));
 vi.mock("../src/features/search/SearchPanel.tsx", () => ({ SearchPanel: () => <div>search</div> }));
 vi.mock("../src/features/inspect/NodeView.tsx", () => ({ NodeView: () => <div>node detail</div> }));
 vi.mock("../src/features/inspect/inspectApi.ts", () => ({ fetchNodeDetail }));

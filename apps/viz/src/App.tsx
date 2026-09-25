@@ -9,7 +9,6 @@ import { BoundaryBadgeOverlay } from "./features/boundaries/BoundaryBadgeOverlay
 import { useBoundaries } from "./features/boundaries/useBoundaries.ts";
 import { InspectionPanel } from "./features/inspect/InspectionPanel.tsx";
 import { useInspectionStore } from "./features/inspect/useInspectionStore.ts";
-import { ExploreTabs } from "./features/explore/ExploreTabs.tsx";
 import { StoryView, type StoryPlaybackState } from "./features/story/StoryView.tsx";
 import { AccessibleGraphTable } from "./features/a11y/AccessibleGraphTable.tsx";
 import { DiffBadgeOverlay } from "./features/review/DiffBadgeOverlay.tsx";
@@ -467,10 +466,6 @@ export function App(): ReactElement {
               onFiltersChange={setSearchFilters}
               languageOptions={languageOptions}
             />
-          </details>
-          <details className="navigation-section" open>
-            <summary>Explore evidence</summary>
-            <ExploreTabs onInspect={openInspectionPanel} onShowStory={openStory} />
           </details>
           <details className="navigation-section">
             <summary>Analysis and diagnostics</summary>

@@ -37,6 +37,9 @@ function routeFetch(nodesByKey: Record<string, unknown>): void {
       if (url.includes("/docs")) {
         return { ok: true, status: 200, json: async () => ({ docs: [] }) } as Response;
       }
+      if (url.includes("/tests")) {
+        return { ok: true, status: 200, json: async () => ({ target: null, tests: [], observed: false, note: "not observed inspected" }) } as Response;
+      }
       const match = /\/nodes\/([^/?]+)/.exec(url);
       const key = match?.[1] !== undefined ? decodeURIComponent(match[1]) : "";
       const body = nodesByKey[key];
